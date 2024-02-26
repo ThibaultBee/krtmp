@@ -1,0 +1,27 @@
+name: Build and publish documentation
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ published ]
+
+jobs:
+  update-api-documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'adopt'
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Generate API documentation
+        run: ./gradlew dokkaHtmlMultiModule
+      - name: Deploy API documentation to Github Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages
+          FOLDER: build/dokka/htmlMultiModule
