@@ -1,0 +1,40 @@
+[versions]
+agp = "8.9.1"
+flexMessagingCore = "4.8.0"
+jcodec = "0.2.5"
+kotlin = "2.1.20"
+dokka = "2.0.0"
+kotlinxCoroutines = "1.10.2"
+kotlinxDatetime = "0.6.2"
+kotlinxKover = "0.9.1"
+kotlinxIo = "0.6.0"
+kotlinxSerialization = "1.8.0"
+ktor = "3.1.2"
+detekt = "1.23.8"
+publish = "2.0.0"
+
+[libraries]
+flex-messaging-core = { module = "org.apache.flex.blazeds:flex-messaging-core", version.ref = "flexMessagingCore" }
+jcodec = { module = "org.jcodec:jcodec", version.ref = "jcodec" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinxIo" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-http = { module = "io.ktor:ktor-http", version.ref = "ktor" }
+ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
+ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+# Tools
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kotlinxKover" }
+nexusPublish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "publish" }
