@@ -1,0 +1,73 @@
+name: Assemble and Test
+
+on:
+  [ workflow_dispatch, push ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'adopt'
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+      - name: Make gradlew executable
+        working-directory: .
+        run: chmod +x ./gradlew
+      - name: Assemble
+        working-directory: .
+        run: ./gradlew assemble --info --stacktrace
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'adopt'
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+      - name: Make gradlew executable
+        working-directory: .
+        run: chmod +x ./gradlew
+      - name: Test
+        working-directory: .
+        run: ./gradlew allTest --info --stacktrace
+  kover:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'adopt'
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+      - name: Make gradlew executable
+        working-directory: .
+        run: chmod +x ./gradlew
+      - name: Kover
+        working-directory: .
+        run: ./gradlew koverHtmlReport --info --stacktrace
+      - name: Upload Kover report
+        uses: actions/upload-artifact@v2
+        with:
+          name: kover-report.zip
+          path: build/reports/kover/html
