@@ -15,15 +15,15 @@
  */
 package io.github.thibaultbee.krtmp.amf.elements
 
-import io.github.thibaultbee.krtmp.amf.elements.containers.Amf0Container
-import io.github.thibaultbee.krtmp.amf.elements.containers.Amf0EcmaArray
-import io.github.thibaultbee.krtmp.amf.elements.containers.Amf0Object
-import io.github.thibaultbee.krtmp.amf.elements.containers.Amf0StrictArray
-import io.github.thibaultbee.krtmp.amf.elements.primitives.Amf0Boolean
-import io.github.thibaultbee.krtmp.amf.elements.primitives.Amf0Date
-import io.github.thibaultbee.krtmp.amf.elements.primitives.Amf0Null
-import io.github.thibaultbee.krtmp.amf.elements.primitives.Amf0Number
-import io.github.thibaultbee.krtmp.amf.elements.primitives.Amf0String
+import io.github.thibaultbee.krtmp.amf.elements.containers.amf0ContainerFrom
+import io.github.thibaultbee.krtmp.amf.elements.containers.amf0EcmaArrayFrom
+import io.github.thibaultbee.krtmp.amf.elements.containers.amf0ObjectFrom
+import io.github.thibaultbee.krtmp.amf.elements.containers.amf0StrictArrayFrom
+import io.github.thibaultbee.krtmp.amf.elements.primitives.amf0BooleanFrom
+import io.github.thibaultbee.krtmp.amf.elements.primitives.amf0DateFrom
+import io.github.thibaultbee.krtmp.amf.elements.primitives.amf0NullFrom
+import io.github.thibaultbee.krtmp.amf.elements.primitives.amf0NumberFrom
+import io.github.thibaultbee.krtmp.amf.elements.primitives.amf0StringFrom
 import kotlinx.io.IOException
 import kotlinx.io.Source
 
@@ -41,25 +41,25 @@ interface AmfElementReader {
 
 object Amf0ElementReader : AmfElementReader {
     override fun readContainer(numOfElements: Int, source: Source) =
-        Amf0Container(numOfElements, source)
+        amf0ContainerFrom(numOfElements, source)
 
-    override fun readEcmaArray(source: Source) = Amf0EcmaArray(source)
+    override fun readEcmaArray(source: Source) = amf0EcmaArrayFrom(source)
 
-    override fun readObject(source: Source) = Amf0Object(source)
+    override fun readObject(source: Source) = amf0ObjectFrom(source)
 
-    override fun buildStrictArray(source: Source) = Amf0StrictArray(source)
+    override fun buildStrictArray(source: Source) = amf0StrictArrayFrom(source)
 
     override fun read(source: Source): AmfElement {
         return when (val type = source.peek().readByte()) {
-            Amf0Type.NUMBER.value -> Amf0Number(source)
-            Amf0Type.BOOLEAN.value -> Amf0Boolean(source)
-            Amf0Type.STRING.value -> Amf0String(source)
-            Amf0Type.LONG_STRING.value -> Amf0String(source)
-            Amf0Type.OBJECT.value -> Amf0Object(source)
-            Amf0Type.NULL.value -> Amf0Null(source)
-            Amf0Type.ECMA_ARRAY.value -> Amf0EcmaArray(source)
-            Amf0Type.STRICT_ARRAY.value -> Amf0StrictArray(source)
-            Amf0Type.DATE.value -> Amf0Date(source)
+            Amf0Type.NUMBER.value -> amf0NumberFrom(source)
+            Amf0Type.BOOLEAN.value -> amf0BooleanFrom(source)
+            Amf0Type.STRING.value -> amf0StringFrom(source)
+            Amf0Type.LONG_STRING.value -> amf0StringFrom(source)
+            Amf0Type.OBJECT.value -> amf0ObjectFrom(source)
+            Amf0Type.NULL.value -> amf0NullFrom(source)
+            Amf0Type.ECMA_ARRAY.value -> amf0EcmaArrayFrom(source)
+            Amf0Type.STRICT_ARRAY.value -> amf0StrictArrayFrom(source)
+            Amf0Type.DATE.value -> amf0DateFrom(source)
             else -> throw IOException("Invalid AMF0 type: $type")
         }
     }

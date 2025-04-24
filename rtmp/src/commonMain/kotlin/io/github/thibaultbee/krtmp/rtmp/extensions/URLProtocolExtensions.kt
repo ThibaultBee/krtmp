@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.extensions
 
-import io.github.thibaultbee.krtmp.rtmp.utils.RtmpURLProtocol
+import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLProtocol
 import io.ktor.http.URLProtocol
 
 val URLProtocol.isRtmp: Boolean

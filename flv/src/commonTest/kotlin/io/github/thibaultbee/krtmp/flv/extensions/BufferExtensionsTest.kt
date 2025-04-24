@@ -1,5 +1,6 @@
 package io.github.thibaultbee.krtmp.flv.extensions
 
+import io.github.thibaultbee.krtmp.flv.util.extensions.rbsp
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import kotlin.test.Test
@@ -15,14 +16,17 @@ class BufferExtensionsTest {
             1
         )
 
-        val testBuffer = Buffer().apply {  write(
-            byteArrayOf(
-                66,
-                0,
-                0,
-                3,
-                1
-            )) }
+        val testBuffer = Buffer().apply {
+            write(
+                byteArrayOf(
+                    66,
+                    0,
+                    0,
+                    3,
+                    1
+                )
+            )
+        }
 
         val actual = testBuffer.rbsp
 

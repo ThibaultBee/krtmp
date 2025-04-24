@@ -22,7 +22,7 @@ import io.github.thibaultbee.krtmp.amf.elements.extensions.addAll
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
-fun Amf0StrictArray(source: Source): AmfStrictArray {
+fun amf0StrictArrayFrom(source: Source): AmfStrictArray {
     val type = source.readByte()
     require(type == Amf0Type.STRICT_ARRAY.value) { "Amf0StrictArray cannot read buffer because it's not STRICT_ARRAY type" }
 
@@ -34,9 +34,9 @@ fun Amf0StrictArray(source: Source): AmfStrictArray {
     return amf0StrictArray
 }
 
-fun AmfStrictArray(initialElements: List<Any?>) = AmfStrictArray().apply { addAll(initialElements) }
+fun amfStrictArrayOf(initialElements: List<Any?>) = AmfStrictArray().apply { addAll(initialElements) }
 
-class AmfStrictArray(private val elements: MutableList<AmfElement> = mutableListOf()) :
+class AmfStrictArray internal constructor(private val elements: MutableList<AmfElement> = mutableListOf()) :
     AmfElement(), MutableList<AmfElement> by elements {
     override val size0: Int
         get() = 5 + elements.sumOf { it.size0 }

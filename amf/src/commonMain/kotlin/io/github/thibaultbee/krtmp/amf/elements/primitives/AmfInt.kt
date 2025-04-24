@@ -19,7 +19,7 @@ import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
 import kotlinx.io.Sink
 
 class AmfInt(override val value: Int) : AmfPrimitive<Int>() {
-    override val size0 = -1
+    override val size0 = throw NotImplementedError("Int not supported in AMF0")
 
     override val size3: Int
         get() {

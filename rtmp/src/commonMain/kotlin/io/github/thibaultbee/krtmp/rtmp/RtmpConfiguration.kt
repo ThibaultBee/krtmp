@@ -16,7 +16,7 @@
 package io.github.thibaultbee.krtmp.rtmp
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.rtmp.utils.RtmpClock
+import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
  * This class contains configuration for RTMP connection.

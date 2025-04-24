@@ -21,9 +21,9 @@ import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory.build
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfStrictArray
-import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfDate
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNull
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
+import io.github.thibaultbee.krtmp.amf.elements.primitives.amfDateOf
 import io.github.thibaultbee.krtmp.amf.internal.amf0.isDate
 import kotlinx.datetime.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -129,7 +129,7 @@ internal sealed class AbstractAmfWriter(
 
     override fun encodeTaggedNull(tag: String) = putElement(tag, AmfNull())
 
-    fun encodeDate(value: Instant) = AmfDate(value)
+    fun encodeDate(value: Instant) = amfDateOf(value)
 
     fun encodeTaggedDate(tag: String, value: Instant) {
         putElement(tag, encodeDate(value))

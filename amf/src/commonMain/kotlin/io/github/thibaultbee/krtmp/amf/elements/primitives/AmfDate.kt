@@ -23,13 +23,13 @@ import kotlinx.io.Source
 import kotlinx.io.readDouble
 import kotlinx.io.writeDouble
 
-fun Amf0Date(source: Source): AmfDate {
+fun amf0DateFrom(source: Source): AmfDate {
     val type = source.readByte()
     require(type == Amf0Type.DATE.value) { "Amf0Date cannot read buffer because it's not DATE type" }
     return AmfDate(source.readDouble().toLong(), source.readShort())
 }
 
-fun AmfDate(instant: Instant): AmfDate {
+fun amfDateOf(instant: Instant): AmfDate {
     return AmfDate(instant.toEpochMilliseconds(), 0)
 }
 

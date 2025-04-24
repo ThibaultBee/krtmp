@@ -22,7 +22,7 @@ import kotlinx.io.Source
 import kotlinx.io.readString
 import kotlinx.io.writeString
 
-fun Amf0String(source: Source): AmfString {
+fun amf0StringFrom(source: Source): AmfString {
     val type = source.readByte()
     require((type == Amf0Type.STRING.value) || (type == Amf0Type.LONG_STRING.value)) { "Amf0String cannot read buffer because it's not STRING type" }
     val length = if (type == Amf0Type.STRING.value) {

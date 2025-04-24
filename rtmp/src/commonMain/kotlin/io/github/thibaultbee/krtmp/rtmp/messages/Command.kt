@@ -15,21 +15,21 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.elements.Amf0ElementReader
 import io.github.thibaultbee.krtmp.amf.elements.Amf3ElementReader
 import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory
 import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
-import io.github.thibaultbee.krtmp.common.FourCCs
-import io.github.thibaultbee.krtmp.common.MimeType
+import io.github.thibaultbee.krtmp.flv.models.config.AudioMediaType
+import io.github.thibaultbee.krtmp.flv.models.config.VideoFourCC
+import io.github.thibaultbee.krtmp.flv.models.config.VideoMediaType
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import io.github.thibaultbee.krtmp.rtmp.extensions.orNull
+import io.github.thibaultbee.krtmp.rtmp.util.AmfUtil.amf
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.io.Buffer
 import kotlinx.io.buffered
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 class CommandMessage(
@@ -234,8 +234,7 @@ open class Command(
         timestamp,
         COMMAND_CONNECT_NAME,
         transactionId,
-        @OptIn(ExperimentalSerializationApi::class)
-        Amf { explicitNulls = false }.encodeToAmfElement(
+        amf.encodeToAmfElement(
             ConnectObject.serializer(),
             connectObject
         )
@@ -282,19 +281,20 @@ open class Command(
                 swfUrl: String? = null,
                 fpad: Boolean = false,
                 capabilities: Int = DEFAULT_CAPABILITIES,
-                audioCodecs: List<MimeType>? = DEFAULT_AUDIO_CODECS,
-                videoCodecs: List<MimeType>? = DEFAULT_VIDEO_CODECS,
+                audioCodecs: List<AudioMediaType>? = DEFAULT_AUDIO_CODECS,
+                videoCodecs: List<VideoMediaType>? = DEFAULT_VIDEO_CODECS,
                 videoFunction: List<VideoFunction> = DEFAULT_VIDEO_FUNCTION,
                 pageUrl: String? = null,
                 objectEncoding: ObjectEncoding = ObjectEncoding.AMF0
-            ) : this(app,
+            ) : this(
+                app,
                 flashVer,
                 tcUrl,
                 swfUrl,
                 fpad,
                 capabilities.toDouble(),
                 audioCodecs?.filter { AudioCodec.isSupportedCodec(it) }?.map {
-                    AudioCodec.fromMimeTypes(listOf(it))
+                    AudioCodec.fromMediaTypes(listOf(it))
                 }?.fold(0) { acc, audioCodec ->
                     acc or audioCodec.value
                 }?.toDouble(),
@@ -304,7 +304,7 @@ open class Command(
                     acc or videoCodec.value
                 }?.toDouble(),
                 videoCodecs?.filter { ExVideoCodec.isSupportedCodec(it) }?.map {
-                    ExVideoCodec.fromMimeType(it).value.toString()
+                    ExVideoCodec.fromMediaType(it).value.toString()
                 }?.orNull(),
                 videoFunction.fold(0) { acc, vFunction ->
                     acc or vFunction.value
@@ -318,56 +318,58 @@ open class Command(
                 internal const val DEFAULT_CAPABILITIES = 239
                 internal val DEFAULT_VIDEO_FUNCTION = emptyList<VideoFunction>()
                 internal val DEFAULT_AUDIO_CODECS = listOf(
-                    MimeType.AUDIO_AAC, MimeType.AUDIO_G711A, MimeType.AUDIO_G711U
+                    AudioMediaType.AAC, AudioMediaType.G711_ALAW, AudioMediaType.G711_MLAW
                 )
                 internal val DEFAULT_VIDEO_CODECS = listOf(
-                    MimeType.VIDEO_H263, MimeType.VIDEO_AVC
+                    VideoMediaType.SORENSON_H263, VideoMediaType.AVC
                 )
             }
         }
 
-        enum class AudioCodec(val value: Int, val mimeType: MimeType?) {
+        enum class AudioCodec(val value: Int, val mediaType: AudioMediaType?) {
             NONE(0x0001, null),
-            ADPCM(0x0002, null),
-            MP3(0x0004, MimeType.AUDIO_MP3),
+            ADPCM(0x0002, AudioMediaType.ADPCM),
+            MP3(0x0004, AudioMediaType.MP3),
             INTEL(0x0008, null),
             UNUSED(0x0010, null),
-            NELLY8(0x0020, null),
-            NELLY(0x0040, null),
-            G711A(0x0080, MimeType.AUDIO_G711A),
-            G711U(0x0100, MimeType.AUDIO_G711U),
-            NELLY16(0x0200, null),
-            AAC(0x0400, MimeType.AUDIO_AAC),
-            SPEEX(0x0800, null);
+            NELLY8(0x0020, AudioMediaType.NELLYMOSER_8KHZ),
+            NELLY(0x0040, AudioMediaType.NELLYMOSER),
+            G711A(0x0080, AudioMediaType.G711_ALAW),
+            G711U(0x0100, AudioMediaType.G711_MLAW),
+            NELLY16(0x0200, AudioMediaType.NELLYMOSER_16KHZ),
+            AAC(0x0400, AudioMediaType.AAC),
+            SPEEX(0x0800, AudioMediaType.SPEEX);
 
             companion object {
-                fun isSupportedCodec(mimeType: MimeType): Boolean {
-                    return entries.any { it.mimeType == mimeType }
+                fun isSupportedCodec(mediaType: AudioMediaType): Boolean {
+                    return entries.any { it.mediaType == mediaType }
                 }
 
-                fun fromMimeTypes(mimeTypes: List<MimeType>): AudioCodec {
-                    return entries.first { it.mimeType in mimeTypes }
+                fun fromMediaTypes(mediaTypes: List<AudioMediaType>): AudioCodec {
+                    return entries.firstOrNull { it.mediaType in mediaTypes }
+                        ?: throw IllegalArgumentException("Unsupported codec: $mediaTypes")
                 }
             }
         }
 
-        enum class VideoCodec(val value: Int, val mimeType: MimeType?) {
+        enum class VideoCodec(val value: Int, val mediaType: VideoMediaType?) {
             UNUSED(0x01, null),
             JPEG(0x02, null),
-            SORENSON(0x04, MimeType.VIDEO_H263),
+            SORENSON(0x04, VideoMediaType.SORENSON_H263),
             HOMEBREW(0x08, null),
-            VP6(0x10, null),
-            VP6ALPHA(0x20, null),
+            VP6(0x10, VideoMediaType.VP6),
+            VP6_ALPHA(0x20, VideoMediaType.VP6_ALPHA),
             HOMEBREWV(0x40, null),
-            H264(0x80, MimeType.VIDEO_AVC);
+            H264(0x80, VideoMediaType.AVC);
 
             companion object {
-                fun isSupportedCodec(mimeType: MimeType): Boolean {
-                    return entries.any { it.mimeType == mimeType }
+                fun isSupportedCodec(mediaType: VideoMediaType): Boolean {
+                    return entries.any { it.mediaType == mediaType }
                 }
 
-                fun fromMimeType(mimeType: MimeType): VideoCodec {
-                    return entries.first { it.mimeType == mimeType }
+                fun fromMimeType(mediaType: VideoMediaType): VideoCodec {
+                    return entries.firstOrNull { it.mediaType == mediaType }
+                        ?: throw IllegalArgumentException("Unsupported codec: $mediaType")
                 }
             }
         }
@@ -375,18 +377,20 @@ open class Command(
         class ExVideoCodec {
             companion object {
                 private val supportedCodecs = listOf(
-                    MimeType.VIDEO_VP9, MimeType.VIDEO_HEVC, MimeType.VIDEO_AV1
+                    VideoMediaType.VP9, VideoMediaType.HEVC, VideoMediaType.AV1
                 )
 
-                fun isSupportedCodec(mimeType: MimeType): Boolean {
-                    return supportedCodecs.contains(mimeType)
+                fun isSupportedCodec(mediaType: VideoMediaType): Boolean {
+                    return supportedCodecs.contains(mediaType)
                 }
 
-                fun fromMimeType(mimeType: MimeType): FourCCs {
-                    if (!isSupportedCodec(mimeType)) {
-                        throw IllegalArgumentException("Unsupported codec: $mimeType")
+                fun fromMediaType(mediaType: VideoMediaType): VideoFourCC {
+                    if (!isSupportedCodec(mediaType)) {
+                        throw IllegalArgumentException("Unsupported codec: $mediaType")
                     }
-                    return FourCCs.mimeTypeOf(mimeType)
+                    return mediaType.fourCCs ?: throw IllegalArgumentException(
+                        "Unsupported codec: $mediaType"
+                    )
                 }
             }
         }

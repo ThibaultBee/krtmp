@@ -26,7 +26,7 @@ import kotlinx.io.Source
 import kotlinx.io.readString
 import kotlinx.io.writeString
 
-fun Amf0Object(source: Source): AmfObject {
+fun amf0ObjectFrom(source: Source): AmfObject {
     val type = source.readByte()
     require(type == Amf0Type.OBJECT.value) { "Amf0Object cannot read buffer because it's not OBJECT type" }
 
@@ -41,9 +41,10 @@ fun Amf0Object(source: Source): AmfObject {
     return amf0Object
 }
 
-fun AmfObject(initialElements: Map<String, Any?>) = AmfObject().apply { putAll(initialElements) }
+fun amfObjectOf(initialElements: Map<String, Any?> = emptyMap()) =
+    AmfObject().apply { putAll(initialElements) }
 
-class AmfObject(private val elements: MutableMap<String, AmfElement> = mutableMapOf()) :
+class AmfObject internal constructor(private val elements: MutableMap<String, AmfElement> = mutableMapOf()) :
     AmfElement(), MutableMap<String, AmfElement> by elements {
     override val size0: Int
         get() {

@@ -16,12 +16,13 @@
 package io.github.thibaultbee.krtmp.rtmp.client
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.common.MimeType
+import io.github.thibaultbee.krtmp.flv.models.config.AudioMediaType
+import io.github.thibaultbee.krtmp.flv.models.config.VideoMediaType
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_AUDIO_CODECS
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_FLASH_VER
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_VIDEO_CODECS
-import io.github.thibaultbee.krtmp.rtmp.utils.RtmpClock
+import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
  * This class contains configuration for RTMP client.
@@ -57,8 +58,8 @@ open class RtmpClientSettings(
  */
 open class RtmpClientConnectInformation(
     val flashVer: String = DEFAULT_FLASH_VER,
-    val audioCodecs: List<MimeType>? = DEFAULT_AUDIO_CODECS,
-    val videoCodecs: List<MimeType>? = DEFAULT_VIDEO_CODECS,
+    val audioCodecs: List<AudioMediaType>? = DEFAULT_AUDIO_CODECS,
+    val videoCodecs: List<VideoMediaType>? = DEFAULT_VIDEO_CODECS,
 ) {
     /**
      * The default instance of [RtmpClientConnectInformation]

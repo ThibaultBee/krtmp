@@ -24,7 +24,6 @@ import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfStrictArray
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfBoolean
-import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfInt
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNull
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString

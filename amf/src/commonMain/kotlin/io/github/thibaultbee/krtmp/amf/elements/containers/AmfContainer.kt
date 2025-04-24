@@ -27,7 +27,7 @@ import kotlinx.io.Source
  * @param expectedNumOfElements the number of elements in the container
  * @param source the source containing elements
  */
-fun Amf0Container(expectedNumOfElements: Int, source: Source): AmfContainer {
+fun amf0ContainerFrom(expectedNumOfElements: Int, source: Source): AmfContainer {
     val amfContainer = AmfContainer()
     var numOfElements = 0
     while (numOfElements < expectedNumOfElements) {
@@ -37,13 +37,14 @@ fun Amf0Container(expectedNumOfElements: Int, source: Source): AmfContainer {
     return amfContainer
 }
 
-fun AmfContainer(initialElements: List<Any?>) =
+fun amfContainerOf(initialElements: List<Any?>) =
     AmfContainer().apply { addAll(initialElements) }
 
 /**
  * A container is a list of [AmfElement]. Contrary to [AmfStrictArray], it doesn't have a size.
  */
-class AmfContainer(private val elements: MutableList<AmfElement> = mutableListOf()) : AmfElement(),
+class AmfContainer internal constructor(private val elements: MutableList<AmfElement> = mutableListOf()) :
+    AmfElement(),
     MutableList<AmfElement> by elements {
 
     override val size0: Int

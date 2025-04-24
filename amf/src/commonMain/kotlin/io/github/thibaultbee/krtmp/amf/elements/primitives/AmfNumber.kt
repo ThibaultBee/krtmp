@@ -22,7 +22,7 @@ import kotlinx.io.Source
 import kotlinx.io.readDouble
 import kotlinx.io.writeDouble
 
-fun Amf0Number(source: Source): AmfNumber {
+fun amf0NumberFrom(source: Source): AmfNumber {
     val type = source.readByte()
     require(type == Amf0Type.NUMBER.value) { "Amf0Number cannot read buffer because it's not NUMBER type" }
     return AmfNumber(source.readDouble())

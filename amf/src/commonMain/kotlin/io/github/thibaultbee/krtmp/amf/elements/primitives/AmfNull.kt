@@ -20,7 +20,7 @@ import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
-fun Amf0Null(source: Source): AmfNull {
+fun amf0NullFrom(source: Source): AmfNull {
     val type = source.readByte()
     require(type == Amf0Type.NULL.value) { "Amf0Null cannot read buffer because it's not NULL type" }
     return AmfNull()
@@ -44,5 +44,5 @@ open class AmfNull : AmfElement() {
 
     override fun toString() = "null"
 
-    companion object Default: AmfNull()
+    companion object Default : AmfNull()
 }

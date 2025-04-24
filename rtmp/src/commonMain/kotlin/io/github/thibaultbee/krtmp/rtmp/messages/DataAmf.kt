@@ -19,8 +19,8 @@ import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory
-import io.github.thibaultbee.krtmp.amf.elements.containers.AmfContainer
-import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
+import io.github.thibaultbee.krtmp.amf.elements.containers.amfContainerOf
+import io.github.thibaultbee.krtmp.amf.elements.containers.amfEcmaArrayOf
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
 import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
@@ -101,11 +101,11 @@ internal open class DataAmf(
             messageStreamId,
             timestamp,
             "@setDataFrame",
-            AmfContainer(
+            amfContainerOf(
                 listOf(
                     "onMetaData",
                     // Swapping elements to ECMA array
-                    AmfEcmaArray(
+                    amfEcmaArrayOf(
                         (Amf.encodeToAmfElement(
                             OnMetadata.Metadata.serializer(),
                             metadata

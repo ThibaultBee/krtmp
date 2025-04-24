@@ -15,9 +15,9 @@
  */
 package io.github.thibaultbee.krtmp.rtmp
 
-import io.github.thibaultbee.krtmp.rtmp.utils.RtmpClock
-import io.github.thibaultbee.krtmp.rtmp.utils.connections.IConnection
-import io.github.thibaultbee.krtmp.rtmp.utils.connections.TcpConnection
+import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
+import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+import io.github.thibaultbee.krtmp.rtmp.util.connections.TcpConnection
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readByte

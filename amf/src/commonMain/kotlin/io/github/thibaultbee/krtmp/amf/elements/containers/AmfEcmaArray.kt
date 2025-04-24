@@ -26,7 +26,7 @@ import kotlinx.io.Source
 import kotlinx.io.readString
 import kotlinx.io.writeString
 
-fun Amf0EcmaArray(source: Source): AmfEcmaArray {
+fun amf0EcmaArrayFrom(source: Source): AmfEcmaArray {
     val type = source.readByte()
     require(type == Amf0Type.ECMA_ARRAY.value) { "Amf0EcmaArray cannot read buffer because it's not ECMA_ARRAY type" }
 
@@ -47,10 +47,10 @@ fun Amf0EcmaArray(source: Source): AmfEcmaArray {
     return amf0EcmaArray
 }
 
-fun AmfEcmaArray(initialElements: Map<String, Any?>) =
+fun amfEcmaArrayOf(initialElements: Map<String, Any?>) =
     AmfEcmaArray().apply { putAll(initialElements) }
 
-class AmfEcmaArray(private val elements: MutableMap<String, AmfElement> = mutableMapOf()) :
+class AmfEcmaArray internal constructor(private val elements: MutableMap<String, AmfElement> = mutableMapOf()) :
     AmfElement(), MutableMap<String, AmfElement> by elements {
     override val size0: Int
         get() {

@@ -21,7 +21,7 @@ import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
-fun Amf0Boolean(source: Source): AmfBoolean {
+fun amf0BooleanFrom(source: Source): AmfBoolean {
     val type = source.readByte()
     require(type == Amf0Type.BOOLEAN.value) { "Amf0Boolean cannot read buffer because it's not BOOLEAN type" }
     return AmfBoolean(source.readByte() == AMF0_TRUE)
