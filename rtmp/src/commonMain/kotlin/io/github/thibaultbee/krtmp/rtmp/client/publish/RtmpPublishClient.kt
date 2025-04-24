@@ -19,15 +19,13 @@ import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
-import io.github.thibaultbee.krtmp.common.MimeType
 import io.github.thibaultbee.krtmp.common.logger.Logger
-import io.github.thibaultbee.krtmp.flv.FlvMuxer
-import io.github.thibaultbee.krtmp.flv.models.SizedRawSource
-import io.github.thibaultbee.krtmp.flv.models.packets.FlvTagPacket
-import io.github.thibaultbee.krtmp.flv.models.packets.Packet
+import io.github.thibaultbee.krtmp.flv.FLVMuxer
 import io.github.thibaultbee.krtmp.flv.models.sources.ByteArrayRawSource
-import io.github.thibaultbee.krtmp.flv.models.tags.FlvTag
+import io.github.thibaultbee.krtmp.flv.models.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata
+import io.github.thibaultbee.krtmp.flv.models.config.MediaType
+import io.github.thibaultbee.krtmp.flv.models.sources.RawSourceWithSize
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.client.RemoteServerException
@@ -55,14 +53,14 @@ import io.github.thibaultbee.krtmp.rtmp.messages.SetPeerBandwidth
 import io.github.thibaultbee.krtmp.rtmp.messages.UserControl
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
 import io.github.thibaultbee.krtmp.rtmp.messages.WindowAcknowledgementSize
-import io.github.thibaultbee.krtmp.rtmp.utils.MessagesManager
-import io.github.thibaultbee.krtmp.rtmp.utils.NetStreamCommand
-import io.github.thibaultbee.krtmp.rtmp.utils.RtmpClock
-import io.github.thibaultbee.krtmp.rtmp.utils.RtmpURLBuilder
-import io.github.thibaultbee.krtmp.rtmp.utils.TransactionCommandCompletion
-import io.github.thibaultbee.krtmp.rtmp.utils.connections.HttpConnection
-import io.github.thibaultbee.krtmp.rtmp.utils.connections.IConnection
-import io.github.thibaultbee.krtmp.rtmp.utils.connections.TcpConnection
+import io.github.thibaultbee.krtmp.rtmp.util.MessagesManager
+import io.github.thibaultbee.krtmp.rtmp.util.NetStreamCommand
+import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
+import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLBuilder
+import io.github.thibaultbee.krtmp.rtmp.util.TransactionCommandCompletion
+import io.github.thibaultbee.krtmp.rtmp.util.connections.HttpConnection
+import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+import io.github.thibaultbee.krtmp.rtmp.util.connections.TcpConnection
 import io.ktor.http.URLBuilder
 import io.ktor.network.sockets.SocketOptions
 import io.ktor.utils.io.CancellationException
@@ -117,7 +115,7 @@ class RtmpPublishClient internal constructor(
 
     private var messageStreamId = 0
 
-    private var _flvMuxer: FlvMuxer? = null
+    private var _flvMuxer: FLVMuxer? = null
 
     override val coroutineContext: CompletableJob = Job()
 
@@ -138,19 +136,19 @@ class RtmpPublishClient internal constructor(
      *
      * The muxer is created on the first call and reused for subsequent calls.
      *
-     * Before using the muxer for writing frames, you must call [FlvMuxer.addStream] and
-     * [FlvMuxer.startStream].
+     * Before using the muxer for writing frames, you must call [FLVMuxer.addStream] and
+     * [FLVMuxer.startStream].
      *
      * When using this muxer, you don't have to call [writeAudio] neither [writeVideo] (and
      * assimilated).
      *
      * @return the FLV muxer
      */
-    val flvMuxer: FlvMuxer
+    val flvMuxer: FLVMuxer
         get() {
             _flvMuxer?.let { return it }
 
-            val listener = object : FlvMuxer.Listener {
+            val listener = object : FLVMuxer.Listener {
                 override fun onOutputPacket(outputPacket: Packet) {
                     // Throw exception if connection is closed so the user can handle it
                     if (connection.isClosed) {
@@ -169,7 +167,7 @@ class RtmpPublishClient internal constructor(
                     }
                 }
             }
-            val muxer = FlvMuxer().apply {
+            val muxer = FLVMuxer().apply {
                 addListener(listener)
             }
             _flvMuxer = muxer
@@ -403,11 +401,11 @@ class RtmpPublishClient internal constructor(
         }
         try {
             val header = FlvTagPacket.Header.read(buffer)
-            val tag = SizedRawSource(buffer, header.bodySize.toLong())
+            val tag = RawSourceWithSize(buffer, header.bodySize.toLong())
             when (header.type) {
-                FlvTag.Type.AUDIO -> writeAudio(header.timestampMs, tag)
-                FlvTag.Type.VIDEO -> writeVideo(header.timestampMs, tag)
-                FlvTag.Type.SCRIPT -> writeSetDataFrame(tag)
+                FLVTag.Type.AUDIO -> writeAudio(header.timestampMs, tag)
+                FLVTag.Type.VIDEO -> writeVideo(header.timestampMs, tag)
+                FLVTag.Type.SCRIPT -> writeSetDataFrame(tag)
                 else -> throw IllegalArgumentException("Frame type ${header.type} not supported")
             }
         } catch (e: Exception) {
@@ -434,12 +432,12 @@ class RtmpPublishClient internal constructor(
      */
     private suspend fun writeFlvTagOutputPacket(tagPacket: FlvTagPacket) {
         return when {
-            tagPacket.tag.type == FlvTag.Type.AUDIO -> writeAudio(
+            tagPacket.tag.type == FLVTag.Type.AUDIO -> writeAudio(
                 tagPacket.timestampMs,
                 tagPacket.bodyOutputPacket.readRawSource()
             )
 
-            tagPacket.tag.type == FlvTag.Type.VIDEO -> writeVideo(
+            tagPacket.tag.type == FLVTag.Type.VIDEO -> writeVideo(
                 tagPacket.timestampMs,
                 tagPacket.bodyOutputPacket.readRawSource()
             )
@@ -711,8 +709,8 @@ class RtmpPublishClient internal constructor(
 
     open class ConnectInformation(
         flashVer: String = DEFAULT_FLASH_VER,
-        audioCodecs: List<MimeType>? = DEFAULT_AUDIO_CODECS,
-        videoCodecs: List<MimeType>? = DEFAULT_VIDEO_CODECS,
+        audioCodecs: List<MediaType>? = DEFAULT_AUDIO_CODECS,
+        videoCodecs: List<MediaType>? = DEFAULT_VIDEO_CODECS,
     ) : RtmpClientConnectInformation(flashVer, audioCodecs, videoCodecs) {
         /**
          * The default instance of [ConnectInformation]

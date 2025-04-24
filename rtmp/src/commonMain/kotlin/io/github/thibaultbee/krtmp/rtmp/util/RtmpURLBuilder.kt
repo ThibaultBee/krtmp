@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thibault B.
+ * Copyright (C) 2024 Thibault B.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.extensions
+package io.github.thibaultbee.krtmp.rtmp.util
 
-import io.github.thibaultbee.krtmp.rtmp.Handshake
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+import io.ktor.http.URLBuilder
+import io.ktor.http.takeFrom
 
-internal suspend fun IConnection.clientHandshake(clock: RtmpClock = RtmpClock.Default()) =
-    Handshake(this, clock = clock).startClient()
+fun RtmpURLBuilder(urlString: String): URLBuilder {
+    val urlBuilder = URLBuilder().takeFrom(urlString)
+    if (urlBuilder.port == 0) {
+        urlBuilder.port = RtmpURLProtocol.createOrDefault(urlBuilder.protocol.name).defaultPort
+    }
+    return urlBuilder
+}

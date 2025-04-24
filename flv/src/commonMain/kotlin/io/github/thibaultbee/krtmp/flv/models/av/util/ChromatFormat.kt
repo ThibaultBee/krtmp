@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thibault B.
+ * Copyright (C) 2024 Thibault B.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.extensions
+package io.github.thibaultbee.krtmp.flv.models.av.util
 
-import io.github.thibaultbee.krtmp.rtmp.Handshake
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+/**
+ * Chroma format.
+ */
+enum class ChromaFormat(val value: Byte) {
+    YUV400(0),
+    YUV420(1),
+    YUV422(2),
+    YUV444(3);
 
-internal suspend fun IConnection.clientHandshake(clock: RtmpClock = RtmpClock.Default()) =
-    Handshake(this, clock = clock).startClient()
+    companion object {
+        fun entryOf(chromaIdc: Byte) =
+            entries.first { it.value == chromaIdc }
+    }
+}

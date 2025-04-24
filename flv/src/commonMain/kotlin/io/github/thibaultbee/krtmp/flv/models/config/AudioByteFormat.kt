@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thibault B.
+ * Copyright (C) 2025 Thibault B.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.extensions
+package io.github.thibaultbee.krtmp.flv.models.config
 
-import io.github.thibaultbee.krtmp.rtmp.Handshake
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+enum class AudioByteFormat(val numOfBytes: Int) {
+    S_8(1),
+    U_8(1),
+    S_16(2),
+    U_16(2),
+    S_24(3),
+    U_24(3),
+    S_32(4),
+    U_32(4),
+    FLOAT(4),
+    DOUBLE(8)
+}
 
-internal suspend fun IConnection.clientHandshake(clock: RtmpClock = RtmpClock.Default()) =
-    Handshake(this, clock = clock).startClient()

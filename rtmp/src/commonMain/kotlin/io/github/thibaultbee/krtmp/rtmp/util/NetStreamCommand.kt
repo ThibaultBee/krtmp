@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thibault B.
+ * Copyright (C) 2024 Thibault B.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.extensions
+package io.github.thibaultbee.krtmp.rtmp.util
 
-import io.github.thibaultbee.krtmp.rtmp.Handshake
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+internal object NetStreamCommand {
+    const val CONNECT = "NetStream.Connect"
+    const val PUBLISH = "NetStream.Publish"
+    const val PLAY = "NetStream.Play"
+    const val RECORD = "NetStream.Record"
 
-internal suspend fun IConnection.clientHandshake(clock: RtmpClock = RtmpClock.Default()) =
-    Handshake(this, clock = clock).startClient()
+    const val PUBLISH_BAD_NAME = "NetStream.Publish.BadName"
+    const val PUBLISH_IDLE = "NetStream.Publish.Idle"
+    const val PUBLISH_START = "NetStream.Publish.Start"
+}

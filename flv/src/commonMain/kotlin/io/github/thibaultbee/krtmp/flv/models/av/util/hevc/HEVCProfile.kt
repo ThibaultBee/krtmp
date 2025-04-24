@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Thibault B.
+ * Copyright (C) 2022 Thibault B.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.extensions
+package io.github.thibaultbee.krtmp.flv.models.av.util.hevc
 
-import io.github.thibaultbee.krtmp.rtmp.Handshake
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+enum class HEVCProfile(val value: Short) {
+    MAIN(1),
+    MAIN_10(2),
+    MAIN_STILL_PICTURE(3),
+    REXT(4),
+    HIGH_THROUGHPUT(5),
+    MULTIVIEW_MAIN(6),
+    SCALABLE_MAIN(7),
+    THREED_MAIN(8),
+    SCREEN_EXTENDED(9),
+    SCALABLE_REXT(10),
+    HIGH_THROUGHPUT_SCREEN_EXTENDED(11);
 
-internal suspend fun IConnection.clientHandshake(clock: RtmpClock = RtmpClock.Default()) =
-    Handshake(this, clock = clock).startClient()
+    companion object {
+        fun entryOf(profileIdc: Short) =
+            entries.first { it.value == profileIdc }
+    }
+}

@@ -1,6 +1,7 @@
 package io.github.thibaultbee.krtmp.flv.extensions
 
-import io.github.thibaultbee.krtmp.flv.models.packets.PacketWriter
+import io.github.thibaultbee.krtmp.flv.models.av.util.PacketWriter
+import io.github.thibaultbee.krtmp.flv.models.av.util.readBuffer
 import kotlinx.io.readAtMostTo
 import java.nio.ByteBuffer
 

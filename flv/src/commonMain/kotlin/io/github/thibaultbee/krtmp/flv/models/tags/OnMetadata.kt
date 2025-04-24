@@ -15,45 +15,39 @@
  */
 package io.github.thibaultbee.krtmp.flv.models.tags
 
-import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
-import io.github.thibaultbee.krtmp.flv.models.av.config.FlvAudioConfig
-import io.github.thibaultbee.krtmp.flv.models.av.config.FlvConfig
-import io.github.thibaultbee.krtmp.flv.models.av.config.FlvVideoConfig
-import io.github.thibaultbee.krtmp.flv.models.av.config.SoundType
 import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata.Metadata
-import kotlinx.serialization.ExperimentalSerializationApi
+import io.github.thibaultbee.krtmp.flv.models.util.AmfUtil.amf
+import io.github.thibaultbee.krtmp.flv.models.config.FLVAudioConfig
+import io.github.thibaultbee.krtmp.flv.models.config.FLVConfig
+import io.github.thibaultbee.krtmp.flv.models.config.FLVVideoConfig
+import io.github.thibaultbee.krtmp.flv.models.config.SoundType
 import kotlinx.serialization.Serializable
 
 /**
- * Creates a onMetaData tag
- * @param timestampMs Timestamp of the tag in ms
+ * Creates a onMetaData
  * @param value ECMA array of the [Metadata]
  */
-fun OnMetadata(timestampMs: Int, value: AmfEcmaArray) =
-    OnMetadata(timestampMs, Metadata.fromArray(value))
+fun OnMetadata(value: AmfEcmaArray) =
+    OnMetadata(Metadata.fromArray(value))
 
 /**
- * Creates a onMetaData tag
- * @param timestampMs Timestamp of the tag in ms
- * @param configs List of [FlvConfig] to write metadata from
+ * Creates a onMetaData
+ * @param configs List of [FLVConfig] to write metadata from
  */
-fun OnMetadata(timestampMs: Int, configs: List<FlvConfig>) =
-    OnMetadata(timestampMs, Metadata.fromConfigs(configs))
+fun OnMetadata(configs: List<FLVConfig>) =
+    OnMetadata(Metadata.fromConfigs(configs))
+
 
 /**
- * The onMetaData tag
- * @param timestampMs Timestamp of the tag in ms
+ * The onMetaData data
  * @param metadata Metadata to write
  */
-@OptIn(ExperimentalSerializationApi::class)
 class OnMetadata(
-    timestampMs: Int,
     val metadata: Metadata,
 ) :
-    ScriptTag(
-        timestampMs,
+    ScriptDataObject(
         ON_METADATA,
         metadata.encode()
     ) {
@@ -82,21 +76,16 @@ class OnMetadata(
         }
 
         companion object {
-            private val amf = Amf {
-                encodeDefaults = true
-                explicitNulls = false
-            }
-
             fun fromArray(array: AmfEcmaArray): Metadata {
                 return amf.decodeFromAmfElement(serializer(), AmfObject(array))
             }
 
-            fun fromConfigs(configs: List<FlvConfig>): Metadata {
+            fun fromConfigs(configs: List<FLVConfig>): Metadata {
                 require(configs.isNotEmpty()) { "Configs list must not be empty" }
                 require(configs.size <= 2) { "Configs list must not contain more than 2 elements" }
 
-                val audioConfig = configs.firstOrNull { it is FlvAudioConfig } as FlvAudioConfig?
-                val videoConfig = configs.firstOrNull { it is FlvVideoConfig } as FlvVideoConfig?
+                val audioConfig = configs.firstOrNull { it is FLVAudioConfig } as FLVAudioConfig?
+                val videoConfig = configs.firstOrNull { it is FLVVideoConfig } as FLVVideoConfig?
 
                 return Metadata(
                     duration = 0.0,
