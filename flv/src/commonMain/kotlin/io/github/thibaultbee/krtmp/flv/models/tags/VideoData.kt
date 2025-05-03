@@ -48,32 +48,6 @@ class LegacyVideoData(
         }
         body.encode(output)
     }
-
-    companion object {
-        fun decode(source: Source, sourceSize: Int, isEncrypted: Boolean): VideoData {
-            val firstByte = source.readByte()
-            val frameType = FrameType.entryOf(((firstByte shr 4) and 0x07).toByte())
-            val codecID = CodecID.entryOf(firstByte and 0x0F)
-
-            return if (codecID == CodecID.AVC) {
-                val packetType = AVCPacketType.entryOf(source.readByte())
-                val compositionTime = source.readInt24()
-                val remainingSize = sourceSize - 5
-                require(!isEncrypted) { "Encrypted video is not supported." }
-                val body = DefaultVideoTagBody.decode(source, remainingSize)
-                LegacyVideoData(frameType, codecID, body, packetType, compositionTime)
-            } else {
-                val remainingSize = sourceSize - 1
-                require(!isEncrypted) { "Encrypted video is not supported." }
-                val body = DefaultVideoTagBody.decode(source, remainingSize)
-                LegacyVideoData(
-                    frameType,
-                    codecID,
-                    body
-                )
-            }
-        }
-    }
 }
 
 class ExtendedVideoData(
@@ -83,13 +57,14 @@ class ExtendedVideoData(
     body: IVideoTagBody
 ) : VideoData(frameType, body) {
     private val size = body.size + 5
-    
+
     override fun getSize(amfVersion: AmfVersion) = size
 
     override fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean) {
         output.writeByte(
-            ((frameType.value shl 4) or // Frame Type
-                    (packetType.value and 0x0F)).toByte() // Packet Type
+            (0x80 or // IsExHeader
+                    (frameType.value shl 4) or // Frame Type
+                    packetType.value).toByte() // PacketType
         )
         output.writeInt24(fourCC.value.code)
     }
