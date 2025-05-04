@@ -21,17 +21,17 @@ import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
 import io.github.thibaultbee.krtmp.common.logger.Logger
 import io.github.thibaultbee.krtmp.flv.FLVMuxer
+import io.github.thibaultbee.krtmp.flv.models.config.MediaType
 import io.github.thibaultbee.krtmp.flv.models.sources.ByteArrayRawSource
+import io.github.thibaultbee.krtmp.flv.models.sources.RawSourceWithSize
 import io.github.thibaultbee.krtmp.flv.models.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata
-import io.github.thibaultbee.krtmp.flv.models.config.MediaType
-import io.github.thibaultbee.krtmp.flv.models.sources.RawSourceWithSize
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.client.RemoteServerException
 import io.github.thibaultbee.krtmp.rtmp.client.RtmpClientConnectInformation
 import io.github.thibaultbee.krtmp.rtmp.client.RtmpClientSettings
-import io.github.thibaultbee.krtmp.rtmp.client.publish.RtmpPublishClient.Factory
+import io.github.thibaultbee.krtmp.rtmp.client.publish.RtmpClient.Factory
 import io.github.thibaultbee.krtmp.rtmp.extensions.clientHandshake
 import io.github.thibaultbee.krtmp.rtmp.extensions.isTunneledRtmp
 import io.github.thibaultbee.krtmp.rtmp.extensions.streamKey
@@ -81,6 +81,9 @@ import kotlinx.io.IOException
 import kotlinx.io.RawSource
 import kotlinx.io.startsWith
 
+
+class RtmpClientFactory(settings: RtmpClient.Settings)
+
 /**
  * A RTMP client to publish stream.
  *
@@ -95,11 +98,11 @@ import kotlinx.io.startsWith
  *
  * - Close the connection with [close]
  */
-class RtmpPublishClient internal constructor(
+class RtmpClient internal constructor(
     private val urlBuilder: URLBuilder,
     private val connection: IConnection,
     private val settings: Settings
-) : CoroutineScope {
+) : CoroutineScope by connection {
     private val messagesManager = MessagesManager()
 
     private var _transactionId = 1L
@@ -135,9 +138,6 @@ class RtmpPublishClient internal constructor(
      * Returns the FLV muxer that can be used to write FLV tags directly.
      *
      * The muxer is created on the first call and reused for subsequent calls.
-     *
-     * Before using the muxer for writing frames, you must call [FLVMuxer.addStream] and
-     * [FLVMuxer.startStream].
      *
      * When using this muxer, you don't have to call [writeAudio] neither [writeVideo] (and
      * assimilated).
@@ -719,7 +719,7 @@ class RtmpPublishClient internal constructor(
     }
 
     /**
-     * RTMP settings for [RtmpPublishClient].
+     * RTMP settings for [RtmpClient].
      *
      * @param enableTooLateFrameDrop enable dropping too late frames. Default is false. It will drop frames if they are are too late if set to true. If enable, make sure frame timestamps are on on the same clock as [clock].
      * @param tooLateFrameDropTimeoutInMs the timeout after which a frame will be dropped (from frame timestamps). Default is 3000ms.
@@ -746,7 +746,7 @@ class RtmpPublishClient internal constructor(
     }
 
     /**
-     * A factory that creates [RtmpPublishClient].
+     * A factory that creates [RtmpClient].
      * @param settings the RTMP settings. By default it creates a configuration for a RTMP client.
      */
     class Factory(
@@ -754,25 +754,25 @@ class RtmpPublishClient internal constructor(
     ) {
         /**
          * Connects to the server. It establishes a TCP socket connection. You still have to execute
-         * [RtmpPublishClient.connect] afterwards.
+         * [RtmpClient.connect] afterwards.
          *
          * @param url the RTMP url
-         * @return a [RtmpPublishClient]
+         * @return a [RtmpClient]
          */
-        fun create(url: String): RtmpPublishClient {
+        fun create(url: String): RtmpClient {
             return create(RtmpURLBuilder(url))
         }
 
         /**
          * Connects to the server. It establishes a TCP socket connection. You still have to execute
-         * [RtmpPublishClient.connect] afterwards.
+         * [RtmpClient.connect] afterwards.
          *
          * @param urlBuilder the RTMP url builder
-         * @return a [RtmpPublishClient]
+         * @return a [RtmpClient]
          */
         fun create(
             urlBuilder: URLBuilder
-        ): RtmpPublishClient {
+        ): RtmpClient {
             urlBuilder.validateRtmp()
 
             return if (urlBuilder.protocol.isTunneledRtmp) {
@@ -788,35 +788,35 @@ class RtmpPublishClient internal constructor(
          * @param urlBuilder the RTMP url builder
          * @param dispatcher the coroutine dispatcher to use. Default is [Dispatchers.IO]
          * @param socketOptions the socket options to use. Default is empty.
-         * @return a [RtmpPublishClient]
+         * @return a [RtmpClient]
          */
         fun createTcpConnection(
             urlBuilder: URLBuilder,
             dispatcher: CoroutineDispatcher = Dispatchers.IO,
             socketOptions: SocketOptions.PeerSocketOptions.() -> Unit = {},
-        ): RtmpPublishClient {
+        ): RtmpClient {
             urlBuilder.validateRtmp()
             require(!urlBuilder.protocol.isTunneledRtmp) { "URL must not be tunneled" }
 
             val connection: IConnection =
                 TcpConnection(urlBuilder, dispatcher, socketOptions)
-            return RtmpPublishClient(urlBuilder, connection, settings)
+            return RtmpClient(urlBuilder, connection, settings)
         }
 
         /**
          * Creates a RTMP client based on HTTP (for `RTMPT` and `RTMPTS`).
          *
          * @param urlBuilder the RTMP url builder
-         * @return a [RtmpPublishClient]
+         * @return a [RtmpClient]
          */
         fun createTunneling(
             urlBuilder: URLBuilder
-        ): RtmpPublishClient {
+        ): RtmpClient {
             urlBuilder.validateRtmp()
             require(urlBuilder.protocol.isTunneledRtmp) { "URL must be tunneled" }
 
             val connection: IConnection = HttpConnection(urlBuilder)
-            return RtmpPublishClient(urlBuilder, connection, settings)
+            return RtmpClient(urlBuilder, connection, settings)
         }
     }
 }

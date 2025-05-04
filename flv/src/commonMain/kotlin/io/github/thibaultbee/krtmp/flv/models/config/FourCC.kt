@@ -22,12 +22,22 @@ package io.github.thibaultbee.krtmp.flv.models.config
  */
 
 enum class FourCCs(val value: FourCC) {
+    VP8(
+        FourCC(
+            'v', 'p', '0', '8', MediaType.VIDEO_VP8
+        )
+    ),
+    VP9(FourCC('v', 'p', '0', '9', MediaType.VIDEO_VP9)),
     AV1(
         FourCC(
             'a', 'v', '0', '1', MediaType.VIDEO_AV1
         )
     ),
-    VP9(FourCC('v', 'p', '0', '9', MediaType.VIDEO_VP9)),
+    AVC(
+        FourCC(
+            'a', 'v', 'c', '1', MediaType.VIDEO_AVC
+        )
+    ),
     HEVC(FourCC('h', 'v', 'c', '1', MediaType.VIDEO_HEVC));
 
     companion object {

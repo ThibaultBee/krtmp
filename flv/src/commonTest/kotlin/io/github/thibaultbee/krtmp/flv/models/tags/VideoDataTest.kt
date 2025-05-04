@@ -21,7 +21,7 @@ class VideoDataTest {
         val videoTagBody = DefaultVideoTagBody(rawBuffer, rawBuffer.size.toInt())
         val videoData =
             LegacyVideoData(
-                frameType = FrameType.KEY,
+                frameType = VideoFrameType.KEY,
                 codecID = CodecID.AVC,
                 packetType = AVCPacketType.NALU,
                 compositionTime = 0,
@@ -43,7 +43,7 @@ class VideoDataTest {
         val videoTagBody = DefaultVideoTagBody(rawBuffer, rawBuffer.size.toInt())
         val videoTag =
             LegacyVideoData(
-                frameType = FrameType.KEY,
+                frameType = VideoFrameType.KEY,
                 codecID = CodecID.AVC,
                 packetType = AVCPacketType.NALU,
                 compositionTime = 0,
@@ -67,7 +67,7 @@ class VideoDataTest {
 
         val videoData = videoTag.data as LegacyVideoData
         assertEquals(CodecID.AVC, videoData.codecID)
-        assertEquals(FrameType.KEY, videoData.frameType)
+        assertEquals(VideoFrameType.KEY, videoData.frameType)
         assertEquals(AVCPacketType.NALU, videoData.packetType)
 
         val body = videoData.body as DefaultVideoTagBody

@@ -34,8 +34,7 @@ interface IVideoTagBody {
  *
  */
 class DefaultVideoTagBody(
-    val data: RawSource,
-    val dataSize: Int
+    val data: RawSource, val dataSize: Int
 ) : IVideoTagBody {
     override val size = dataSize
 
@@ -50,43 +49,50 @@ class DefaultVideoTagBody(
     }
 }
 
+class CommandVideoTagBody(
+    val command: VideoCommand
+) : IVideoTagBody {
+    override val size = 1
+
+    override fun encode(output: Sink) {
+        output.writeByte(command.value)
+    }
+
+    companion object {
+        fun decode(source: Source, sourceSize: Int): CommandVideoTagBody {
+            require(sourceSize >= 1) { "Command video tag body must have at least 1 byte" }
+            val command = source.readByte()
+            return CommandVideoTagBody(VideoCommand.entryOf(command))
+        }
+    }
+}
+
 class EmptyVideoTagBody : IVideoTagBody {
     override val size = 0
     override fun encode(output: Sink) = Unit  // End of sequence does not have a body
 }
 
-class HEVCVideoTagBody(
-    private val packetType: PacketType,
-    private val compositionTime: Int, // 24 bits
+class AVCHEVCCodedFrameVideoTagBody(
+    val compositionTime: Int, // 24 bits
     val data: RawSource,
     val dataSize: Int
 ) : IVideoTagBody {
-    override val size = if (packetType == PacketType.CODED_FRAMES) {
-        4 + dataSize // composition time + dataSize
-    } else {
-        dataSize
-    }
+    override val size = 3 + dataSize
 
     override fun encode(output: Sink) {
-        if (packetType == PacketType.CODED_FRAMES) {
-            output.writeInt24(compositionTime)
-        }
+        output.writeInt24(compositionTime)
         output.write(data, dataSize.toLong())
     }
 
     companion object {
         fun decode(
-            source: Source,
-            sourceSize: Int,
-            packetType: PacketType
-        ): HEVCVideoTagBody {
-            var compositionTime = 0
-            var remainingSize = sourceSize
-            if (packetType == PacketType.CODED_FRAMES) {
-                remainingSize -= 3
-                compositionTime = source.readInt24()
-            }
-            return HEVCVideoTagBody(packetType, compositionTime, source, sourceSize)
+            source: Source, sourceSize: Int
+        ): AVCHEVCCodedFrameVideoTagBody {
+            return AVCHEVCCodedFrameVideoTagBody(
+                source.readInt24(),
+                source,
+                sourceSize - 3
+            )
         }
     }
 }

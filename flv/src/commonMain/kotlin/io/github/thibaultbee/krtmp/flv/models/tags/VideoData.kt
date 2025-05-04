@@ -26,67 +26,85 @@ import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlin.experimental.and
 
-class LegacyVideoData(
-    frameType: FrameType,
+class LegacyVideoData internal constructor(
+    frameType: VideoFrameType,
     val codecID: CodecID,
     body: IVideoTagBody,
     val packetType: AVCPacketType? = null,
-    private val compositionTime: Int = 0,
-) : VideoData(frameType, body) {
-    private val size = body.size + if (codecID == CodecID.AVC) 5 else 1
+    val compositionTime: Int = 0,
+) : VideoData(false, frameType, codecID.value.toInt(), body) {
+    override val size = super.size + if (codecID == CodecID.AVC) 4 else 0
 
-    override fun getSize(amfVersion: AmfVersion) = size
-
-    override fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean) {
-        output.writeByte(
-            ((frameType.value shl 4) or // Frame Type
-                    (codecID.value.toInt())).toByte() // CodecID
-        )
+    override fun encodeHeaderImpl(output: Sink) {
         if (codecID == CodecID.AVC) {
             output.writeByte(packetType!!.value) // AVC Packet Type
             output.writeInt24(compositionTime) // Composition Time
         }
-        body.encode(output)
     }
 }
 
-class ExtendedVideoData(
-    frameType: FrameType,
-    private val packetType: PacketType,
-    private val fourCC: FourCCs,
+class ExtendedVideoData internal constructor(
+    frameType: VideoFrameType,
+    val packetType: VideoPacketType,
+    val fourCC: FourCCs,
     body: IVideoTagBody
-) : VideoData(frameType, body) {
-    private val size = body.size + 5
+) : VideoData(true, frameType, packetType.value, body) {
+    init {
+        if (packetType == VideoPacketType.CODED_FRAMES_X) {
+            require(fourCC == FourCCs.AVC || fourCC == FourCCs.HEVC) {
+                "Invalid fourCC for coded frames: $fourCC. Only AVC and HEVC are supported."
+            }
+        }
+        if ((packetType == VideoPacketType.CODED_FRAMES) &&
+            ((fourCC == FourCCs.AVC) || (fourCC != FourCCs.HEVC))
+        ) {
+            require(body is AVCHEVCCodedFrameVideoTagBody) {
+                "Invalid body for coded frames: $body. Only AVCHEVCCodedFrameVideoTagBody is supported."
+            }
+        }
+    }
 
-    override fun getSize(amfVersion: AmfVersion) = size
+    override val size = super.size + 4
 
-    override fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean) {
-        output.writeByte(
-            (0x80 or // IsExHeader
-                    (frameType.value shl 4) or // Frame Type
-                    packetType.value).toByte() // PacketType
-        )
+    override fun encodeHeaderImpl(output: Sink) {
         output.writeInt24(fourCC.value.code)
     }
 }
 
 sealed class VideoData(
-    val frameType: FrameType,
+    val isExtended: Boolean,
+    val frameType: VideoFrameType,
+    val next4bitsValue: Int,
     val body: IVideoTagBody
-) :
-    FLVData {
+) : FLVData {
+    open val size = body.size + 1
+    override fun getSize(amfVersion: AmfVersion) = size
+
+    abstract fun encodeHeaderImpl(
+        output: Sink
+    )
+
+    override fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean) {
+        output.writeByte(
+            ((isExtended shl 7) or // IsExHeader
+                    (frameType.value shl 4) or // Frame Type
+                    next4bitsValue).toByte() // PacketType
+        )
+        encodeHeaderImpl(output)
+        body.encode(output)
+    }
 
     companion object {
         fun decode(source: Source, sourceSize: Int, isEncrypted: Boolean): VideoData {
             val firstByte = source.readByte()
             val isExHeader = (firstByte.toInt() and 0x80) != 0
-            val frameType = FrameType.entryOf(((firstByte shr 4) and 0x07).toByte())
+            val frameType = VideoFrameType.entryOf(((firstByte shr 4) and 0x07).toByte())
             return if (isExHeader) {
-                val packetType = PacketType.entryOf(firstByte.toInt() and 0x0F)
+                val packetType = VideoPacketType.entryOf(firstByte.toInt() and 0x0F)
                 val fourCC = FourCCs.codeOf(source.readInt())
                 val remainingSize = sourceSize - 5
-                val body = if (fourCC == FourCCs.HEVC) {
-                    HEVCVideoTagBody.decode(source, remainingSize, packetType)
+                val body = if (packetType == VideoPacketType.CODED_FRAMES) {
+                    AVCHEVCCodedFrameVideoTagBody.decode(source, remainingSize)
                 } else {
                     DefaultVideoTagBody.decode(source, remainingSize)
                 }
@@ -105,13 +123,31 @@ sealed class VideoData(
                     require(!isEncrypted) { "Encrypted video is not supported." }
                     val body = DefaultVideoTagBody.decode(source, remainingSize)
                     LegacyVideoData(
-                        frameType,
-                        codecID,
-                        body
+                        frameType, codecID, body
                     )
                 }
             }
         }
+    }
+}
+
+/**
+ * The FLV Frame type.
+ *
+ * @param value the value
+ */
+enum class VideoFrameType(val value: Byte) {
+    KEY(1),
+    INTER(2),
+    DISPOSABLE_INTER(3),
+    GENERATED_KEY(4),
+    COMMAND(5);
+
+    companion object {
+        fun entryOf(value: Byte) =
+            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
+                "Invalid FrameType value: $value"
+            )
     }
 }
 
@@ -121,34 +157,12 @@ sealed class VideoData(
  * @param value the value
  */
 enum class AVCPacketType(val value: Byte) {
-    SEQUENCE_HEADER(0),
-    NALU(1),
-    END_OF_SEQUENCE(2);
+    SEQUENCE_HEADER(0), NALU(1), END_OF_SEQUENCE(2);
 
     companion object {
         fun entryOf(value: Byte) =
             entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
                 "Invalid AVCPacketType value: $value"
-            )
-    }
-}
-
-/**
- * The FLV Frame type.
- *
- * @param value the value
- */
-enum class FrameType(val value: Byte) {
-    KEY(1),
-    INTER(2),
-    DISPOSABLE_INTER(3),
-    GENERATED_KEY(4),
-    INFO_COMMAND(5);
-
-    companion object {
-        fun entryOf(value: Byte) =
-            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
-                "Invalid FrameType value: $value"
             )
     }
 }
@@ -160,18 +174,20 @@ enum class FrameType(val value: Byte) {
  * @param avcPacketType the corresponding AVC packet type
  * @see AVCPacketType
  */
-enum class PacketType(
-    val value: Int,
-    val avcPacketType: AVCPacketType
+enum class VideoPacketType(
+    val value: Int, val avcPacketType: AVCPacketType
 ) {
     SEQUENCE_START(0, AVCPacketType.SEQUENCE_HEADER), // Sequence Start
-    CODED_FRAMES(1, AVCPacketType.NALU),
-    SEQUENCE_END(2, AVCPacketType.END_OF_SEQUENCE),
-    CODED_FRAMES_X(3, AVCPacketType.NALU),
-    META_DATA(4, throw NotImplementedError("MetaData is not implemented")),
+    CODED_FRAMES(1, AVCPacketType.NALU), SEQUENCE_END(
+        2,
+        AVCPacketType.END_OF_SEQUENCE
+    ),
+    CODED_FRAMES_X(3, AVCPacketType.NALU), META_DATA(
+        4,
+        throw NotImplementedError("MetaData is not implemented")
+    ),
     MPEG2_TS_SEQUENCE_START(
-        5,
-        throw NotImplementedError("MPEG2_TS_SEQUENCE_START is not implemented")
+        5, throw NotImplementedError("MPEG2_TS_SEQUENCE_START is not implemented")
     ), ;
 
     companion object {
@@ -182,3 +198,13 @@ enum class PacketType(
     }
 }
 
+enum class VideoCommand(val value: Byte) {
+    START_SEEK(0), STOP_SEEK(1);
+
+    companion object {
+        fun entryOf(value: Byte) =
+            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
+                "Invalid VideoCommand value: $value"
+            )
+    }
+}
