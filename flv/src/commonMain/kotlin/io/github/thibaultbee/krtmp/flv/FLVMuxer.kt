@@ -18,10 +18,11 @@ package io.github.thibaultbee.krtmp.flv
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.models.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.models.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.models.tags.RawFLVTag
 import io.github.thibaultbee.krtmp.flv.models.tags.aacAudioData
-import io.github.thibaultbee.krtmp.flv.models.tags.avcHeaderVideoData
-import io.github.thibaultbee.krtmp.flv.models.tags.avcVideoData
-import io.github.thibaultbee.krtmp.flv.models.util.FlvHeader
+import io.github.thibaultbee.krtmp.flv.models.tags.avcHeaderLegacyVideoData
+import io.github.thibaultbee.krtmp.flv.models.tags.avcLegacyVideoData
+import io.github.thibaultbee.krtmp.flv.models.util.FLVHeader
 import kotlinx.io.Sink
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -34,7 +35,7 @@ import kotlinx.io.files.SystemFileSystem
  * @param amfVersion the AMF version to use
  * @return a [FLVMuxer]
  */
-fun FlvMuxer(
+fun FLVMuxer(
     path: Path,
     amfVersion: AmfVersion = AmfVersion.AMF0
 ): FLVMuxer {
@@ -72,13 +73,31 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
      * @param tag the [FLVTag] to encode
      */
     fun encode(tag: FLVTag) {
+        encode(tag.data.getSize(amfVersion) + FLVTag.HEADER_SIZE) { output ->
+            tag.encode(output, amfVersion)
+        }
+    }
+
+    /**
+     * Encodes a [RawFLVTag] to the muxer.
+     *
+     * @param tag the [RawFLVTag] to encode
+     */
+    fun encode(tag: RawFLVTag) {
+        encode(tag.bodySize + FLVTag.HEADER_SIZE) { output ->
+            tag.encode(output)
+        }
+    }
+
+    private fun encode(tagSize: Int, block: (Sink) -> Unit) {
         if (!hasEncoded) {
             hasEncoded = true
             output.writeInt(0) // PreviousTagSize0
         }
-        tag.encode(output, amfVersion)
-        output.writeInt(tag.data.getSize(amfVersion)) // PreviousTagSize
+        block(output)
+        output.writeInt(tagSize) // PreviousTagSize
     }
+
 
     /**
      * Encodes the FLV header.
@@ -93,7 +112,14 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
      * @param hasVideo true if the FLV file contains video data, false otherwise
      */
     fun encodeFlvHeader(hasAudio: Boolean, hasVideo: Boolean) {
-        FlvHeader(hasAudio, hasVideo).encode(output)
+        FLVHeader(hasAudio, hasVideo).encode(output)
+    }
+
+    /**
+     * Writes all remaining data to the [output] and flushes it.
+     */
+    fun flush() {
+        output.flush()
     }
 }
 
@@ -101,7 +127,7 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
  * Encodes a [FLVData] to the muxer.
  *
  * This method is a convenience method that wraps the [FLVTag] encoding.
- * The project comes with [FLVData] factories such as [avcHeaderVideoData], [avcVideoData], [aacAudioData], etc.
+ * The project comes with [FLVData] factories such as [avcHeaderLegacyVideoData], [avcLegacyVideoData], [aacAudioData], etc.
  *
  * @param timestampMs the timestamp in milliseconds
  * @param data the [FLVData] to encode

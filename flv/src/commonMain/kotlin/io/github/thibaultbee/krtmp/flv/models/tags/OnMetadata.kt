@@ -17,12 +17,12 @@ package io.github.thibaultbee.krtmp.flv.models.tags
 
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
-import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata.Metadata
-import io.github.thibaultbee.krtmp.flv.models.util.AmfUtil.amf
 import io.github.thibaultbee.krtmp.flv.models.config.FLVAudioConfig
 import io.github.thibaultbee.krtmp.flv.models.config.FLVConfig
 import io.github.thibaultbee.krtmp.flv.models.config.FLVVideoConfig
 import io.github.thibaultbee.krtmp.flv.models.config.SoundType
+import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata.Metadata
+import io.github.thibaultbee.krtmp.flv.models.util.AmfUtil.amf
 import kotlinx.serialization.Serializable
 
 /**
@@ -38,7 +38,6 @@ fun OnMetadata(value: AmfEcmaArray) =
  */
 fun OnMetadata(configs: List<FLVConfig>) =
     OnMetadata(Metadata.fromConfigs(configs))
-
 
 /**
  * The onMetaData data

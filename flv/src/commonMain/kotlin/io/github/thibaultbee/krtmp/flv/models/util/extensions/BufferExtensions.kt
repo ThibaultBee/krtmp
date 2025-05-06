@@ -92,6 +92,16 @@ internal val Source.startCodeSize: Int
     }
 
 /**
+ * Reads a [Source] to a [Buffer] until the end of the stream or the specified byte count.
+ */
+internal fun Source.readSource(byteCount: Long): Source {
+    val buffer = Buffer()
+    readTo(buffer, byteCount)
+    return buffer
+}
+
+
+/**
  * Whether the source is in AVCC format
  */
 internal val Buffer.isAvcc: Boolean

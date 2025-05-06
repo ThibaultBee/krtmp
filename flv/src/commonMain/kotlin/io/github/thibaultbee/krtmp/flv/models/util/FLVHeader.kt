@@ -19,7 +19,7 @@ import io.github.thibaultbee.krtmp.flv.models.util.extensions.toInt
 import kotlinx.io.Sink
 import kotlinx.io.Source
 
-class FlvHeader(private val hasAudio: Boolean, private val hasVideo: Boolean) {
+class FLVHeader(val hasAudio: Boolean, val hasVideo: Boolean) {
     fun encode(output: Sink) {
         output.writeByte(0x46) // 'F'
         output.writeByte(0x4C) // 'L'
@@ -31,10 +31,9 @@ class FlvHeader(private val hasAudio: Boolean, private val hasVideo: Boolean) {
 
     companion object {
         private const val DATA_OFFSET = 9
-        private const val HEADER_SIZE = DATA_OFFSET + 4 // 9 + 4 for PreviousTagSize0
 
-        fun decode(input: Source): FlvHeader {
-            require(input.request(HEADER_SIZE.toLong())) { "Not enough data to read FlvHeader" }
+        fun decode(input: Source): FLVHeader {
+            require(input.request(DATA_OFFSET.toLong())) { "Not enough data to read FlvHeader" }
             require(input.readByte() == 0x46.toByte()) { "Invalid FlvHeader. Expected F." }
             require(input.readByte() == 0x4C.toByte()) { "Invalid FlvHeader. Expected L." }
             require(input.readByte() == 0x56.toByte()) { "Invalid FlvHeader. Expected V." }
@@ -46,7 +45,7 @@ class FlvHeader(private val hasAudio: Boolean, private val hasVideo: Boolean) {
 
             require(input.readInt() == DATA_OFFSET) { "Invalid FlvHeader. Expected DATA_OFFSET to be $DATA_OFFSET." }
 
-            return FlvHeader(hasAudio, hasVideo)
+            return FLVHeader(hasAudio, hasVideo)
         }
     }
 }

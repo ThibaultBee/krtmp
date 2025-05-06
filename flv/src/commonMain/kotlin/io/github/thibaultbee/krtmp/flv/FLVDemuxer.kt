@@ -16,8 +16,9 @@
 package io.github.thibaultbee.krtmp.flv
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.flv.models.util.FlvHeader
 import io.github.thibaultbee.krtmp.flv.models.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.models.tags.RawFLVTag
+import io.github.thibaultbee.krtmp.flv.models.util.FLVHeader
 import kotlinx.io.Source
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -34,9 +35,9 @@ import kotlinx.io.readString
 fun FLVDemuxer(
     path: Path,
     amfVersion: AmfVersion = AmfVersion.AMF0
-): FlvDemuxer {
+): FLVDemuxer {
     val source = SystemFileSystem.source(path)
-    return FlvDemuxer(source.buffered(), amfVersion)
+    return FLVDemuxer(source.buffered(), amfVersion)
 }
 
 /**
@@ -45,15 +46,41 @@ fun FLVDemuxer(
  * @param source the source to read from
  * @param amfVersion the AMF version to use
  */
-class FlvDemuxer(private val source: Source, private val amfVersion: AmfVersion = AmfVersion.AMF0) {
+class FLVDemuxer(private val source: Source, private val amfVersion: AmfVersion = AmfVersion.AMF0) {
     private var hasDecoded = false
 
     /**
-     * Decodes a single FLV frames.
+     * Whether the source contains any FLV frame.
+     */
+    val isEmpty: Boolean
+        get() {
+            /**
+             * After decoding the last frame, the PreviousTagSizeN-1 (4 bits) is still there.
+             * but there isn't a frame to decode.
+             */
+            return !source.request(5)
+        }
+
+    /**
+     * Decodes a single FLV frames, the data is parsed.
      *
      * @return the decoded [FLVTag]
      */
     fun decode(): FLVTag {
+        return decode { FLVTag.decode(source, amfVersion) }
+    }
+
+    /**
+     * Decodes only the raw FLV tag of the next frame.
+     * The data is not parsed.
+     *
+     * @return the decoded [RawFLVTag]
+     */
+    fun decodeRaw(): RawFLVTag {
+        return decode { RawFLVTag.decode(source) }
+    }
+
+    private fun <T> decode(block: (Source) -> T): T {
         val peek = source.peek()
         val isHeader = try {
             peek.readString(3) == "FLV"
@@ -63,7 +90,7 @@ class FlvDemuxer(private val source: Source, private val amfVersion: AmfVersion 
 
         if (isHeader) {
             // Skip header
-            FlvHeader.decode(source)
+            FLVHeader.decode(source)
         }
 
         val previousTagSize = source.readInt()
@@ -72,11 +99,10 @@ class FlvDemuxer(private val source: Source, private val amfVersion: AmfVersion 
             require(previousTagSize == 0) { "Invalid FlvHeader. Expected PreviousTagSize0 to be 0." }
         }
 
-        return FLVTag.decode(source, amfVersion)
+        return block(source)
     }
 
-
-    fun decodeFlvHeader(): FlvHeader {
+    fun decodeFlvHeader(): FLVHeader {
         val peek = source.peek()
         val isHeader = try {
             peek.readString(3) == "FLV"
@@ -84,7 +110,7 @@ class FlvDemuxer(private val source: Source, private val amfVersion: AmfVersion 
             false
         }
         if (isHeader) {
-            return FlvHeader.decode(source)
+            return FLVHeader.decode(source)
         } else {
             throw IllegalStateException("Not a FLV header")
         }

@@ -20,8 +20,11 @@ import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.models.config.CodecID
 import io.github.thibaultbee.krtmp.flv.models.config.FourCCs
+import io.github.thibaultbee.krtmp.flv.models.util.WithValue
 import io.github.thibaultbee.krtmp.flv.models.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.models.util.extensions.shr
+import io.github.thibaultbee.krtmp.flv.models.util.extensions.writeByte
+import kotlinx.io.RawSource
 import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlin.experimental.and
@@ -29,7 +32,7 @@ import kotlin.experimental.and
 class LegacyVideoData internal constructor(
     frameType: VideoFrameType,
     val codecID: CodecID,
-    body: IVideoTagBody,
+    body: VideoTagBody,
     val packetType: AVCPacketType? = null,
     val compositionTime: Int = 0,
 ) : VideoData(false, frameType, codecID.value.toInt(), body) {
@@ -41,33 +44,405 @@ class LegacyVideoData internal constructor(
             output.writeInt24(compositionTime) // Composition Time
         }
     }
-}
 
-class ExtendedVideoData internal constructor(
-    frameType: VideoFrameType,
-    val packetType: VideoPacketType,
-    val fourCC: FourCCs,
-    body: IVideoTagBody
-) : VideoData(true, frameType, packetType.value, body) {
-    init {
-        if (packetType == VideoPacketType.CODED_FRAMES_X) {
-            require(fourCC == FourCCs.AVC || fourCC == FourCCs.HEVC) {
-                "Invalid fourCC for coded frames: $fourCC. Only AVC and HEVC are supported."
+    override fun toString(): String {
+        return "LegacyVideoData(frameType=$frameType, codecID=$codecID, packetType=$packetType, compositionTime=$compositionTime, body=$body)"
+    }
+
+    companion object {
+        fun decode(source: Source, sourceSize: Int, isEncrypted: Boolean): LegacyVideoData {
+            val firstByte = source.readByte()
+            val isExHeader = (firstByte.toInt() and 0x80) != 0
+            require(!isExHeader) {
+                "Extended header is not supported for legacy video data."
+            }
+            val frameType = VideoFrameType.entryOf(((firstByte shr 4) and 0x07).toByte())
+            val codecID = CodecID.entryOf(firstByte and 0x0F)
+            return decode(frameType, codecID, source, sourceSize - 1, isEncrypted)
+        }
+
+        fun decode(
+            frameType: VideoFrameType,
+            codecID: CodecID,
+            source: Source,
+            sourceSize: Int,
+            isEncrypted: Boolean
+        ): LegacyVideoData {
+            return if (codecID == CodecID.AVC) {
+                val packetType = AVCPacketType.entryOf(source.readByte())
+                val compositionTime = source.readInt24()
+                val remainingSize = sourceSize - 4
+                require(!isEncrypted) { "Encrypted video is not supported." }
+                val body = if (frameType == VideoFrameType.COMMAND) {
+                    CommandLegacyVideoTagBody.decode(source, remainingSize)
+                } else {
+                    RawVideoTagBody.decode(source, remainingSize)
+                }
+                LegacyVideoData(
+                    frameType, codecID, body, packetType, compositionTime
+                )
+            } else {
+                require(!isEncrypted) { "Encrypted video is not supported." }
+                val body = if (frameType == VideoFrameType.COMMAND) {
+                    CommandLegacyVideoTagBody.decode(source, sourceSize)
+                } else {
+                    RawVideoTagBody.decode(source, sourceSize)
+                }
+                LegacyVideoData(
+                    frameType, codecID, body
+                )
             }
         }
-        if ((packetType == VideoPacketType.CODED_FRAMES) &&
-            ((fourCC == FourCCs.AVC) || (fourCC != FourCCs.HEVC))
-        ) {
-            require(body is AVCHEVCCodedFrameVideoTagBody) {
-                "Invalid body for coded frames: $body. Only AVCHEVCCodedFrameVideoTagBody is supported."
+    }
+}
+
+/**
+ * Creates a [ExtendedVideoData] from a [body] for a single track.
+ *
+ * @param frameType the frame type (key frame or intra frame)
+ * @param packetType the packet type
+ * @param fourCC the FourCCs
+ * @param body the coded freame [RawSource]
+ * @return the [ExtendedVideoData] with the coded frame
+ */
+fun ExtendedVideoData(
+    frameType: VideoFrameType,
+    packetType: VideoPacketType,
+    fourCC: FourCCs,
+    body: SingleVideoTagBody
+) = ExtendedVideoData(
+    packetDescriptor = ExtendedVideoData.SingleVideoPacketDescriptor(
+        frameType,
+        packetType,
+        fourCC,
+        body
+    )
+)
+
+class ExtendedVideoData internal constructor(
+    val packetDescriptor: VideoPacketDescriptor,
+    val videoModExs: Set<ModEx<VideoPacketModExType>> = emptySet()
+) : VideoData(
+    true, packetDescriptor.frameType, if (videoModExs.isEmpty()) {
+        packetDescriptor.packetType.value
+    } else {
+        VideoPacketType.MOD_EX.value
+    }.toInt(), packetDescriptor.body
+) {
+    override val size = super.size + packetDescriptor.size
+    val packetType = packetDescriptor.packetType
+
+    override fun encodeHeaderImpl(output: Sink) {
+        videoModExs.forEachIndexed { index, modEx ->
+            val nextPacketType = if (index == videoModExs.size - 1) {
+                packetDescriptor.packetType
+            } else {
+                VideoPacketType.MOD_EX
+            }
+            modEx.encode(output, nextPacketType)
+        }
+        if ((packetType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
+            require(packetDescriptor is CommandVideoPacketDescriptor) {
+                "Invalid frame type for command: $frameType. Only CommandHeaderExtension is supported."
+            }
+        } else if (packetType == VideoPacketType.MULTITRACK) {
+            require(packetDescriptor is MultitrackVideoPacketDescriptor) {
+                "Invalid frame type for multitrack: $frameType. Only MultitrackHeaderExtension is supported."
+            }
+        }
+        packetDescriptor.encode(output)
+    }
+
+    override fun toString(): String {
+        return "ExtendedVideoData(frameType=$frameType, packetType=${packetType}, packetDescriptor=$packetDescriptor, videoModExs=$videoModExs)"
+    }
+
+    companion object {
+        fun decode(source: Source, sourceSize: Int): ExtendedVideoData {
+            val firstByte = source.readByte()
+            val isExHeader = (firstByte.toInt() and 0x80) != 0
+            require(isExHeader) {
+                "Legacy header is not supported for extended video data."
+            }
+            val frameType = VideoFrameType.entryOf(((firstByte shr 4) and 0x07).toByte())
+            val packetType = VideoPacketType.entryOf(firstByte and 0x0F)
+            return decode(frameType, packetType, source, sourceSize - 1)
+        }
+
+        fun decode(
+            frameType: VideoFrameType,
+            packetType: VideoPacketType,
+            source: Source,
+            sourceSize: Int
+        ): ExtendedVideoData {
+            var remainingSize = sourceSize
+            val videoModExs = mutableSetOf<ModEx<VideoPacketModExType>>()
+            while (packetType == VideoPacketType.MOD_EX) {
+                val videoModEx = ModEx.decode<VideoPacketModExType>(source)
+                videoModExs.add(videoModEx)
+                remainingSize -= videoModEx.size
+            }
+            val payload =
+                if ((packetType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
+                    CommandVideoPacketDescriptor.decode(source)
+                } else if (packetType == VideoPacketType.MULTITRACK) {
+                    MultitrackVideoPacketDescriptor.decode(
+                        frameType,
+                        source,
+                        remainingSize
+                    )
+                } else {
+                    SingleVideoPacketDescriptor.decode(frameType, packetType, source, remainingSize)
+                }
+            return ExtendedVideoData(payload, videoModExs)
+        }
+    }
+
+    interface VideoPacketDescriptor : SinkEncoder {
+        val frameType: VideoFrameType
+        val packetType: VideoPacketType
+        val body: VideoTagBody
+    }
+
+    class SingleVideoPacketDescriptor internal constructor(
+        override val frameType: VideoFrameType,
+        override val packetType: VideoPacketType,
+        val fourCC: FourCCs,
+        override val body: SingleVideoTagBody
+    ) : VideoPacketDescriptor {
+        override val size = 4
+
+        override fun encode(output: Sink) {
+            output.writeInt24(fourCC.value.code)
+        }
+
+        override fun toString(): String {
+            return "SingleVideoPacketDescriptor(frameType=$frameType, fourCC=$fourCC, body=$body)"
+        }
+
+        companion object {
+            fun decode(
+                frameType: VideoFrameType,
+                packetType: VideoPacketType,
+                source: Source,
+                sourceSize: Int
+            ): SingleVideoPacketDescriptor {
+                val fourCC = FourCCs.codeOf(source.readInt())
+                val remainingSize = sourceSize - 4
+                val body = decodeBody(packetType, fourCC, source, remainingSize)
+                return SingleVideoPacketDescriptor(frameType, packetType, fourCC, body)
+            }
+
+            internal fun decodeBody(
+                packetType: VideoPacketType,
+                fourCC: FourCCs,
+                source: Source,
+                sourceSize: Int
+            ): SingleVideoTagBody {
+                return if ((packetType == VideoPacketType.CODED_FRAMES) && ((fourCC == FourCCs.HEVC) ||
+                            (fourCC == FourCCs.AVC))
+                ) {
+                    ExtendedWithCompositionTimeVideoTagBody.decode(source, sourceSize)
+                } else {
+                    RawVideoTagBody.decode(source, sourceSize)
+                }
             }
         }
     }
 
-    override val size = super.size + 4
+    class CommandVideoPacketDescriptor internal constructor(
+        override val packetType: VideoPacketType,
+        val command: VideoCommand,
+    ) : VideoPacketDescriptor {
+        override val frameType = VideoFrameType.COMMAND
+        override val body = EmptyVideoTagBody() as VideoTagBody
 
-    override fun encodeHeaderImpl(output: Sink) {
-        output.writeInt24(fourCC.value.code)
+        override val size = 1
+
+        override fun encode(output: Sink) {
+            output.writeByte(command.value)
+        }
+
+        override fun toString(): String {
+            return "CommandVideoPacketDescriptor(command=$command)"
+        }
+
+        companion object {
+            fun decode(source: Source): CommandVideoPacketDescriptor {
+                val command = VideoCommand.entryOf(source.readByte())
+                return CommandVideoPacketDescriptor(VideoPacketType.MOD_EX, command)
+            }
+        }
+    }
+
+    sealed class MultitrackVideoPacketDescriptor(
+        override val frameType: VideoFrameType,
+        val multitrackType: MultitrackType,
+        val framePacketType: VideoPacketType
+    ) :
+        VideoPacketDescriptor {
+        override val packetType = VideoPacketType.MULTITRACK
+        override val size = 1
+
+        init {
+            require(framePacketType != VideoPacketType.MULTITRACK) {
+                "Invalid packet type for multitrack: $framePacketType. Only MultitrackHeaderExtension is supported."
+            }
+        }
+
+        abstract fun encodeImpl(output: Sink)
+
+        override fun encode(output: Sink) {
+            output.writeByte((multitrackType.value shl 4) or framePacketType.value.toInt())
+            encodeImpl(output)
+        }
+
+        private interface OneCodec : SinkEncoder {
+            val fourCC: FourCCs
+        }
+
+        companion object {
+            fun decode(
+                frameType: VideoFrameType,
+                source: Source,
+                sourceSize: Int
+            ): MultitrackVideoPacketDescriptor {
+                val byte = source.readByte()
+                val multitrackType =
+                    MultitrackType.entryOf(((byte and 0xF0.toByte()) shr 4).toByte())
+                val framePacketType = VideoPacketType.entryOf(byte and 0x0F.toByte())
+                val remainingSize = sourceSize - 1
+                return when (multitrackType) {
+                    MultitrackType.ONE_TRACK -> OneTrackVideoPacketDescriptor.decode(
+                        frameType,
+                        framePacketType,
+                        source,
+                        remainingSize
+                    )
+
+                    MultitrackType.MANY_TRACK -> ManyTrackVideoPacketDescriptor.decode(
+                        frameType,
+                        framePacketType,
+                        source,
+                        remainingSize
+                    )
+
+                    MultitrackType.MANY_TRACK_MANY_CODEC -> ManyTrackManyCodecVideoPacketDescriptor.decode(
+                        frameType,
+                        framePacketType,
+                        source,
+                        remainingSize
+                    )
+                }
+            }
+        }
+
+        class OneTrackVideoPacketDescriptor(
+            override val frameType: VideoFrameType,
+            override val fourCC: FourCCs,
+            framePacketType: VideoPacketType,
+            override val body: OneTrackVideoTagBody
+        ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.ONE_TRACK, framePacketType),
+            OneCodec {
+            override val size = super.size + 4
+
+            override fun encodeImpl(output: Sink) {
+                output.writeInt(fourCC.value.code)
+            }
+
+            override fun toString(): String {
+                return "OneTrackVideoPacketDescriptor(frameType=$frameType, fourCC=$fourCC, body=$body)"
+            }
+
+            companion object {
+                fun decode(
+                    frameType: VideoFrameType,
+                    packetType: VideoPacketType,
+                    source: Source,
+                    sourceSize: Int
+                ): OneTrackVideoPacketDescriptor {
+                    val fourCC = FourCCs.codeOf(source.readInt())
+                    val remainingSize = sourceSize - 4
+                    val body =
+                        OneTrackVideoTagBody.decode(packetType, fourCC, source, remainingSize)
+                    return OneTrackVideoPacketDescriptor(frameType, fourCC, packetType, body)
+                }
+            }
+        }
+
+        class ManyTrackVideoPacketDescriptor(
+            override val frameType: VideoFrameType,
+            override val fourCC: FourCCs,
+            framePacketType: VideoPacketType,
+            override val body: ManyTrackOneCodecVideoTagBody
+        ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.MANY_TRACK, framePacketType),
+            OneCodec {
+            override val size = super.size + 4
+
+            override fun encodeImpl(output: Sink) {
+                output.writeInt(fourCC.value.code)
+            }
+
+            override fun toString(): String {
+                return "ManyTrackVideoPacketDescriptor(frameType=$frameType, fourCC=$fourCC, body=$body)"
+            }
+
+            companion object {
+                fun decode(
+                    frameType: VideoFrameType,
+                    packetType: VideoPacketType,
+                    source: Source,
+                    sourceSize: Int
+                ): ManyTrackVideoPacketDescriptor {
+                    val fourCC = FourCCs.codeOf(source.readInt())
+                    val remainingSize = sourceSize - 4
+                    val body =
+                        ManyTrackOneCodecVideoTagBody.decode(
+                            packetType,
+                            fourCC,
+                            source,
+                            remainingSize
+                        )
+                    return ManyTrackVideoPacketDescriptor(frameType, fourCC, packetType, body)
+                }
+            }
+        }
+
+        class ManyTrackManyCodecVideoPacketDescriptor(
+            override val frameType: VideoFrameType,
+            override val packetType: VideoPacketType,
+            framePacketType: VideoPacketType,
+            override val body: ManyTrackManyCodecVideoTagBody
+        ) : MultitrackVideoPacketDescriptor(
+            frameType,
+            MultitrackType.MANY_TRACK_MANY_CODEC,
+            framePacketType
+        ) {
+            override val size = super.size
+
+            override fun encodeImpl(output: Sink) = Unit
+
+            override fun toString(): String {
+                return "ManyTrackManyCodecVideoPacketDescriptor(frameType=$frameType, body=$body)"
+            }
+
+            companion object {
+                fun decode(
+                    frameType: VideoFrameType,
+                    packetType: VideoPacketType,
+                    source: Source,
+                    sourceSize: Int
+                ): ManyTrackManyCodecVideoPacketDescriptor {
+                    val body = ManyTrackManyCodecVideoTagBody.decode(packetType, source, sourceSize)
+                    return ManyTrackManyCodecVideoPacketDescriptor(
+                        frameType,
+                        packetType,
+                        packetType,
+                        body
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -75,7 +450,7 @@ sealed class VideoData(
     val isExtended: Boolean,
     val frameType: VideoFrameType,
     val next4bitsValue: Int,
-    val body: IVideoTagBody
+    val body: VideoTagBody
 ) : FLVData {
     open val size = body.size + 1
     override fun getSize(amfVersion: AmfVersion) = size
@@ -84,6 +459,10 @@ sealed class VideoData(
         output: Sink
     )
 
+    protected fun encodeBody(output: Sink) {
+        body.encode(output)
+    }
+
     override fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean) {
         output.writeByte(
             ((isExtended shl 7) or // IsExHeader
@@ -91,7 +470,7 @@ sealed class VideoData(
                     next4bitsValue).toByte() // PacketType
         )
         encodeHeaderImpl(output)
-        body.encode(output)
+        encodeBody(output)
     }
 
     companion object {
@@ -100,32 +479,22 @@ sealed class VideoData(
             val isExHeader = (firstByte.toInt() and 0x80) != 0
             val frameType = VideoFrameType.entryOf(((firstByte shr 4) and 0x07).toByte())
             return if (isExHeader) {
-                val packetType = VideoPacketType.entryOf(firstByte.toInt() and 0x0F)
-                val fourCC = FourCCs.codeOf(source.readInt())
-                val remainingSize = sourceSize - 5
-                val body = if (packetType == VideoPacketType.CODED_FRAMES) {
-                    AVCHEVCCodedFrameVideoTagBody.decode(source, remainingSize)
-                } else {
-                    DefaultVideoTagBody.decode(source, remainingSize)
-                }
-                ExtendedVideoData(frameType, packetType, fourCC, body)
+                val packetType = VideoPacketType.entryOf(firstByte and 0x0F)
+                ExtendedVideoData.decode(
+                    frameType,
+                    packetType,
+                    source,
+                    sourceSize - 1
+                )
             } else {
                 val codecID = CodecID.entryOf(firstByte and 0x0F)
-                return if (codecID == CodecID.AVC) {
-                    val packetType = AVCPacketType.entryOf(source.readByte())
-                    val compositionTime = source.readInt24()
-                    val remainingSize = sourceSize - 5
-                    require(!isEncrypted) { "Encrypted video is not supported." }
-                    val body = DefaultVideoTagBody.decode(source, remainingSize)
-                    LegacyVideoData(frameType, codecID, body, packetType, compositionTime)
-                } else {
-                    val remainingSize = sourceSize - 1
-                    require(!isEncrypted) { "Encrypted video is not supported." }
-                    val body = DefaultVideoTagBody.decode(source, remainingSize)
-                    LegacyVideoData(
-                        frameType, codecID, body
-                    )
-                }
+                LegacyVideoData.decode(
+                    frameType,
+                    codecID,
+                    source,
+                    sourceSize - 1,
+                    isEncrypted
+                )
             }
         }
     }
@@ -137,11 +506,7 @@ sealed class VideoData(
  * @param value the value
  */
 enum class VideoFrameType(val value: Byte) {
-    KEY(1),
-    INTER(2),
-    DISPOSABLE_INTER(3),
-    GENERATED_KEY(4),
-    COMMAND(5);
+    KEY(1), INTER(2), DISPOSABLE_INTER(3), GENERATED_KEY(4), COMMAND(5);
 
     companion object {
         fun entryOf(value: Byte) =
@@ -167,37 +532,6 @@ enum class AVCPacketType(val value: Byte) {
     }
 }
 
-/**
- * The FLV Packet type.
- *
- * @param value the value
- * @param avcPacketType the corresponding AVC packet type
- * @see AVCPacketType
- */
-enum class VideoPacketType(
-    val value: Int, val avcPacketType: AVCPacketType
-) {
-    SEQUENCE_START(0, AVCPacketType.SEQUENCE_HEADER), // Sequence Start
-    CODED_FRAMES(1, AVCPacketType.NALU), SEQUENCE_END(
-        2,
-        AVCPacketType.END_OF_SEQUENCE
-    ),
-    CODED_FRAMES_X(3, AVCPacketType.NALU), META_DATA(
-        4,
-        throw NotImplementedError("MetaData is not implemented")
-    ),
-    MPEG2_TS_SEQUENCE_START(
-        5, throw NotImplementedError("MPEG2_TS_SEQUENCE_START is not implemented")
-    ), ;
-
-    companion object {
-        fun entryOf(value: Int) =
-            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
-                "Invalid PacketType value: $value"
-            )
-    }
-}
-
 enum class VideoCommand(val value: Byte) {
     START_SEEK(0), STOP_SEEK(1);
 
@@ -207,4 +541,82 @@ enum class VideoCommand(val value: Byte) {
                 "Invalid VideoCommand value: $value"
             )
     }
+}
+
+/**
+ * The FLV Packet type.
+ *
+ * @param value the value
+ * @param avcPacketType the corresponding AVC packet type
+ * @see AVCPacketType
+ */
+enum class VideoPacketType(
+    val value: Byte, val avcPacketType: AVCPacketType? = null
+) {
+    SEQUENCE_START(0, AVCPacketType.SEQUENCE_HEADER), // Sequence Start
+    CODED_FRAMES(1, AVCPacketType.NALU),
+    SEQUENCE_END(
+        2, AVCPacketType.END_OF_SEQUENCE
+    ),
+
+    /**
+     * Composition time is implicitly set to 0.
+     */
+    CODED_FRAMES_X(3, null),
+    META_DATA(
+        4, null
+    ),
+
+    /**
+     * Carriage of bitstream in MPEG-2 TS format
+     */
+    MPEG2_TS_SEQUENCE_START(
+        5, null
+    ),
+
+    /**
+     * Turns on multitrack mode
+     */
+    MULTITRACK(
+        6, null
+    ),
+
+    /**
+     * A special signal within that serves to both modify and extend the behavior of the current packet
+     */
+    MOD_EX(
+        7, null
+    );
+
+    companion object {
+        fun entryOf(value: Byte) =
+            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
+                "Invalid VideoPacketType value: $value"
+            )
+    }
+}
+
+enum class VideoPacketModExType(override val value: Byte) : WithValue<Byte> {
+    TIMESTAMP_OFFSET_NANO(0);
+
+    companion object {
+        fun entryOf(value: Byte) =
+            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
+                "Invalid VideoPacketModExType value: $value"
+            )
+    }
+}
+
+abstract class VideoModExFactory<T>(type: VideoPacketModExType) :
+    ModExFactory<VideoPacketModExType, T>(type)
+
+object VideoModExFactories {
+    val TIMESTAMP_OFFSET_NANO =
+        object : VideoModExFactory<Int>(VideoPacketModExType.TIMESTAMP_OFFSET_NANO) {
+            override fun create(value: Int): ModEx<VideoPacketModExType> {
+                return ModEx(type, 3, { sink ->
+                    sink.writeInt24(value)
+                })
+            }
+        }
 }

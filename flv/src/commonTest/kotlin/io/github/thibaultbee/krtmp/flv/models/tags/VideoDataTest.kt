@@ -18,7 +18,7 @@ class VideoDataTest {
             write(raw)
         }
 
-        val videoTagBody = DefaultVideoTagBody(rawBuffer, rawBuffer.size.toInt())
+        val videoTagBody = RawVideoTagBody(rawBuffer, rawBuffer.size.toInt())
         val videoData =
             LegacyVideoData(
                 frameType = VideoFrameType.KEY,
@@ -40,7 +40,7 @@ class VideoDataTest {
             write(raw)
         }
 
-        val videoTagBody = DefaultVideoTagBody(rawBuffer, rawBuffer.size.toInt())
+        val videoTagBody = RawVideoTagBody(rawBuffer, rawBuffer.size.toInt())
         val videoTag =
             LegacyVideoData(
                 frameType = VideoFrameType.KEY,
@@ -70,7 +70,7 @@ class VideoDataTest {
         assertEquals(VideoFrameType.KEY, videoData.frameType)
         assertEquals(AVCPacketType.NALU, videoData.packetType)
 
-        val body = videoData.body as DefaultVideoTagBody
+        val body = videoData.body as RawVideoTagBody
         val actual = Buffer().apply {
             write(body.data, body.dataSize.toLong())
         }

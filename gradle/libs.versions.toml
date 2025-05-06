@@ -12,6 +12,7 @@ kotlinxSerialization = "1.8.0"
 ktor = "3.1.2"
 detekt = "1.23.8"
 publish = "2.0.0"
+junitJupiter = "5.8.1"
 
 [libraries]
 flex-messaging-core = { module = "org.apache.flex.blazeds:flex-messaging-core", version.ref = "flexMessagingCore" }
@@ -27,6 +28,7 @@ ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-http = { module = "io.ktor:ktor-http", version.ref = "ktor" }
 ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-network-tls = { module = "io.ktor:ktor-network-tls", version.ref = "ktor" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiter" }
 
 [plugins]
 android-library = { id = "com.android.library", version.ref = "agp" }

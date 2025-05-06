@@ -30,28 +30,28 @@ import kotlinx.io.RawSource
 // Legacy video data
 
 /**
- * Creates a legacy video command data from a [VideoCommand].
+ * Creates a legacy video command data.
  *
  * @param codecID the codec ID
  * @param command the video command
  */
-fun CommandVideoData(
+fun CommandLegacyVideoData(
     codecID: CodecID, command: VideoCommand
 ) = LegacyVideoData(
-    frameType = VideoFrameType.COMMAND, codecID = codecID, body = CommandVideoTagBody(command)
+    frameType = VideoFrameType.COMMAND, codecID = codecID, body = CommandLegacyVideoTagBody(command)
 )
 
 /**
- * Creates a legacy [VideoData] from a [RawSource] and its size.
+ * Creates a legacy [LegacyVideoData] from a [RawSource] and its size.
  *
- * For AVC/H.264, use [avcVideoData], [avcHeaderVideoData] or [avcEndOfSequenceVideoData] instead.
+ * For AVC/H.264, use [avcLegacyVideoData], [avcHeaderLegacyVideoData] or [avcEndOfSequenceLegacyVideoData] instead.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param body the coded [RawSource]
  * @param bodySize the size of the coded [RawSource]
- * @return the [VideoData] with the frame
+ * @return the [LegacyVideoData] with the frame
  */
-fun VideoData(
+fun LegacyVideoData(
     frameType: VideoFrameType,
     codecID: CodecID,
     body: RawSource,
@@ -59,22 +59,22 @@ fun VideoData(
 ) = LegacyVideoData(
     frameType = frameType, codecID = codecID, packetType = AVCPacketType.NALU, // Unused
     compositionTime = 0, // Unused
-    body = DefaultVideoTagBody(
+    body = RawVideoTagBody(
         data = body, dataSize = bodySize
     )
 )
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] from a [RawSource] and its size.
+ * Creates a legacy AVC/H.264 [LegacyVideoData] from a [RawSource] and its size.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param packetType the packet type
  * @param body the coded AVC [RawSource] without AVCC or AnnexB header
  * @param bodySize the size of the coded AVC [RawSource]
  * @param compositionTime the composition time (24 bits). Default is 0.
- * @return the [VideoData] with the AVC frame
+ * @return the [LegacyVideoData] with the AVC frame
  */
-fun avcVideoData(
+fun avcLegacyVideoData(
     frameType: VideoFrameType,
     packetType: AVCPacketType,
     body: RawSource,
@@ -85,13 +85,13 @@ fun avcVideoData(
     codecID = CodecID.AVC,
     packetType = packetType,
     compositionTime = compositionTime,
-    body = DefaultVideoTagBody(
+    body = RawVideoTagBody(
         data = body, dataSize = bodySize
     )
 )
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] from a [NaluRawSource].
+ * Creates a legacy AVC/H.264 [LegacyVideoData] from a [NaluRawSource].
  *
  * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
  *
@@ -99,14 +99,14 @@ fun avcVideoData(
  * @param packetType the packet type
  * @param body the NAL unit [RawSource].
  * @param compositionTime the composition time (24 bits). Default is 0.
- * @return the [VideoData] with the AVC frame
+ * @return the [LegacyVideoData] with the AVC frame
  */
-fun avcVideoData(
+fun avcLegacyVideoData(
     frameType: VideoFrameType,
     packetType: AVCPacketType,
     body: NaluRawSource,
     compositionTime: Int = 0
-) = avcVideoData(
+) = avcLegacyVideoData(
     frameType = frameType,
     packetType = packetType,
     compositionTime = compositionTime,
@@ -115,16 +115,16 @@ fun avcVideoData(
 )
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] for SPS and PPS.
+ * Creates a legacy AVC/H.264 [LegacyVideoData] for SPS and PPS.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
- * If you want to directly pass [AVCDecoderConfigurationRecord], use [avcVideoData] instead.
+ * If you want to directly pass [AVCDecoderConfigurationRecord], use [avcLegacyVideoData] instead.
  *
  * @param sps the SPS NAL units
  * @param pps the PPS NAL units
- * @return the [VideoData] with the SPS and PPS
+ * @return the [LegacyVideoData] with the SPS and PPS
  */
-fun avcHeaderVideoData(
+fun avcHeaderLegacyVideoData(
     sps: List<NaluRawSource>,
     pps: List<NaluRawSource>,
 ) {
@@ -132,7 +132,7 @@ fun avcHeaderVideoData(
         sps = sps, pps = pps
     ).readBuffer()
 
-    avcVideoData(
+    avcLegacyVideoData(
         frameType = VideoFrameType.KEY,
         packetType = AVCPacketType.SEQUENCE_HEADER,
         compositionTime = 0,
@@ -143,9 +143,9 @@ fun avcHeaderVideoData(
 
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] for the end of sequence.
+ * Creates a legacy AVC/H.264 [LegacyVideoData] for the end of sequence.
  */
-fun avcEndOfSequenceVideoData() = LegacyVideoData(
+fun avcEndOfSequenceLegacyVideoData() = LegacyVideoData(
     frameType = VideoFrameType.KEY,
     codecID = CodecID.AVC,
     packetType = AVCPacketType.END_OF_SEQUENCE,
@@ -155,7 +155,23 @@ fun avcEndOfSequenceVideoData() = LegacyVideoData(
 
 // Extended video data
 /**
- * Creates an extended coded frame AVC/H.264 [VideoData] from a [RawSource] and its size.
+ * Creates an extended video command data.
+ *
+ * @param packetType the packet type excluding [VideoPacketType.META_DATA]
+ * @param command the video command
+ * @return the [ExtendedVideoData] with the command
+ */
+fun CommandExtendedVideoData(
+    packetType: VideoPacketType, command: VideoCommand
+) = ExtendedVideoData(
+    packetDescriptor = ExtendedVideoData.CommandVideoPacketDescriptor(
+        command = command,
+        packetType = packetType
+    )
+)
+
+/**
+ * Creates an extended coded frame AVC/H.264 [ExtendedVideoData] from a [RawSource] and its size.
  *
  * Packet type is forced to [VideoPacketType.CODED_FRAMES].
  *
@@ -163,21 +179,21 @@ fun avcEndOfSequenceVideoData() = LegacyVideoData(
  * @param compositionTime the composition time (24 bits)
  * @param body the coded AVC [RawSource] without AVCC or AnnexB header
  * @param bodySize the size of the coded AVC [RawSource]
- * @return the [VideoData] with the AVC frame
+ * @return the [ExtendedVideoData] with the AVC frame
  */
-fun avcExtendedCodedFrameVideoData(
+fun avcCodedFrameExtendedVideoData(
     frameType: VideoFrameType, compositionTime: Int, body: RawSource, bodySize: Int
 ) = ExtendedVideoData(
     frameType = frameType,
     fourCC = FourCCs.AVC,
     packetType = VideoPacketType.CODED_FRAMES,
-    body = AVCHEVCCodedFrameVideoTagBody(
+    body = ExtendedWithCompositionTimeVideoTagBody(
         compositionTime = compositionTime, data = body, dataSize = bodySize
     )
 )
 
 /**
- * Creates an extended coded frame AVC/H.264 [VideoData] from a [NaluRawSource].
+ * Creates an extended coded frame AVC/H.264 [ExtendedVideoData] from a [NaluRawSource].
  *
  * Packet type is forced to [VideoPacketType.CODED_FRAMES].
  * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
@@ -185,11 +201,11 @@ fun avcExtendedCodedFrameVideoData(
  * @param frameType the frame type (key frame or intra frame)
  * @param compositionTime the composition time (24 bits)
  * @param body the NAL unit [RawSource].
- * @return the [VideoData] with the AVC frame
+ * @return the [ExtendedVideoData] with the AVC frame
  */
-fun avcExtendedCodedFrameVideoData(
+fun avcCodedFrameExtendedVideoData(
     frameType: VideoFrameType, compositionTime: Int, body: NaluRawSource
-) = avcExtendedCodedFrameVideoData(
+) = avcCodedFrameExtendedVideoData(
     frameType = frameType,
     compositionTime = compositionTime,
     body = body.nalu,
@@ -197,13 +213,13 @@ fun avcExtendedCodedFrameVideoData(
 )
 
 /**
- * Creates an extended AVC/H.264 [VideoData] from a [RawSource] and its size.
+ * Creates an extended AVC/H.264 [ExtendedVideoData] from a [RawSource] and its size.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param packetType the packet type excluding [VideoPacketType.CODED_FRAMES]
  * @param body the coded AVC [RawSource] without AVCC or AnnexB header
  * @param bodySize the size of the coded AVC [RawSource]
- * @return the [VideoData] with the AVC frame
+ * @return the [ExtendedVideoData] with the AVC frame
  */
 fun avcExtendedVideoData(
     frameType: VideoFrameType, packetType: VideoPacketType, body: RawSource, bodySize: Int
@@ -211,20 +227,20 @@ fun avcExtendedVideoData(
     frameType = frameType,
     fourCC = FourCCs.AVC,
     packetType = packetType,
-    body = DefaultVideoTagBody(
+    body = RawVideoTagBody(
         data = body, dataSize = bodySize
     )
 )
 
 /**
- * Creates an extended AVC/H.264 [VideoData] from a [NaluRawSource].
+ * Creates an extended AVC/H.264 [ExtendedVideoData] from a [NaluRawSource].
  *
  * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param packetType the packet type excluding [VideoPacketType.CODED_FRAMES]
  * @param body the NAL unit [RawSource].
- * @return the [VideoData] with the AVC frame
+ * @return the [ExtendedVideoData] with the AVC frame
  */
 fun avcExtendedVideoData(
     frameType: VideoFrameType, packetType: VideoPacketType, body: NaluRawSource
@@ -233,14 +249,14 @@ fun avcExtendedVideoData(
 )
 
 /**
- * Creates an extended AVC/H.264 [VideoData] for SPS and PPS.
+ * Creates an extended AVC/H.264 [ExtendedVideoData] for SPS and PPS.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
- * If you want to directly pass [AVCDecoderConfigurationRecord], use [avcVideoData] instead.
+ * If you want to directly pass [AVCDecoderConfigurationRecord], use [avcExtendedVideoData] instead.
  *
  * @param sps the SPS NAL units
  * @param pps the PPS NAL units
- * @return the [VideoData] with the SPS and PPS
+ * @return the [ExtendedVideoData] with the SPS and PPS
  */
 fun avcHeaderExtendedVideoData(
     sps: List<NaluRawSource>,
@@ -259,7 +275,7 @@ fun avcHeaderExtendedVideoData(
 }
 
 /**
- * Creates an HEVC/H.265 coded frame [VideoData] from a [RawSource] and its size.
+ * Creates an HEVC/H.265 coded frame [ExtendedVideoData] from a [RawSource] and its size.
  *
  * Packet type is forced to [VideoPacketType.CODED_FRAMES].
  *
@@ -267,22 +283,22 @@ fun avcHeaderExtendedVideoData(
  * @param compositionTime the composition time (24 bits)
  * @param body the coded HEVC [RawSource] without AVCC or AnnexB header
  * @param bodySize the size of the coded HEVC [RawSource]
- * @return the [VideoData] with the HEVC frame
+ * @return the [ExtendedVideoData] with the HEVC frame
  */
-fun hevcCodedFrameVideoData(
+fun hevcCodedFrameExtendedVideoData(
     frameType: VideoFrameType, compositionTime: Int, body: RawSource, bodySize: Int
 ) = ExtendedVideoData(
     frameType = frameType,
     packetType = VideoPacketType.CODED_FRAMES,
     fourCC = FourCCs.HEVC,
-    body = AVCHEVCCodedFrameVideoTagBody(
+    body = ExtendedWithCompositionTimeVideoTagBody(
         compositionTime = compositionTime, data = body, dataSize = bodySize
     )
 )
 
 
 /**
- * Creates an HEVC/H.265 [VideoData] from a [NaluRawSource].
+ * Creates an HEVC/H.265 [ExtendedVideoData] from a [NaluRawSource].
  *
  * Packet type is forced to [VideoPacketType.CODED_FRAMES].
  * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
@@ -290,11 +306,11 @@ fun hevcCodedFrameVideoData(
  * @param frameType the frame type (key frame or intra frame)
  * @param compositionTime the composition time (24 bits)
  * @param body the NAL unit [RawSource].
- * @return the [VideoData] with the HEVC frame
+ * @return the [ExtendedVideoData] with the HEVC frame
  */
-fun hevcCodedFrameVideoData(
+fun hevcCodedFrameExtendedVideoData(
     frameType: VideoFrameType, compositionTime: Int, body: NaluRawSource
-) = hevcCodedFrameVideoData(
+) = hevcCodedFrameExtendedVideoData(
     frameType = frameType,
     compositionTime = compositionTime,
     body = body.nalu,
@@ -302,15 +318,15 @@ fun hevcCodedFrameVideoData(
 )
 
 /**
- * Creates an HEVC/H.265 [VideoData] from a [RawSource] and its size.
+ * Creates an HEVC/H.265 [ExtendedVideoData] from a [RawSource] and its size.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param packetType the packet type excluding [VideoPacketType.CODED_FRAMES]
  * @param body the coded HEVC [RawSource] without AVCC or AnnexB header
  * @param bodySize the size of the coded HEVC [RawSource]
- * @return the [VideoData] with the HEVC frame
+ * @return the [ExtendedVideoData] with the HEVC frame
  */
-fun hevcVideoData(
+fun hevcVideoExtendedData(
     frameType: VideoFrameType,
     packetType: VideoPacketType,
     body: RawSource,
@@ -319,40 +335,40 @@ fun hevcVideoData(
     frameType = frameType,
     packetType = packetType,
     fourCC = FourCCs.HEVC,
-    body = DefaultVideoTagBody(
+    body = RawVideoTagBody(
         data = body, dataSize = bodySize
     )
 )
 
 /**
- * Creates an HEVC/H.265 [VideoData] from a [NaluRawSource].
+ * Creates an HEVC/H.265 [ExtendedVideoData] from a [NaluRawSource].
  *
  * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param packetType the packet type excluding [VideoPacketType.CODED_FRAMES]
  * @param body the NAL unit [RawSource].
- * @return the [VideoData] with the HEVC frame
+ * @return the [ExtendedVideoData] with the HEVC frame
  */
-fun hevcVideoData(
+fun hevcVideoExtendedData(
     frameType: VideoFrameType, packetType: VideoPacketType, body: NaluRawSource
-) = hevcVideoData(
+) = hevcVideoExtendedData(
     frameType = frameType, packetType = packetType, body = body.nalu, bodySize = body.naluSize
 )
 
 
 /**
- * Creates an AVC/H.264 [VideoData] for VPS, SPS and PPS.
+ * Creates an AVC/H.264 [ExtendedVideoData] for VPS, SPS and PPS.
  *
  * This method will create a [HEVCDecoderConfigurationRecord] from the VPS, SPS and PPS NAL units.
- * If you want to directly pass [HEVCDecoderConfigurationRecord], use [hevcVideoData] instead.
+ * If you want to directly pass [HEVCDecoderConfigurationRecord], use [hevcVideoExtendedData] instead.
  *
  * @param vps the VPS NAL units
  * @param sps the SPS NAL units
  * @param pps the PPS NAL units
- * @return the [VideoData] with the SPS and PPS
+ * @return the [ExtendedVideoData] with the SPS and PPS
  */
-fun hevcHeaderVideoData(
+fun hevcHeaderExtendedVideoData(
     vps: List<NaluRawSource>,
     sps: List<NaluRawSource>,
     pps: List<NaluRawSource>,
@@ -361,7 +377,7 @@ fun hevcHeaderVideoData(
         vps = vps, sps = sps, pps = pps
     ).readBuffer()
 
-    hevcVideoData(
+    hevcVideoExtendedData(
         frameType = VideoFrameType.KEY,
         packetType = VideoPacketType.SEQUENCE_START,
         body = decoderConfigurationRecord,
@@ -371,41 +387,26 @@ fun hevcHeaderVideoData(
 
 
 /**
- * Creates a VP9 [VideoData] from a [RawSource] and its size.
+ * Creates a [ExtendedVideoData] from a [RawSource] and its size.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param packetType the packet type
+ * @param fourCC the FourCCs
  * @param body the coded VP9 [RawSource]
  * @param bodySize the size of the coded VP9 [RawSource]
- * @return the [VideoData] with the VP9 frame
+ * @return the [ExtendedVideoData] with the VP9 frame
  */
-fun vp9VideoData(
-    frameType: VideoFrameType, packetType: VideoPacketType, body: RawSource, bodySize: Int
+fun extendedVideoData(
+    frameType: VideoFrameType,
+    packetType: VideoPacketType,
+    fourCC: FourCCs,
+    body: RawSource,
+    bodySize: Int
 ) = ExtendedVideoData(
     frameType = frameType,
     packetType = packetType,
-    fourCC = FourCCs.VP9,
-    body = DefaultVideoTagBody(
-        data = body, dataSize = bodySize
-    )
-)
-
-/**
- * Creates an AV1 [VideoData] from a [RawSource] and its size.
- *
- * @param frameType the frame type (key frame or intra frame)
- * @param packetType the packet type
- * @param body the coded VP9 [RawSource]
- * @param bodySize the size of the coded VP9 [RawSource]
- * @return the [VideoData] with the AV1 frame
- */
-fun av1VideoData(
-    frameType: VideoFrameType, packetType: VideoPacketType, body: RawSource, bodySize: Int
-) = ExtendedVideoData(
-    frameType = frameType,
-    packetType = packetType,
-    fourCC = FourCCs.AV1,
-    body = DefaultVideoTagBody(
+    fourCC = fourCC,
+    body = RawVideoTagBody(
         data = body, dataSize = bodySize
     )
 )
@@ -414,8 +415,9 @@ fun av1VideoData(
  * Creates an [ExtendedVideoData] for the end of sequence.
  *
  * @param fourCC the FourCCs
+ * @return the [ExtendedVideoData] with the end of sequence
  */
-fun endOfSequenceVideoData(
+fun endOfSequenceExtendedVideoData(
     fourCC: FourCCs
 ) = ExtendedVideoData(
     VideoFrameType.KEY, VideoPacketType.SEQUENCE_END, fourCC, EmptyVideoTagBody()

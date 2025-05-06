@@ -17,6 +17,10 @@ package io.github.thibaultbee.krtmp.flv.models.tags
 
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
+import io.github.thibaultbee.krtmp.flv.models.config.FourCCs
+import io.github.thibaultbee.krtmp.flv.models.tags.ExtendedVideoData.SingleVideoPacketDescriptor.Companion.decodeBody
+import io.github.thibaultbee.krtmp.flv.models.util.extensions.readSource
+import io.github.thibaultbee.krtmp.flv.models.util.extensions.writeByte
 import kotlinx.io.RawSource
 import kotlinx.io.Sink
 import kotlinx.io.Source
@@ -24,59 +28,52 @@ import kotlinx.io.Source
 /**
  * Interface for video tag body.
  */
-interface IVideoTagBody {
+interface VideoTagBody {
     val size: Int
     fun encode(output: Sink)
 }
 
+interface SingleVideoTagBody : VideoTagBody
+
 /**
  * Default video tag body.
- *
  */
-class DefaultVideoTagBody(
-    val data: RawSource, val dataSize: Int
-) : IVideoTagBody {
+class RawVideoTagBody(
+    val data: RawSource,
+    val dataSize: Int
+) : SingleVideoTagBody {
     override val size = dataSize
 
     override fun encode(output: Sink) {
         output.write(data, dataSize.toLong())
     }
 
+    override fun toString(): String {
+        return "RawVideoTagBody(dataSize=$dataSize)"
+    }
+
     companion object {
-        fun decode(source: Source, sourceSize: Int): DefaultVideoTagBody {
-            return DefaultVideoTagBody(source, sourceSize)
+        fun decode(source: Source, sourceSize: Int): RawVideoTagBody {
+            return RawVideoTagBody(source.readSource(sourceSize.toLong()), sourceSize)
         }
     }
 }
 
-class CommandVideoTagBody(
-    val command: VideoCommand
-) : IVideoTagBody {
-    override val size = 1
-
-    override fun encode(output: Sink) {
-        output.writeByte(command.value)
-    }
-
-    companion object {
-        fun decode(source: Source, sourceSize: Int): CommandVideoTagBody {
-            require(sourceSize >= 1) { "Command video tag body must have at least 1 byte" }
-            val command = source.readByte()
-            return CommandVideoTagBody(VideoCommand.entryOf(command))
-        }
-    }
-}
-
-class EmptyVideoTagBody : IVideoTagBody {
-    override val size = 0
-    override fun encode(output: Sink) = Unit  // End of sequence does not have a body
-}
-
-class AVCHEVCCodedFrameVideoTagBody(
+/**
+ * AVC HEVC coded frame video tag body.
+ *
+ * Only to be used with extended AVC and HEVC codec when packet type is
+ * [VideoPacketType.CODED_FRAMES].
+ *
+ * @param compositionTime 24 bits composition time
+ * @param data The raw source data of the video frame.
+ * @param dataSize The size of the data in bytes.
+ */
+class ExtendedWithCompositionTimeVideoTagBody(
     val compositionTime: Int, // 24 bits
     val data: RawSource,
     val dataSize: Int
-) : IVideoTagBody {
+) : SingleVideoTagBody {
     override val size = 3 + dataSize
 
     override fun encode(output: Sink) {
@@ -84,15 +81,163 @@ class AVCHEVCCodedFrameVideoTagBody(
         output.write(data, dataSize.toLong())
     }
 
+    override fun toString(): String {
+        return "ExtendedWithCompositionTimeVideoTagBody(compositionTime=$compositionTime, dataSize=$dataSize)"
+    }
+
     companion object {
         fun decode(
             source: Source, sourceSize: Int
-        ): AVCHEVCCodedFrameVideoTagBody {
-            return AVCHEVCCodedFrameVideoTagBody(
-                source.readInt24(),
-                source,
-                sourceSize - 3
+        ): ExtendedWithCompositionTimeVideoTagBody {
+            val compositionTime = source.readInt24()
+            val remainingSize = sourceSize - 3
+            return ExtendedWithCompositionTimeVideoTagBody(
+                compositionTime,
+                source.readSource(remainingSize.toLong()),
+                remainingSize
             )
+        }
+    }
+}
+
+internal class CommandLegacyVideoTagBody(
+    val command: VideoCommand
+) : VideoTagBody {
+    override val size = 1
+
+    override fun encode(output: Sink) {
+        output.writeByte(command.value)
+    }
+
+    companion object {
+        fun decode(source: Source, sourceSize: Int): CommandLegacyVideoTagBody {
+            require(sourceSize >= 1) { "Command video tag body must have at least 1 byte" }
+            val command = source.readByte()
+            return CommandLegacyVideoTagBody(VideoCommand.entryOf(command))
+        }
+    }
+}
+
+/**
+ * Empty video tag body.
+ */
+internal class EmptyVideoTagBody : SingleVideoTagBody {
+    override val size = 0
+    override fun encode(output: Sink) = Unit  // End of sequence does not have a body
+}
+
+interface MultitrackVideoTagBody : VideoTagBody
+
+class OneTrackVideoTagBody(
+    val trackId: Byte,
+    val body: SingleVideoTagBody
+) : MultitrackVideoTagBody {
+    override val size = 1 + body.size
+
+    override fun encode(output: Sink) {
+        output.writeByte(trackId)
+        body.encode(output)
+    }
+
+    override fun toString(): String {
+        return "OneTrackVideoTagBody(trackId=$trackId, body=$body)"
+    }
+
+    companion object {
+        fun decode(
+            packetType: VideoPacketType, fourCC: FourCCs, source: Source, sourceSize: Int
+        ): OneTrackVideoTagBody {
+            require(sourceSize >= 1) { "One track video tag body must have at least 1 byte" }
+            val trackId = source.readByte()
+            val body = decodeBody(packetType, fourCC, source, sourceSize - 1)
+            return OneTrackVideoTagBody(trackId, body)
+        }
+    }
+}
+
+class ManyTrackOneCodecVideoTagBody(
+    val tracks: Set<OneTrackVideoTagBody>
+) : MultitrackVideoTagBody {
+    override val size = 1 + tracks.sumOf { it.size }
+
+    override fun encode(output: Sink) {
+        tracks.forEach { track ->
+            output.writeByte(track.trackId)
+            output.writeInt24(track.body.size)
+            track.body.encode(output)
+        }
+    }
+
+    override fun toString(): String {
+        return "ManyTrackOneCodecVideoTagBody(tracks=$tracks)"
+    }
+
+    companion object {
+        fun decode(
+            packetType: VideoPacketType, fourCC: FourCCs, source: Source, sourceSize: Int
+        ): ManyTrackOneCodecVideoTagBody {
+            val tracks = mutableSetOf<OneTrackVideoTagBody>()
+            var remainingSize = sourceSize
+            while (remainingSize > 0) {
+                val track = OneTrackVideoTagBody.decode(packetType, fourCC, source, remainingSize)
+                tracks.add(track)
+                remainingSize -= track.size
+            }
+            return ManyTrackOneCodecVideoTagBody(tracks)
+        }
+    }
+}
+
+class ManyTrackManyCodecVideoTagBody(
+    val tracks: Set<OneTrackMultiCodecVideoTagBody>
+) : MultitrackVideoTagBody {
+    override val size = 1 + tracks.sumOf { it.size }
+
+    override fun encode(output: Sink) {
+        tracks.forEach { track ->
+            track.encode(output)
+        }
+    }
+
+    override fun toString(): String {
+        return "ManyTrackManyCodecVideoTagBody(tracks=$tracks)"
+    }
+
+    companion object {
+        fun decode(
+            packetType: VideoPacketType, source: Source, sourceSize: Int
+        ): ManyTrackManyCodecVideoTagBody {
+            val tracks = mutableSetOf<OneTrackMultiCodecVideoTagBody>()
+            var remainingSize = sourceSize
+            while (remainingSize > 0) {
+                val track = OneTrackMultiCodecVideoTagBody.decode(packetType, source, remainingSize)
+                tracks.add(track)
+                remainingSize -= track.size
+            }
+            return ManyTrackManyCodecVideoTagBody(tracks)
+        }
+    }
+
+    data class OneTrackMultiCodecVideoTagBody(
+        val fourCC: FourCCs,
+        val trackId: Byte = 0,
+        val body: SingleVideoTagBody
+    ) {
+        val size = 1 + body.size
+
+        fun encode(output: Sink) {
+            output.writeByte(fourCC.value.code)
+            output.writeByte(trackId)
+            output.writeInt24(body.size)
+            body.encode(output)
+        }
+
+        companion object {
+            fun decode(
+                packetType: VideoPacketType, source: Source, sourceSize: Int
+            ): OneTrackMultiCodecVideoTagBody {
+                throw NotImplementedError("OneTrackMultiCodecVideoTagBody decoding not implemented yet")
+            }
         }
     }
 }

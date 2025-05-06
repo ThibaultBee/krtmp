@@ -11,5 +11,6 @@ internal object AmfUtil {
     internal val amf = Amf {
         encodeDefaults = true
         explicitNulls = false
+        ignoreUnknownKeys = true
     }
 }

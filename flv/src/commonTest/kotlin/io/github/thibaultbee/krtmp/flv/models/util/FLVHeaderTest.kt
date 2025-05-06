@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 
 
-class FlvHeaderTest {
+class FLVHeaderTest {
     @Test
     fun `test audio video flv header`() {
         val expected = byteArrayOf(
@@ -20,7 +20,7 @@ class FlvHeaderTest {
             0x00,
             0x09
         ) // FLV header
-        val flvHeader = FlvHeader(hasAudio = true, hasVideo = true)
+        val flvHeader = FLVHeader(hasAudio = true, hasVideo = true)
         val buffer = Buffer()
         flvHeader.encode(buffer)
         assertContentEquals(expected, buffer.readByteArray())

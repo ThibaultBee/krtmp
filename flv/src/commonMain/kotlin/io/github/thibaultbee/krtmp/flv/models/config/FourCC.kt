@@ -34,11 +34,11 @@ enum class FourCCs(val value: FourCC) {
         )
     ),
     AVC(
-        FourCC(
+        AVCHEVCFourCC(
             'a', 'v', 'c', '1', MediaType.VIDEO_AVC
         )
     ),
-    HEVC(FourCC('h', 'v', 'c', '1', MediaType.VIDEO_HEVC));
+    HEVC(AVCHEVCFourCC('h', 'v', 'c', '1', MediaType.VIDEO_HEVC));
 
     companion object {
         fun mimeTypeOf(mediaType: MediaType) =
@@ -51,10 +51,20 @@ enum class FourCCs(val value: FourCC) {
     }
 }
 
+class AVCHEVCFourCC(
+    a: Char, b: Char, c: Char, d: Char, mediaType: MediaType
+) : FourCC(a, b, c, d, mediaType)
+
 /**
  * FourCC is a 4 bytes code used to identify a codec.
  */
-data class FourCC(val a: Char, val b: Char, val c: Char, val d: Char, val mediaType: MediaType) {
+open class FourCC internal constructor(
+    val a: Char,
+    val b: Char,
+    val c: Char,
+    val d: Char,
+    val mediaType: MediaType
+) {
 
     /**
      * FourCC code
