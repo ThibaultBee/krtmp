@@ -16,56 +16,14 @@
 package io.github.thibaultbee.krtmp.flv.models.config
 
 /**
- * FourCC object
- *
- * Just AV1, VP9 and HEVC are described because these are the only FourCC required for enhanced RTMP.
- */
-
-enum class FourCCs(val value: FourCC) {
-    VP8(
-        FourCC(
-            'v', 'p', '0', '8', MediaType.VIDEO_VP8
-        )
-    ),
-    VP9(FourCC('v', 'p', '0', '9', MediaType.VIDEO_VP9)),
-    AV1(
-        FourCC(
-            'a', 'v', '0', '1', MediaType.VIDEO_AV1
-        )
-    ),
-    AVC(
-        AVCHEVCFourCC(
-            'a', 'v', 'c', '1', MediaType.VIDEO_AVC
-        )
-    ),
-    HEVC(AVCHEVCFourCC('h', 'v', 'c', '1', MediaType.VIDEO_HEVC));
-
-    companion object {
-        fun mimeTypeOf(mediaType: MediaType) =
-            entries.first { it.value.mediaType == mediaType }
-
-        fun mimeTypeOf(mimeType: String) =
-            entries.first { it.value.mediaType.value == mimeType }
-
-        fun codeOf(value: Int) = entries.first { it.value.code == value }
-    }
-}
-
-class AVCHEVCFourCC(
-    a: Char, b: Char, c: Char, d: Char, mediaType: MediaType
-) : FourCC(a, b, c, d, mediaType)
-
-/**
  * FourCC is a 4 bytes code used to identify a codec.
  */
 open class FourCC internal constructor(
     val a: Char,
     val b: Char,
     val c: Char,
-    val d: Char,
-    val mediaType: MediaType
+    val d: Char
 ) {
-
     /**
      * FourCC code
      */

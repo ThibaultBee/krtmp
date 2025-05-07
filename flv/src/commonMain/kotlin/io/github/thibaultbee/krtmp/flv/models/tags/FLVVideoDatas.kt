@@ -19,7 +19,7 @@ import io.github.thibaultbee.krtmp.flv.models.av.util.avc.AVCDecoderConfiguratio
 import io.github.thibaultbee.krtmp.flv.models.av.util.hevc.HEVCDecoderConfigurationRecord
 import io.github.thibaultbee.krtmp.flv.models.av.util.readBuffer
 import io.github.thibaultbee.krtmp.flv.models.config.CodecID
-import io.github.thibaultbee.krtmp.flv.models.config.FourCCs
+import io.github.thibaultbee.krtmp.flv.models.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.models.sources.NaluRawSource
 import kotlinx.io.RawSource
 
@@ -185,7 +185,7 @@ fun avcCodedFrameExtendedVideoData(
     frameType: VideoFrameType, compositionTime: Int, body: RawSource, bodySize: Int
 ) = ExtendedVideoData(
     frameType = frameType,
-    fourCC = FourCCs.AVC,
+    fourCC = VideoFourCC.AVC,
     packetType = VideoPacketType.CODED_FRAMES,
     body = ExtendedWithCompositionTimeVideoTagBody(
         compositionTime = compositionTime, data = body, dataSize = bodySize
@@ -225,7 +225,7 @@ fun avcExtendedVideoData(
     frameType: VideoFrameType, packetType: VideoPacketType, body: RawSource, bodySize: Int
 ) = ExtendedVideoData(
     frameType = frameType,
-    fourCC = FourCCs.AVC,
+    fourCC = VideoFourCC.AVC,
     packetType = packetType,
     body = RawVideoTagBody(
         data = body, dataSize = bodySize
@@ -290,7 +290,7 @@ fun hevcCodedFrameExtendedVideoData(
 ) = ExtendedVideoData(
     frameType = frameType,
     packetType = VideoPacketType.CODED_FRAMES,
-    fourCC = FourCCs.HEVC,
+    fourCC = VideoFourCC.HEVC,
     body = ExtendedWithCompositionTimeVideoTagBody(
         compositionTime = compositionTime, data = body, dataSize = bodySize
     )
@@ -334,7 +334,7 @@ fun hevcVideoExtendedData(
 ) = ExtendedVideoData(
     frameType = frameType,
     packetType = packetType,
-    fourCC = FourCCs.HEVC,
+    fourCC = VideoFourCC.HEVC,
     body = RawVideoTagBody(
         data = body, dataSize = bodySize
     )
@@ -399,7 +399,7 @@ fun hevcHeaderExtendedVideoData(
 fun extendedVideoData(
     frameType: VideoFrameType,
     packetType: VideoPacketType,
-    fourCC: FourCCs,
+    fourCC: VideoFourCC,
     body: RawSource,
     bodySize: Int
 ) = ExtendedVideoData(
@@ -418,7 +418,7 @@ fun extendedVideoData(
  * @return the [ExtendedVideoData] with the end of sequence
  */
 fun endOfSequenceExtendedVideoData(
-    fourCC: FourCCs
+    fourCC: VideoFourCC
 ) = ExtendedVideoData(
     VideoFrameType.KEY, VideoPacketType.SEQUENCE_END, fourCC, EmptyVideoTagBody()
 )

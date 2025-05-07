@@ -21,8 +21,7 @@ import io.github.thibaultbee.krtmp.amf.elements.Amf3ElementReader
 import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory
 import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
-import io.github.thibaultbee.krtmp.flv.models.config.FourCCs
-import io.github.thibaultbee.krtmp.flv.models.config.MediaType
+import io.github.thibaultbee.krtmp.flv.models.config.VideoFourCC
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import io.github.thibaultbee.krtmp.rtmp.extensions.orNull
 import io.github.thibaultbee.krtmp.rtmp.util.AmfUtil.amf
@@ -383,11 +382,11 @@ open class Command(
                     return supportedCodecs.contains(mediaType)
                 }
 
-                fun fromMediaType(mediaType: MediaType): FourCCs {
+                fun fromMediaType(mediaType: MediaType): VideoFourCC {
                     if (!isSupportedCodec(mediaType)) {
                         throw IllegalArgumentException("Unsupported codec: $mediaType")
                     }
-                    return FourCCs.mimeTypeOf(mediaType)
+                    return VideoFourCC.mimeTypeOf(mediaType)
                 }
             }
         }

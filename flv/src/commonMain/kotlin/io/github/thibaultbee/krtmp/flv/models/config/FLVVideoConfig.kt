@@ -16,44 +16,84 @@
 package io.github.thibaultbee.krtmp.flv.models.config
 
 class FLVVideoConfig(
-    override val mediaType: MediaType,
+    override val mediaType: VideoMediaType,
     override val bitrateBps: Int,
     val width: Int,
     val height: Int,
     val frameRate: Int,
-) : FLVConfig {
-    val codecID = if (CodecID.isSupported(mediaType)) {
-        CodecID.fromMediaType(mediaType)
-    } else {
-        null
-    }
-
-    init {
-        require(mediaType.type == MediaType.Type.VIDEO) { "MimeType must be a video type" }
-    }
+) : FLVConfig<VideoMediaType> {
+    val codecID = mediaType.codecID
+    val fourCC = mediaType.fourCCs
+    val metadataType = codecID?.value?.toInt() ?: fourCC!!.value.code
 }
 
 
-enum class CodecID(val value: Byte, val mediaType: MediaType? = null) {
-    SORENSON_H263(2, MediaType.VIDEO_H263),
+enum class CodecID(val value: Byte) {
+    SORENSON_H263(2),
     SCREEN_1(3),
     VP6(4),
     VP6_ALPHA(5),
     SCREEN_2(6),
-    AVC(7, MediaType.VIDEO_AVC);
+    AVC(7);
 
     companion object {
         fun entryOf(value: Byte) = entries.firstOrNull { it.value == value }
             ?: throw IllegalArgumentException("Unsupported CodecID: $value")
-
-        fun isSupported(mediaType: MediaType): Boolean {
-            return entries.any { it.mediaType == mediaType }
-        }
-
-        fun fromMediaType(mediaType: MediaType): CodecID {
-            return entries.firstOrNull { it.mediaType == mediaType }
-                ?: throw IllegalArgumentException("Unsupported MediaType: $mediaType")
-        }
     }
 }
 
+/**
+ * FourCC object
+ *
+ * Only enhanced RTMP FourCC exists.
+ */
+enum class VideoFourCC(val value: FourCC) {
+    VP8(
+        FourCC(
+            'v', 'p', '0', '8'
+        )
+    ),
+    VP9(FourCC('v', 'p', '0', '9')),
+    AV1(
+        FourCC(
+            'a', 'v', '0', '1'
+        )
+    ),
+    AVC(
+        AVCHEVCFourCC(
+            'a', 'v', 'c', '1'
+        )
+    ),
+    HEVC(AVCHEVCFourCC('h', 'v', 'c', '1'));
+
+    companion object {
+        fun codeOf(value: Int) = entries.firstOrNull { it.value.code == value }
+            ?: throw IllegalArgumentException("Unsupported video FourCC: $value")
+    }
+}
+
+class AVCHEVCFourCC(
+    a: Char, b: Char, c: Char, d: Char
+) : FourCC(a, b, c, d)
+
+/**
+ * A meta class for [CodecID] and [VideoFourCC].
+ */
+enum class VideoMediaType(val codecID: CodecID?, val fourCCs: VideoFourCC?) {
+    H263(CodecID.SORENSON_H263, null),
+    AVC(CodecID.AVC, VideoFourCC.AVC),
+    HEVC(null, VideoFourCC.HEVC),
+    VP8(null, VideoFourCC.VP8),
+    VP9(null, VideoFourCC.VP9),
+    AV1(null, VideoFourCC.AV1);
+
+    companion object {
+        fun fromFourCC(fourCC: VideoFourCC): VideoMediaType? {
+            return entries.firstOrNull { it.fourCCs == fourCC }
+        }
+
+        fun fromCodecID(codecID: CodecID): VideoMediaType? {
+            return entries.firstOrNull { it.codecID == codecID }
+        }
+    }
+}

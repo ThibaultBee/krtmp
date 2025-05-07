@@ -2,12 +2,13 @@ package io.github.thibaultbee.krtmp.flv.models.tags
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.Resource
+import io.github.thibaultbee.krtmp.flv.models.config.AudioMediaType
 import io.github.thibaultbee.krtmp.flv.models.config.FLVAudioConfig
 import io.github.thibaultbee.krtmp.flv.models.config.FLVVideoConfig
-import io.github.thibaultbee.krtmp.flv.models.config.MediaType
 import io.github.thibaultbee.krtmp.flv.models.config.SoundRate
 import io.github.thibaultbee.krtmp.flv.models.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.models.config.SoundType
+import io.github.thibaultbee.krtmp.flv.models.config.VideoMediaType
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -17,16 +18,16 @@ class OnMetadataTest {
     fun `test write onMetadata from config for video only`() {
         val expected = Resource("tags/onMetadata/onMetadataForLegacyVideo").toByteArray()
 
-        val configs = listOf(
-            FLVVideoConfig(
-                mediaType = MediaType.VIDEO_AVC,
+        val onMetadata = OnMetadata(
+            audioConfig = null,
+            videoConfig = FLVVideoConfig(
+                mediaType = VideoMediaType.AVC,
                 bitrateBps = 2000000,
                 width = 640,
                 height = 480,
                 frameRate = 30
-            ),
+            )
         )
-        val onMetadata = OnMetadata(configs)
 
         assertContentEquals(expected, FLVTag(0, onMetadata).readByteArray())
     }
@@ -35,16 +36,16 @@ class OnMetadataTest {
     fun `test write onMetadata from config for audio only`() {
         val expected = Resource("tags/onMetadata/onMetadataForLegacyAudio").toByteArray()
 
-        val configs = listOf(
-            FLVAudioConfig(
-                mediaType = MediaType.AUDIO_AAC,
+        val onMetadata = OnMetadata(
+            audioConfig = FLVAudioConfig(
+                mediaType = AudioMediaType.AAC,
                 bitrateBps = 128000,
                 soundRate = SoundRate.F_44100HZ,
                 soundSize = SoundSize.S_16BITS,
                 soundType = SoundType.STEREO
             ),
+            videoConfig = null
         )
-        val onMetadata = OnMetadata(configs)
 
         assertContentEquals(expected, FLVTag(0, onMetadata).readByteArray())
     }
@@ -84,5 +85,32 @@ class OnMetadataTest {
         assertEquals(expected.width, metadata.width)
         assertEquals(expected.height, metadata.height)
         assertEquals(expected.framerate, metadata.framerate)
+    }
+
+    @Test
+    fun `test videocodecid fromConfigs`() {
+        var metadata = OnMetadata.Metadata.fromConfigs(
+            audioConfig = null,
+            videoConfig = FLVVideoConfig(
+                mediaType = VideoMediaType.AVC,
+                bitrateBps = 2000000,
+                width = 640,
+                height = 480,
+                frameRate = 30
+            )
+        )
+        assertEquals(7.0, metadata.videocodecid)
+
+        metadata = OnMetadata.Metadata.fromConfigs(
+            audioConfig = null,
+            videoConfig = FLVVideoConfig(
+                mediaType = VideoMediaType.AV1,
+                bitrateBps = 2000000,
+                width = 640,
+                height = 480,
+                frameRate = 30
+            )
+        )
+        assertEquals(1635135537.0, metadata.videocodecid)
     }
 }

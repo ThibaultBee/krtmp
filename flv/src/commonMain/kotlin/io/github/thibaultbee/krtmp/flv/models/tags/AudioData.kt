@@ -50,6 +50,10 @@ class AudioData(
         body.encode(output)
     }
 
+    override fun toString(): String {
+        return "AudioData(soundFormat=$soundFormat, soundRate=$soundRate, soundSize=$soundSize, soundType=$soundType, body=$body)"
+    }
+
     companion object {
         fun decode(source: Source, sourceSize: Int, isEncrypted: Boolean): AudioData {
             val byte = source.readByte()

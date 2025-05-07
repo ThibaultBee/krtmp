@@ -18,11 +18,11 @@ package io.github.thibaultbee.krtmp.flv.models.config
 /**
  * Interface for FLV configuration.
  */
-sealed interface FLVConfig {
+sealed interface FLVConfig<T> {
     /**
      * The media type of the configuration.
      */
-    val mediaType: MediaType
+    val mediaType: T
 
     /**
      * The bitrate in bits per second.

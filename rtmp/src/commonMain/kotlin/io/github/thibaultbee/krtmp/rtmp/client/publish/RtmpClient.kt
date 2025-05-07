@@ -21,7 +21,6 @@ import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
 import io.github.thibaultbee.krtmp.common.logger.Logger
 import io.github.thibaultbee.krtmp.flv.FLVMuxer
-import io.github.thibaultbee.krtmp.flv.models.config.MediaType
 import io.github.thibaultbee.krtmp.flv.models.sources.ByteArrayRawSource
 import io.github.thibaultbee.krtmp.flv.models.sources.RawSourceWithSize
 import io.github.thibaultbee.krtmp.flv.models.tags.FLVTag

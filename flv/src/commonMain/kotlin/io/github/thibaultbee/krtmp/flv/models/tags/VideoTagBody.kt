@@ -17,7 +17,7 @@ package io.github.thibaultbee.krtmp.flv.models.tags
 
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
-import io.github.thibaultbee.krtmp.flv.models.config.FourCCs
+import io.github.thibaultbee.krtmp.flv.models.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.models.tags.ExtendedVideoData.SingleVideoPacketDescriptor.Companion.decodeBody
 import io.github.thibaultbee.krtmp.flv.models.util.extensions.readSource
 import io.github.thibaultbee.krtmp.flv.models.util.extensions.writeByte
@@ -145,7 +145,7 @@ class OneTrackVideoTagBody(
 
     companion object {
         fun decode(
-            packetType: VideoPacketType, fourCC: FourCCs, source: Source, sourceSize: Int
+            packetType: VideoPacketType, fourCC: VideoFourCC, source: Source, sourceSize: Int
         ): OneTrackVideoTagBody {
             require(sourceSize >= 1) { "One track video tag body must have at least 1 byte" }
             val trackId = source.readByte()
@@ -174,7 +174,7 @@ class ManyTrackOneCodecVideoTagBody(
 
     companion object {
         fun decode(
-            packetType: VideoPacketType, fourCC: FourCCs, source: Source, sourceSize: Int
+            packetType: VideoPacketType, fourCC: VideoFourCC, source: Source, sourceSize: Int
         ): ManyTrackOneCodecVideoTagBody {
             val tracks = mutableSetOf<OneTrackVideoTagBody>()
             var remainingSize = sourceSize
@@ -219,7 +219,7 @@ class ManyTrackManyCodecVideoTagBody(
     }
 
     data class OneTrackMultiCodecVideoTagBody(
-        val fourCC: FourCCs,
+        val fourCC: VideoFourCC,
         val trackId: Byte = 0,
         val body: SingleVideoTagBody
     ) {

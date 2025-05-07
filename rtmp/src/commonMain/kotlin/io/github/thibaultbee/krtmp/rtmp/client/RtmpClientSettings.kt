@@ -20,7 +20,6 @@ import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_AUDIO_CODECS
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_FLASH_VER
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_VIDEO_CODECS
-import io.github.thibaultbee.krtmp.flv.models.config.MediaType
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**

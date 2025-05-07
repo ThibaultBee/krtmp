@@ -18,7 +18,6 @@ package io.github.thibaultbee.krtmp.flv.models.tags
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
 import io.github.thibaultbee.krtmp.flv.models.config.FLVAudioConfig
-import io.github.thibaultbee.krtmp.flv.models.config.FLVConfig
 import io.github.thibaultbee.krtmp.flv.models.config.FLVVideoConfig
 import io.github.thibaultbee.krtmp.flv.models.config.SoundType
 import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata.Metadata
@@ -26,22 +25,27 @@ import io.github.thibaultbee.krtmp.flv.models.util.AmfUtil.amf
 import kotlinx.serialization.Serializable
 
 /**
- * Creates a onMetaData
+ * Creates a [OnMetadata] from an ECMA array
+ *
  * @param value ECMA array of the [Metadata]
+ * @return The onMetaData data
  */
 fun OnMetadata(value: AmfEcmaArray) =
     OnMetadata(Metadata.fromArray(value))
 
 /**
- * Creates a onMetaData
- * @param configs List of [FLVConfig] to write metadata from
+ * Creates a [OnMetadata] from audio and video configurations
+ *
+ * @param audioConfig The audio configuration
+ * @param videoConfig The video configuration
+ * @return The onMetaData data
  */
-fun OnMetadata(configs: List<FLVConfig>) =
-    OnMetadata(Metadata.fromConfigs(configs))
+fun OnMetadata(audioConfig: FLVAudioConfig?, videoConfig: FLVVideoConfig?) =
+    OnMetadata(Metadata.fromConfigs(audioConfig, videoConfig))
 
 /**
  * The onMetaData data
- * @param metadata Metadata to write
+ * @param metadata the Metadata to write
  */
 class OnMetadata(
     val metadata: Metadata,
@@ -52,7 +56,7 @@ class OnMetadata(
     ) {
 
     @Serializable
-    class Metadata(
+    open class Metadata(
         val duration: Double = 0.0,
         val audiocodecid: Double? = null,
         val audiodatarate: Double? = null,
@@ -63,7 +67,9 @@ class OnMetadata(
         val videodatarate: Double? = null,
         val width: Double? = null,
         val height: Double? = null,
-        val framerate: Double? = null
+        val framerate: Double? = null,
+        val audioTrackIdInfoMap: Map<String, AudioTrackIdInfo>? = null,
+        val videoTrackIdInfoMap: Map<String, VideoTrackIdInfo>? = null
     ) {
         fun encode(): AmfEcmaArray {
             return AmfEcmaArray(
@@ -79,28 +85,138 @@ class OnMetadata(
                 return amf.decodeFromAmfElement(serializer(), AmfObject(array))
             }
 
-            fun fromConfigs(configs: List<FLVConfig>): Metadata {
-                require(configs.isNotEmpty()) { "Configs list must not be empty" }
-                require(configs.size <= 2) { "Configs list must not contain more than 2 elements" }
+            fun fromConfigs(
+                audioConfig: FLVAudioConfig?,
+                videoConfig: FLVVideoConfig?
+            ): Metadata {
+                val audioConfigs = audioConfig?.let { mapOf(0 to it) } ?: emptyMap()
+                val videoConfigs = videoConfig?.let { mapOf(0 to it) } ?: emptyMap()
+                return fromConfigs(audioConfigs, videoConfigs)
+            }
 
-                val audioConfig = configs.firstOrNull { it is FLVAudioConfig } as FLVAudioConfig?
-                val videoConfig = configs.firstOrNull { it is FLVVideoConfig } as FLVVideoConfig?
+            fun fromConfigs(
+                audioConfigs: Map<Int, FLVAudioConfig>,
+                videoConfigs: Map<Int, FLVVideoConfig>
+            ): Metadata {
+                require((audioConfigs.isNotEmpty()) or (videoConfigs.isNotEmpty())) {
+                    "Either audio or video config must be provided"
+                }
+                require(audioConfigs.keys.distinct().size == audioConfigs.keys.size) {
+                    "Audio config keys must be distinct"
+                }
+                require(videoConfigs.keys.distinct().size == videoConfigs.keys.size) {
+                    "Video config keys must be distinct"
+                }
+                val firstAudioConfig = audioConfigs.values.firstOrNull()
+                val firstVideoConfig = videoConfigs.values.firstOrNull()
+
+                val audioTrackIdInfoMap = mutableMapOf<String, AudioTrackIdInfo>()
+                audioConfigs.forEach { (key, config) ->
+                    audioTrackIdInfoMap[key.toString()] = AudioTrackIdInfo(
+                        audiocodecid = if (config.mediaType != firstAudioConfig?.mediaType) {
+                            config.metadataType.toDouble()
+                        } else {
+                            null
+                        },
+                        audiodatarate = if (config.bitrateBps != firstAudioConfig?.bitrateBps) {
+                            config.bitrateBps.div(1000).toDouble()
+                        } else {
+                            null
+                        },
+                        channels = if (config.soundType != firstAudioConfig?.soundType) {
+                            config.soundType.value.toDouble()
+                        } else {
+                            null
+                        },
+                        audiosamplerate = if (config.soundRate != firstAudioConfig?.soundRate) {
+                            config.soundRate.sampleRate.toDouble()
+                        } else {
+                            null
+                        },
+                        audiosamplesize = if (config.soundSize != firstAudioConfig?.soundSize) {
+                            config.soundSize.byteFormat.numOfBytes.times(Byte.SIZE_BITS)
+                                .toDouble()
+                        } else {
+                            null
+                        }
+                    )
+                }
+
+                val videoTrackIdInfoMap = mutableMapOf<String, VideoTrackIdInfo>()
+                videoConfigs.forEach { (key, config) ->
+                    videoTrackIdInfoMap[key.toString()] = VideoTrackIdInfo(
+                        videocodecid = if (config.mediaType != firstVideoConfig?.mediaType) {
+                            config.metadataType.toDouble()
+                        } else {
+                            null
+                        },
+                        videodatarate = if (config.bitrateBps != firstVideoConfig?.bitrateBps) {
+                            config.bitrateBps.div(1000).toDouble()
+                        } else {
+                            null
+                        },
+                        width = if (config.width != firstVideoConfig?.width) {
+                            config.width.toDouble()
+                        } else {
+                            null
+                        },
+                        height = if (config.height != firstVideoConfig?.height) {
+                            config.height.toDouble()
+                        } else {
+                            null
+                        }
+                    )
+                }
 
                 return Metadata(
                     duration = 0.0,
-                    audiocodecid = audioConfig?.soundFormat?.value?.toDouble(),
-                    audiodatarate = audioConfig?.bitrateBps?.div(1000)?.toDouble(), // to Kbps
-                    audiosamplerate = audioConfig?.soundRate?.sampleRate?.toDouble(),
-                    audiosamplesize = audioConfig?.soundSize?.byteFormat?.numOfBytes?.times(Byte.SIZE_BITS)
-                        ?.toDouble(),
-                    stereo = audioConfig?.let { (it.soundType == SoundType.STEREO) },
-                    videocodecid = videoConfig?.codecID?.value?.toDouble(),
-                    videodatarate = videoConfig?.bitrateBps?.div(1000)?.toDouble(), // to Kbps
-                    width = videoConfig?.width?.toDouble(),
-                    height = videoConfig?.height?.toDouble(),
-                    framerate = videoConfig?.frameRate?.toDouble()
+                    audiocodecid = firstAudioConfig?.metadataType?.toDouble(),
+                    audiodatarate = firstAudioConfig?.bitrateBps?.div(1000)?.toDouble(), // to Kbps
+                    audiosamplerate = firstAudioConfig?.soundRate?.sampleRate?.toDouble(),
+                    audiosamplesize = firstAudioConfig?.soundSize?.byteFormat?.numOfBytes?.times(
+                        Byte.SIZE_BITS
+                    )?.toDouble(),
+                    stereo = firstAudioConfig?.let { (it.soundType == SoundType.STEREO) },
+                    videocodecid = firstVideoConfig?.metadataType?.toDouble(),
+                    videodatarate = firstVideoConfig?.bitrateBps?.div(1000)?.toDouble(), // to Kbps
+                    width = firstVideoConfig?.width?.toDouble(),
+                    height = firstVideoConfig?.height?.toDouble(),
+                    framerate = firstVideoConfig?.frameRate?.toDouble(),
+                    audioTrackIdInfoMap = if (audioTrackIdInfoMap.size > 1) {
+                        audioTrackIdInfoMap
+                    } else {
+                        null
+                    },
+                    videoTrackIdInfoMap = if (videoTrackIdInfoMap.size > 1) {
+                        videoTrackIdInfoMap
+                    } else {
+                        null
+                    }
                 )
             }
         }
+
+        /**
+         * A multitrack metadata for video
+         */
+        @Serializable
+        data class VideoTrackIdInfo(
+            val videocodecid: Double? = null,
+            val width: Double? = null,
+            val height: Double? = null,
+            val videodatarate: Double? = null
+        )
+
+        /**
+         * A multitrack metadata for audio
+         */
+        @Serializable
+        data class AudioTrackIdInfo(
+            val audiocodecid: Double? = null,
+            val audiodatarate: Double? = null,
+            val channels: Double? = null,
+            val audiosamplerate: Double? = null,
+            val audiosamplesize: Double? = null
+        )
     }
 }

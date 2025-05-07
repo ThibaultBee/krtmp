@@ -19,7 +19,7 @@ import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.models.config.CodecID
-import io.github.thibaultbee.krtmp.flv.models.config.FourCCs
+import io.github.thibaultbee.krtmp.flv.models.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.models.util.WithValue
 import io.github.thibaultbee.krtmp.flv.models.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.models.util.extensions.shr
@@ -108,7 +108,7 @@ class LegacyVideoData internal constructor(
 fun ExtendedVideoData(
     frameType: VideoFrameType,
     packetType: VideoPacketType,
-    fourCC: FourCCs,
+    fourCC: VideoFourCC,
     body: SingleVideoTagBody
 ) = ExtendedVideoData(
     packetDescriptor = ExtendedVideoData.SingleVideoPacketDescriptor(
@@ -207,7 +207,7 @@ class ExtendedVideoData internal constructor(
     class SingleVideoPacketDescriptor internal constructor(
         override val frameType: VideoFrameType,
         override val packetType: VideoPacketType,
-        val fourCC: FourCCs,
+        val fourCC: VideoFourCC,
         override val body: SingleVideoTagBody
     ) : VideoPacketDescriptor {
         override val size = 4
@@ -227,7 +227,7 @@ class ExtendedVideoData internal constructor(
                 source: Source,
                 sourceSize: Int
             ): SingleVideoPacketDescriptor {
-                val fourCC = FourCCs.codeOf(source.readInt())
+                val fourCC = VideoFourCC.codeOf(source.readInt())
                 val remainingSize = sourceSize - 4
                 val body = decodeBody(packetType, fourCC, source, remainingSize)
                 return SingleVideoPacketDescriptor(frameType, packetType, fourCC, body)
@@ -235,12 +235,12 @@ class ExtendedVideoData internal constructor(
 
             internal fun decodeBody(
                 packetType: VideoPacketType,
-                fourCC: FourCCs,
+                fourCC: VideoFourCC,
                 source: Source,
                 sourceSize: Int
             ): SingleVideoTagBody {
-                return if ((packetType == VideoPacketType.CODED_FRAMES) && ((fourCC == FourCCs.HEVC) ||
-                            (fourCC == FourCCs.AVC))
+                return if ((packetType == VideoPacketType.CODED_FRAMES) && ((fourCC == VideoFourCC.HEVC) ||
+                            (fourCC == VideoFourCC.AVC))
                 ) {
                     ExtendedWithCompositionTimeVideoTagBody.decode(source, sourceSize)
                 } else {
@@ -298,7 +298,7 @@ class ExtendedVideoData internal constructor(
         }
 
         private interface OneCodec : SinkEncoder {
-            val fourCC: FourCCs
+            val fourCC: VideoFourCC
         }
 
         companion object {
@@ -339,7 +339,7 @@ class ExtendedVideoData internal constructor(
 
         class OneTrackVideoPacketDescriptor(
             override val frameType: VideoFrameType,
-            override val fourCC: FourCCs,
+            override val fourCC: VideoFourCC,
             framePacketType: VideoPacketType,
             override val body: OneTrackVideoTagBody
         ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.ONE_TRACK, framePacketType),
@@ -361,7 +361,7 @@ class ExtendedVideoData internal constructor(
                     source: Source,
                     sourceSize: Int
                 ): OneTrackVideoPacketDescriptor {
-                    val fourCC = FourCCs.codeOf(source.readInt())
+                    val fourCC = VideoFourCC.codeOf(source.readInt())
                     val remainingSize = sourceSize - 4
                     val body =
                         OneTrackVideoTagBody.decode(packetType, fourCC, source, remainingSize)
@@ -372,7 +372,7 @@ class ExtendedVideoData internal constructor(
 
         class ManyTrackVideoPacketDescriptor(
             override val frameType: VideoFrameType,
-            override val fourCC: FourCCs,
+            override val fourCC: VideoFourCC,
             framePacketType: VideoPacketType,
             override val body: ManyTrackOneCodecVideoTagBody
         ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.MANY_TRACK, framePacketType),
@@ -394,7 +394,7 @@ class ExtendedVideoData internal constructor(
                     source: Source,
                     sourceSize: Int
                 ): ManyTrackVideoPacketDescriptor {
-                    val fourCC = FourCCs.codeOf(source.readInt())
+                    val fourCC = VideoFourCC.codeOf(source.readInt())
                     val remainingSize = sourceSize - 4
                     val body =
                         ManyTrackOneCodecVideoTagBody.decode(
