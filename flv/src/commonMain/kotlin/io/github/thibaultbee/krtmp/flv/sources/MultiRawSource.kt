@@ -15,11 +15,12 @@
  */
 package io.github.thibaultbee.krtmp.flv.sources
 
-import io.github.thibaultbee.krtmp.common.logger.Logger
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 
-
+/**
+ * Creates a [MultiRawSource] from a single [RawSource].
+ */
 fun MultiRawSource(source: RawSource) =
     MultiRawSource(listOf(source))
 
