@@ -2,6 +2,7 @@ package io.github.thibaultbee.krtmp.rtmp.extensions
 
 import io.ktor.http.URLBuilder
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.fail
 
 class URLBuilderExtensionsTest {
@@ -13,6 +14,7 @@ class URLBuilderExtensionsTest {
             URLBuilder("rtmp://192.168.1.12:1234/app/stream").validateRtmp()
             URLBuilder("rtmp://192.168.1.12/app/stream").validateRtmp()
             URLBuilder("rtmp://192.168.1.12/app/app2/stream").validateRtmp()
+            URLBuilder("rtmp://192.168.1.12/stream").validateRtmp()
         } catch (e: Exception) {
             fail("Exception thrown: ${e.message}", e)
         }
@@ -21,7 +23,7 @@ class URLBuilderExtensionsTest {
     @Test
     fun `test invalid RTMP URL`() {
         try {
-            URLBuilder("rtmp://host:1234/app").validateRtmp()
+            URLBuilder("rtmp://host:1234/app/").validateRtmp()
             fail("Exception must be thrown for missing stream key")
         } catch (_: Exception) {
         }
@@ -38,6 +40,18 @@ class URLBuilderExtensionsTest {
         try {
             URLBuilder("rtmp://host:port/app/stream").validateRtmp()
             fail("Exception must be thrown for invalid port")
+        } catch (_: Exception) {
+        }
+    }
+
+    @Test
+    fun `test stream key`() {
+        assertEquals("stream", URLBuilder("rtmp://host:1234/app/stream").rtmpStreamKey)
+        assertEquals("stream2", URLBuilder("rtmp://192.168.1.12/stream2").rtmpStreamKey)
+
+        try {
+            URLBuilder("rtmp://192.168.1.12/stream2/").rtmpStreamKey
+            fail("Exception must be thrown for missing stream key")
         } catch (_: Exception) {
         }
     }

@@ -15,24 +15,11 @@
  */
 package io.github.thibaultbee.krtmp.rtmp
 
-import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
-
-/**
- * This class contains configuration for RTMP connection.
- *
- * @param writeChunkSize RTMP chunk size in bytes
- * @param writeWindowAcknowledgementSize RTMP acknowledgement window size in bytes
- * @param amfVersion AMF version
- * @param clock Clock used to timestamp RTMP messages. You should use the same clock for your video and audio timestamps.
- */
-abstract class RtmpConfiguration(
-    val writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
-    val writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
-    val amfVersion: AmfVersion = AmfVersion.AMF0,
-    val clock: RtmpClock = RtmpClock.Default(),
-) {
-    companion object {
-        const val DEFAULT_CHUNK_SIZE = 128 // bytes
-    }
+object RtmpConfiguration {
+    /**
+     * The default chunk size used for RTMP connections.
+     * This value is used when the client does not specify a chunk size during the handshake.
+     * The default value is 128 bytes, which is the minimum chunk size allowed by the RTMP protocol.
+     */
+    const val DEFAULT_CHUNK_SIZE = 128 // bytes
 }

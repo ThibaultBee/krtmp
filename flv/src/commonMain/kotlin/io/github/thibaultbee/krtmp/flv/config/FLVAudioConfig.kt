@@ -37,6 +37,7 @@ enum class SoundFormat(val value: Byte) {
     NELLYMOSER(6),
     G711_ALAW(7),
     G711_MLAW(8),
+    EX_HEADER(9),
     AAC(10),
     SPEEX(11),
     MP3_8K(14),
@@ -81,8 +82,9 @@ enum class AudioFourCC(val value: FourCC) {
     );
 
     companion object {
+        @OptIn(ExperimentalStdlibApi::class)
         fun codeOf(value: Int) = entries.firstOrNull { it.value.code == value }
-            ?: throw IllegalArgumentException("Invalid audio FourCC code: $value")
+            ?: throw IllegalArgumentException("Invalid audio FourCC code: ${value.toHexString()}")
     }
 }
 

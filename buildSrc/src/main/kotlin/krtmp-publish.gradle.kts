@@ -9,18 +9,18 @@ val javadocJar by tasks.registering(Jar::class) {
 
 publishing {
     repositories {
-        maven(url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/") {
-            name = "mavenCentral"
+        maven(url = "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/") {
+            name = "centralPortal"
             credentials {
-                username = project.loadProperty("ossrh_username")
-                password = project.loadProperty("ossrh_password")
+                username = project.loadProperty("centralPortalUsername")
+                password = project.loadProperty("centralPortalPassword")
             }
         }
-        maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
-            name = "mavenCentralSnapshots"
+        maven(url = "https://central.sonatype.com/repository/maven-snapshots/") {
+            name = "centralPortalSnapshots"
             credentials {
-                username = project.loadProperty("ossrh_username")
-                password = project.loadProperty("ossrh_password")
+                username = project.loadProperty("centralPortalUsername")
+                password = project.loadProperty("centralPortalPassword")
             }
         }
     }
@@ -68,9 +68,9 @@ if (project.hasProperty("signing_key_id") && project.hasProperty("signing_key") 
 ) {
     signing {
         useInMemoryPgpKeys(
-            project.loadProperty("signing_key_id"),
-            project.loadFileContents("signing_key"),
-            project.loadProperty("signing_password")
+            project.loadProperty("signingInMemoryKeyId"),
+            project.loadFileContents("signingInMemoryKey"),
+            project.loadProperty("signingInMemoryKeyPassword")
         )
         sign(publishing.publications)
     }

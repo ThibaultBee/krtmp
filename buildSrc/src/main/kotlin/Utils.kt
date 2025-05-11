@@ -1,23 +1,22 @@
 import org.gradle.api.Project
-import java.util.Locale
 
 fun Project.loadProperty(
     projectPropertyName: String,
     envName: String = projectPropertyName.uppercase()
-): String {
+): String? {
     val envValue = System.getenv(envName)?.toString()
     if (envValue != null) return envValue
 
     val projectPropertiesValue = project.properties[projectPropertyName]?.toString()
     if (projectPropertiesValue != null) return projectPropertiesValue
 
-    return ""
+    return null
 }
 
 fun Project.loadFileContents(
     projectPropertyName: String,
     envName: String = projectPropertyName.uppercase()
-): String {
+): String? {
     val decodeIfNeeded: (String) -> String = {
         if (it.startsWith("~/")) {
             // the value is a path to file on disk. Read its contents
@@ -35,5 +34,5 @@ fun Project.loadFileContents(
     val projectPropertiesValue = project.properties[projectPropertyName]?.toString()
     if (projectPropertiesValue != null) return decodeIfNeeded(projectPropertiesValue)
 
-    return ""
+    return null
 }

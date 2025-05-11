@@ -34,7 +34,8 @@ fun amf0StrictArrayFrom(source: Source): AmfStrictArray {
     return amf0StrictArray
 }
 
-fun amfStrictArrayOf(initialElements: List<Any?>) = AmfStrictArray().apply { addAll(initialElements) }
+fun amfStrictArrayOf(initialElements: List<Any?>) =
+    AmfStrictArray().apply { addAll(initialElements) }
 
 class AmfStrictArray internal constructor(private val elements: MutableList<AmfElement> = mutableListOf()) :
     AmfElement(), MutableList<AmfElement> by elements {
@@ -59,5 +60,5 @@ class AmfStrictArray internal constructor(private val elements: MutableList<AmfE
     override fun equals(other: Any?): Boolean = elements == other
     override fun hashCode(): Int = elements.hashCode()
     override fun toString(): String =
-        elements.joinToString(prefix = "[", postfix = "]", separator = ",")
+        elements.joinToString(prefix = "[", postfix = "]", separator = ", ")
 }

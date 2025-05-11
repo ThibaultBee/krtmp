@@ -28,10 +28,12 @@ implementation("io.github.thibaultbee.krtmp:rtmp:1.0.0")
 
 ## Usage
 
-Creates a RTMP publish client with the Factory `RtmpClientConnectionFactory`:
+### Client
+
+Creates a RTMP client with the Factory `RtmpClient`:
 
 ```kotlin
-val client = RtmpPublishClientConnectionFactory().create(
+val client = RtmpClient(
     "rtmp://my.server.com/app/streamkey" // Your RTMP server URL (incl app name and stream key)
 )
 ```
@@ -43,15 +45,6 @@ client.connect()
 client.createStream()
 client.publish(Command.Publish.Type.LIVE)
 ```
-
-If you have raw audio and video frames, you need to mux them into FLV tag headers. You can use
-the `FlvMuxer` class for that.
-
-```kotlin
-val flvMuxer = client.flvMuxer
-```
-
-See [FLV](#flv) for more details to write audio and video frames..
 
 If you already have FLV data, write your video/audio data:
 
@@ -72,7 +65,21 @@ try {
 }
 ```
 
-For advanced configuration, see `RtmpClientSettings`.
+See [FLV](#flv) for more details to write audio and video frames..
+
+### Server
+
+Use the `RtmpServer` to create a RTMP server:
+
+```kotlin
+val server = RtmpServer("0.0.0.0:1935") // Listening on port 1935
+```
+
+Then start the server:
+
+```kotlin
+server.listen()
+```
 
 # FLV
 
@@ -84,8 +91,9 @@ Features:
 - [x] Demuxer for FLV
 - [x] AMF0 metadata
 - [ ] AMF3 metadata
-- [x] Supported audio codec: AAC
-- [x] Supported video codec: AVC/H.264 and enhanced RTMP codecs: HEVC/H.265, VP9, AV1
+- [x] Support for legacy RTMP
+- [x] Support for enhanced RTMP v1: AV1, HEVC, VP8, VP9
+- [x] Support for enhanced RTMP v2: Multitrack, Opus,...
 
 ## Installation
 
@@ -100,36 +108,36 @@ implementation("io.github.thibaultbee.krtmp:flv:1.0.0")
 Creates a FLV muxer and add audio/video data:
 
 ```kotlin
-val muxer = FlvMuxer()
+val muxer = FLVMuxer(path = "/path/to/file.flv")
+
+// Write FLV header
+flvMuxer.encodeFlvHeader(hasAudio, hasVideo)
 
 // Register audio configurations (if any)
-val audioConfig = FlvAudioConfig(
+val audioConfig = FLVAudioConfig(
     FlvAudioConfig.SoundFormat.AAC,
     FlvAudioConfig.SoundRate.KHZ44,
     FlvAudioConfig.SoundSize.SND8BIT,
     FlvAudioConfig.SoundType.STEREO
 )
-val audioId = muxer.addStream(audioConfig)
-
-// Register audio configurations (if any)
-val videoConfig = FlvVideoConfig(
-
+// Register video configurations (if any)
+val videoConfig = FLVVideoConfig(
 )
-val videoId = muxer.addStream(videoConfig)
 
-// Start the muxer (write FlvTag (if needed) and onMetaData)
-muxer.startStream()
+// Write onMetadata
+muxer.encode(0, OnMetadata(audioConfig, videoConfig))
 
 // Write audio/video data
-muxer.write(audioFrame)
-muxer.write(videoFrame)
-muxer.write(audioFrame)
-muxer.write(videoFrame)
-// till you're done
+muxer.encode(audioFrame)
+muxer.encode(videoFrame)
+muxer.encode(audioFrame)
+muxer.encode(videoFrame)
 
-// Stop the muxer
-muxer.stopStream()
+// Till you're done, then
+muxer.flush()
 
+// Close the output
+muxer.close()
 ```
 
 # AMF
@@ -140,7 +148,7 @@ Features:
 
 - [x] Serializer for AMF0
 - [ ] Serializer for AMF3
-- [ ] Deserializer for AMF0
+- [x] Deserializer for AMF0
 - [ ] Deserializer for AMF3
 
 ## Installation
@@ -172,7 +180,7 @@ val array = Amf.encodeToByteArray(MyData.serializer(), data)
 
 # TODO
 
-- [x] A FLV/RTMP parameter for supported level: (legacy, enhanced v1, enhanced v2,...)
+- [ ] More tests (missing tests samples)
 
 # Licence
 
