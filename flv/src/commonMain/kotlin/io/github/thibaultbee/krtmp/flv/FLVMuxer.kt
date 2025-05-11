@@ -19,9 +19,9 @@ import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
-import io.github.thibaultbee.krtmp.flv.tags.aacAudioData
-import io.github.thibaultbee.krtmp.flv.tags.avcHeaderLegacyVideoData
-import io.github.thibaultbee.krtmp.flv.tags.avcLegacyVideoData
+import io.github.thibaultbee.krtmp.flv.tags.audio.aacAudioData
+import io.github.thibaultbee.krtmp.flv.tags.video.avcHeaderVideoData
+import io.github.thibaultbee.krtmp.flv.tags.video.avcVideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
 import kotlinx.io.Sink
 import kotlinx.io.buffered
@@ -48,9 +48,9 @@ fun FLVMuxer(
  *
  * Usage:
  * ```
- * val muxer = FlvMuxer(sink, AmfVersion.AMF0) // or FlvMuxer(path, AmfVersion.AMF0) to write to a file
+ * val muxer = FLVMuxer(sink, AmfVersion.AMF0) // or FlvMuxer(path, AmfVersion.AMF0) to write to a file
  * // Encode FLV header if needed
- * muxer.encodeFlvHeader(hasAudio = true, hasVideo = true)
+ * muxer.encodeFLVHeader(hasAudio = true, hasVideo = true)
  * // Encode onMetadata
  * muxer.encode(0, OnMetadata(...))
  * // Encode video and audio frames
@@ -111,7 +111,7 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
      * @param hasAudio true if the FLV file contains audio data, false otherwise
      * @param hasVideo true if the FLV file contains video data, false otherwise
      */
-    fun encodeFlvHeader(hasAudio: Boolean, hasVideo: Boolean) {
+    fun encodeFLVHeader(hasAudio: Boolean, hasVideo: Boolean) {
         FLVHeader(hasAudio, hasVideo).encode(output)
     }
 
@@ -121,13 +121,20 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
     fun flush() {
         output.flush()
     }
+
+    /**
+     * Closes the [output] stream.
+     */
+    fun close() {
+        output.close()
+    }
 }
 
 /**
  * Encodes a [FLVData] to the muxer.
  *
  * This method is a convenience method that wraps the [FLVTag] encoding.
- * The project comes with [FLVData] factories such as [avcHeaderLegacyVideoData], [avcLegacyVideoData], [aacAudioData], etc.
+ * The project comes with [FLVData] factories such as [avcHeaderVideoData], [avcVideoData], [aacAudioData], etc.
  *
  * @param timestampMs the timestamp in milliseconds
  * @param data the [FLVData] to encode

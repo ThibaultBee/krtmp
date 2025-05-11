@@ -15,7 +15,7 @@ class NaluRawSourceTest {
         val sizedRawSource = NaluRawSource(array)
         assertEquals(6, sizedRawSource.byteCount)
 
-        val actual = Buffer().apply { sizedRawSource.source.readAtMostTo(this, 6) }.readByteArray()
+        val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
         assertContentEquals(expected, actual)
     }
 
@@ -27,7 +27,7 @@ class NaluRawSourceTest {
         val sizedRawSource = NaluRawSource(array)
         assertEquals(6, sizedRawSource.byteCount)
 
-        val actual = Buffer().apply { sizedRawSource.source.readAtMostTo(this, 6) }.readByteArray()
+        val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
         assertContentEquals(expected, actual)
     }
 
@@ -39,7 +39,7 @@ class NaluRawSourceTest {
         val sizedRawSource = NaluRawSource(array)
         assertEquals(6, sizedRawSource.byteCount)
 
-        val actual = Buffer().apply { sizedRawSource.source.readAtMostTo(this, 6) }.readByteArray()
+        val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
         assertContentEquals(expected, actual)
     }
 
@@ -54,7 +54,7 @@ class NaluRawSourceTest {
         val sizedRawSource = NaluRawSource(buffer)
         assertEquals(6, sizedRawSource.byteCount)
 
-        val actual = Buffer().apply { sizedRawSource.source.readAtMostTo(this, 6) }.readByteArray()
+        val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
         assertContentEquals(expected, actual)
     }
 
@@ -69,7 +69,7 @@ class NaluRawSourceTest {
         val sizedRawSource = NaluRawSource(buffer)
         assertEquals(6, sizedRawSource.byteCount)
 
-        val actual = Buffer().apply { sizedRawSource.source.readAtMostTo(this, 6) }.readByteArray()
+        val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
         assertContentEquals(expected, actual)
     }
 
@@ -83,7 +83,7 @@ class NaluRawSourceTest {
         val sizedRawSource = NaluRawSource(buffer)
         assertEquals(6, sizedRawSource.byteCount)
 
-        val actual = Buffer().apply { sizedRawSource.source.readAtMostTo(this, 6) }.readByteArray()
+        val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
         assertContentEquals(expected, actual)
     }
 }

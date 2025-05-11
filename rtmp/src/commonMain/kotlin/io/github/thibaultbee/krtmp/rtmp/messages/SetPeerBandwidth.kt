@@ -15,19 +15,29 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import kotlinx.io.Buffer
 
-internal fun SetPeerBandwidth(timestamp: Int, payload: Buffer): SetPeerBandwidth =
+internal fun SetPeerBandwidth(
+    timestamp: Int,
+    chunkStreamId: Int,
+    payload: Buffer
+): SetPeerBandwidth =
     SetPeerBandwidth(
         timestamp,
         payload.readInt(),
-        SetPeerBandwidth.LimitType.from(payload.readByte())
+        SetPeerBandwidth.LimitType.from(payload.readByte()),
+        chunkStreamId
     )
 
-internal class SetPeerBandwidth(timestamp: Int, windowSize: Int, limitType: LimitType) :
+internal class SetPeerBandwidth(
+    timestamp: Int,
+    windowSize: Int,
+    limitType: LimitType,
+    chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.PROTOCOL_CONTROL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = MessageStreamId.PROTOCOL_CONTROL.value,
         timestamp = timestamp,
         messageType = MessageType.SET_PEER_BANDWIDTH,

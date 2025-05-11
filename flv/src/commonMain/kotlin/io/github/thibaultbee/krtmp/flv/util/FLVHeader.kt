@@ -29,6 +29,10 @@ class FLVHeader(val hasAudio: Boolean, val hasVideo: Boolean) {
         output.writeInt(DATA_OFFSET)
     }
 
+    override fun toString(): String {
+        return "FLVHeader(hasAudio=$hasAudio, hasVideo=$hasVideo)"
+    }
+
     companion object {
         private const val DATA_OFFSET = 9
 

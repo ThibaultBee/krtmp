@@ -15,15 +15,23 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import kotlinx.io.Buffer
 
-internal fun WindowAcknowledgementSize(timestamp: Int, payload: Buffer): WindowAcknowledgementSize =
-    WindowAcknowledgementSize(timestamp, payload.readInt())
+internal fun WindowAcknowledgementSize(
+    timestamp: Int,
+    chunkStreamId: Int,
+    payload: Buffer
+): WindowAcknowledgementSize =
+    WindowAcknowledgementSize(timestamp, payload.readInt(), chunkStreamId)
 
-internal class WindowAcknowledgementSize(timestamp: Int, val windowSize: Int) :
+internal class WindowAcknowledgementSize(
+    timestamp: Int,
+    val windowSize: Int,
+    chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.PROTOCOL_CONTROL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = MessageStreamId.PROTOCOL_CONTROL.value,
         timestamp = timestamp,
         messageType = MessageType.WINDOW_ACK_SIZE,

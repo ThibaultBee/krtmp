@@ -76,13 +76,13 @@ class AmfObject internal constructor(private val elements: MutableMap<String, Am
     override fun hashCode(): Int = elements.hashCode()
     override fun toString(): String {
         return elements.entries.joinToString(
-            separator = ",",
+            separator = ", ",
             prefix = "{",
             postfix = "}",
             transform = { (k, v) ->
                 buildString {
                     append(k)
-                    append(':')
+                    append('=')
                     append(v)
                 }
             }

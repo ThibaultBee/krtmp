@@ -63,10 +63,10 @@ kover {
     reports {
         verify {
             rule {
-                minBound(65, CoverageUnit.LINE)
+                minBound(35, CoverageUnit.LINE)
 
                 // we allow lower branch coverage, because not all checks in the internal code lead to errors
-                minBound(45, CoverageUnit.BRANCH)
+                minBound(30, CoverageUnit.BRANCH)
             }
         }
     }

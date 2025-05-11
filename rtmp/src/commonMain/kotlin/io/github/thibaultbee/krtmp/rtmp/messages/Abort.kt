@@ -15,18 +15,28 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import kotlinx.io.Buffer
 
-internal fun Abort(timestamp: Int, payload: Buffer) = Abort(timestamp, payload.readInt())
+internal fun Abort(timestamp: Int, chunkStreamId: Int, payload: Buffer) =
+    Abort(timestamp, payload.readInt(), chunkStreamId)
 
-internal class Abort(timestamp: Int, chunkStreamId: Int) :
+internal class Abort(
+    timestamp: Int,
+    val discardedChunkStreamId: Int,
+    chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.PROTOCOL_CONTROL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = MessageStreamId.PROTOCOL_CONTROL.value,
         timestamp = timestamp,
         messageType = MessageType.SET_CHUNK_SIZE,
         payload = Buffer().apply {
-            writeInt(chunkStreamId)
+            writeInt(discardedChunkStreamId)
         }
-    )
+    ) {
+
+    override fun toString(): String {
+        return "Abort(timestamp=$timestamp, discardedChunkStreamId=$discardedChunkStreamId, chunkStreamId=$chunkStreamId)"
+    }
+}

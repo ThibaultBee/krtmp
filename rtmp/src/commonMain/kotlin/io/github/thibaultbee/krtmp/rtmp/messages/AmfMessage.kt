@@ -19,7 +19,7 @@ import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.ktor.utils.io.ByteWriteChannel
 
-internal interface AmfMessage {
+interface AmfMessage {
     fun createMessage(amfVersion: AmfVersion): Message
 
     suspend fun write(

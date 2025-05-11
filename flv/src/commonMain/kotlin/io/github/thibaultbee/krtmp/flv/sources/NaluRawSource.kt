@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2025 Thibault B.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.github.thibaultbee.krtmp.flv.sources
 
 import io.github.thibaultbee.krtmp.flv.util.extensions.isAvcc
@@ -17,14 +32,15 @@ private const val AVCC_HEADER_SIZE = 4
 fun NaluRawSource(array: ByteArray): NaluRawSource {
     if (array.isAvcc) {
         return NaluRawSource(
-            ByteArrayRawSource(array, AVCC_HEADER_SIZE.toLong()), array.size - AVCC_HEADER_SIZE
+            ByteArrayBackedRawSource(array, AVCC_HEADER_SIZE.toLong()),
+            array.size - AVCC_HEADER_SIZE
         )
     }
 
     // Convert AnnexB start code to AVCC format
     val startCodeSize = array.startCodeSize
     return NaluRawSource(
-        ByteArrayRawSource(array, startCodeSize.toLong()), array.size - startCodeSize
+        ByteArrayBackedRawSource(array, startCodeSize.toLong()), array.size - startCodeSize
     )
 }
 
@@ -89,6 +105,6 @@ class NaluRawSource
 internal constructor(
     val nalu: RawSource, val naluSize: Int
 ) : RawSourceWithSize(
-    MultiRawSource(listOf(Buffer().apply { writeInt(naluSize) }, nalu)),
+    MultiRawSource(Buffer().apply { writeInt(naluSize) }, nalu),
     naluSize + AVCC_HEADER_SIZE.toLong()
 )

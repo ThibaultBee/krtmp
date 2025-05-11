@@ -17,14 +17,25 @@ package io.github.thibaultbee.krtmp.rtmp.extensions
 
 import io.ktor.http.URLBuilder
 
+/**
+ * Validates the URLBuilder for RTMP protocol.
+ *
+ * @throws IllegalArgumentException if the URLBuilder is not valid for RTMP.
+ */
 fun URLBuilder.validateRtmp() {
     require(protocol.isRtmp) { "Invalid protocol $protocol" }
     require(host.isNotBlank()) { "Invalid host $host" }
     require(port in 0..65535) { "Port must be in range 0..65535" }
-    require(pathSegments.size > 2) { "Invalid number of elements in path at least 2 but found ${pathSegments.size}" }
-    require(pathSegments.last().isNotBlank()) { "Invalid stream key ${pathSegments.last()}" }
+    require(pathSegments.size >= 2) { "Invalid number of elements in path at least 2 but found ${pathSegments.size}" }
+    val streamKey = pathSegments.last()
+    require(streamKey.isNotBlank()) { "Invalid stream key: $streamKey" }
 }
 
+/**
+ * Whether the URLBuilder is valid for RTMP protocol.
+ *
+ * @return true if the URLBuilder is valid for RTMP, false otherwise.
+ */
 val URLBuilder.isValidRtmp: Boolean
     get() {
         return try {
@@ -35,12 +46,39 @@ val URLBuilder.isValidRtmp: Boolean
         }
     }
 
-
-val URLBuilder.streamKey: String
+/**
+ * The stream key from the URLBuilder.
+ *
+ * @throws IllegalArgumentException if the URLBuilder is not valid for RTMP.
+ */
+val URLBuilder.rtmpStreamKey: String
     get() {
-        val streamKey = pathSegments.last()
-        require(streamKey.isNotBlank()) { "Invalid stream key $streamKey" }
-        return streamKey
+        validateRtmp()
+        return pathSegments.last()
     }
 
+
+/**
+ * The application name from the URLBuilder or null if not present.
+ *
+ * @throws IllegalArgumentException if the URLBuilder is not valid for RTMP.
+ */
+val URLBuilder.rtmpAppOrNull: String?
+    get() {
+        validateRtmp()
+        return if (pathSegments.size > 1) {
+            pathSegments[1]
+        } else {
+            null
+        }
+    }
+
+/**
+ * The RTMP URL without the stream key.
+ */
+val URLBuilder.rtmpTcUrl: String
+    get() {
+        validateRtmp()
+        return buildString().removeSuffix(rtmpStreamKey)
+    }
 

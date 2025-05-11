@@ -3,7 +3,7 @@ package io.github.thibaultbee.krtmp.common.logger
 /**
  * Default logger implementation.
  */
-class DefaultLogger: ILogger {
+class DefaultLogger: IKrtmpLogger {
     override fun e(tag: String, message: String, tr: Throwable?) {
         println("E/$tag: $message")
         tr?.printStackTrace()

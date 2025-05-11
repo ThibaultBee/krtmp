@@ -17,14 +17,14 @@ package io.github.thibaultbee.krtmp.flv.tags
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import kotlinx.io.Buffer
+import kotlinx.io.RawSource
 import kotlinx.io.Sink
 import kotlinx.io.readByteArray
-
 
 /**
  * Interface representing a frame data in FLV format.
  */
-sealed interface FLVData {
+interface FLVData {
     /**
      * Gets the size of the data in bytes.
      *
@@ -41,6 +41,16 @@ sealed interface FLVData {
      * @param isEncrypted Indicates whether the data is encrypted or not.
      */
     fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean)
+
+    /**
+     * Reads the raw source of the data, including its size.
+     *
+     * A special API that avoid copying large data.
+     *
+     * @param amfVersion The AMF version to use for encoding. Only for [ScriptDataObject].
+     * @param isEncrypted Indicates whether the data is encrypted or not.
+     */
+    fun readRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource
 }
 
 /**

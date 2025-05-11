@@ -24,7 +24,7 @@ kotlin {
         compilations.all {
             compileTaskProvider.configure {
                 compilerOptions {
-                    jvmTarget.set(JvmTarget.JVM_1_8)
+                    jvmTarget.set(JvmTarget.JVM_18)
                 }
             }
         }
@@ -44,10 +44,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(libs.ktor.network)
-            api(libs.ktor.network.tls)
-            api(libs.ktor.http)
-            api(libs.ktor.client.core)
-            api(libs.ktor.client.cio)
+            implementation(libs.ktor.network.tls)
+            implementation(libs.ktor.http)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
             implementation(libs.kotlinx.io.core)
             implementation(libs.kotlinx.serialization.core)
             implementation(libs.kotlinx.coroutines.core)
@@ -58,6 +58,12 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+        }
+        androidMain {
+            kotlin.srcDir("src/commonJvmAndroid/kotlin")
+        }
+        jvmMain {
+            kotlin.srcDir("src/commonJvmAndroid/kotlin")
         }
         jvmTest.dependencies {
             implementation(libs.kotlin.test)
@@ -74,7 +80,7 @@ kotlin {
 
 android {
     namespace = "io.github.thibaultbee.krtmp.rtmp"
-    compileSdk = 34
+    compileSdk = 36
     defaultConfig {
         minSdk = 21
     }

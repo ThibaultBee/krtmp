@@ -15,19 +15,27 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import kotlinx.io.Buffer
 
-internal fun Acknowledgement(timestamp: Int, payload: Buffer) =
-    Acknowledgement(timestamp, payload.readInt())
+internal fun Acknowledgement(timestamp: Int, chunkStreamId: Int, payload: Buffer) =
+    Acknowledgement(timestamp, payload.readInt(), chunkStreamId)
 
-internal class Acknowledgement(timestamp: Int, sequenceNumber: Int) :
+internal class Acknowledgement(
+    timestamp: Int,
+    val sequenceNumber: Int,
+    chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.PROTOCOL_CONTROL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = MessageStreamId.PROTOCOL_CONTROL.value,
         timestamp = timestamp,
         messageType = MessageType.ACK,
         payload = Buffer().apply {
             writeInt(sequenceNumber)
         }
-    )
+    ) {
+    override fun toString(): String {
+        return "Acknowledgement(timestamp=$timestamp, sequenceNumber=$sequenceNumber, chunkStreamId=$chunkStreamId)"
+    }
+}

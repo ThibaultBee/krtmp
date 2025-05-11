@@ -33,7 +33,7 @@ fun RawSourceWithSize(buffer: Buffer) =
  * @param array the [ByteArray] to wrap
  */
 fun RawSourceWithSize(array: ByteArray) =
-    RawSourceWithSize(ByteArrayRawSource(array), array.size.toLong())
+    RawSourceWithSize(ByteArrayBackedRawSource(array), array.size.toLong())
 
 fun RawSourceWithSize(source: RawSource, byteCount: Int) =
     RawSourceWithSize(source, byteCount.toLong())
@@ -44,7 +44,7 @@ fun RawSourceWithSize(source: RawSource, byteCount: Int) =
  * @param source the [RawSource] to wrap.
  * @param byteCount the number of bytes to read in the [source]
  */
-open class RawSourceWithSize(internal val source: RawSource, internal val byteCount: Long) :
+open class RawSourceWithSize(private val source: RawSource, val byteCount: Long) :
     RawSource {
     private var bytesRead = 0L
 

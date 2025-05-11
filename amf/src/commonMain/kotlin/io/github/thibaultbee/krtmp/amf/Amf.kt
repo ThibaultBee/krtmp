@@ -163,19 +163,19 @@ data class AmfConfiguration(
     /**
      * Specifies whether default values of Kotlin properties should be encoded.
      */
-    val encodeDefaults: Boolean = false,
+    val encodeDefaults: Boolean = true,
 
     /**
      * Specifies whether encounters of unknown properties in the input AMF
      * should be ignored instead of throwing [SerializationException].
      * `false` by default.
      */
-    val ignoreUnknownKeys: Boolean = false,
+    val ignoreUnknownKeys: Boolean = true,
 
     /**
      * Specifies whether nulls should be encoded as explicit AMF nulls.
      *
      * When this flag is disabled properties with `null` values without default are not encoded.
      */
-    val explicitNulls: Boolean = true
+    val explicitNulls: Boolean = false
 )

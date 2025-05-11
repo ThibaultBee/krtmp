@@ -26,7 +26,7 @@ kotlin {
         compilations.all {
             compileTaskProvider.configure {
                 compilerOptions {
-                    jvmTarget.set(JvmTarget.JVM_1_8)
+                    jvmTarget.set(JvmTarget.JVM_18)
                 }
             }
         }
@@ -47,15 +47,21 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.io.core)
             implementation(libs.kotlinx.serialization.core)
+            implementation(libs.kotlinx.coroutines.core)
             api(project(":amf"))
             api(project(":common"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        androidMain {
+            kotlin.srcDir("src/commonJvmAndroid/kotlin")
+        }
+        jvmMain {
+            kotlin.srcDir("src/commonJvmAndroid/kotlin")
+        }
         jvmTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(libs.jcodec)
         }
     }
 
@@ -68,7 +74,7 @@ kotlin {
 
 android {
     namespace = "io.github.thibaultbee.krtmp.flv"
-    compileSdk = 34
+    compileSdk = 36
     defaultConfig {
         minSdk = 21
     }

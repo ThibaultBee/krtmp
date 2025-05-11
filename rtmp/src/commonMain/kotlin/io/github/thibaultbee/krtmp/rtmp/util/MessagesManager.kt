@@ -42,8 +42,8 @@ internal class MessagesManager {
     ) {
         writeMutex.withLock {
             val previousMessage = writeChunkStreamMessageMap[message.chunkStreamId]
-            onPreviousMessage(previousMessage)
             writeChunkStreamMessageMap[message.chunkStreamId] = message
+            onPreviousMessage(previousMessage)
         }
     }
 

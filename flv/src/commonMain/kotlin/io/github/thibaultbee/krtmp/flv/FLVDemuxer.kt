@@ -19,6 +19,7 @@ import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
+import kotlinx.coroutines.coroutineScope
 import kotlinx.io.Source
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -102,6 +103,11 @@ class FLVDemuxer(private val source: Source, private val amfVersion: AmfVersion 
         return block(source)
     }
 
+    /**
+     * Decodes the FLV header.
+     *
+     * @return the decoded [FLVHeader]
+     */
     fun decodeFlvHeader(): FLVHeader {
         val peek = source.peek()
         val isHeader = try {
@@ -113,6 +119,39 @@ class FLVDemuxer(private val source: Source, private val amfVersion: AmfVersion 
             return FLVHeader.decode(source)
         } else {
             throw IllegalStateException("Not a FLV header")
+        }
+    }
+
+    /**
+     * Closes the demuxer and releases any resources.
+     */
+    fun close() {
+        source.close()
+    }
+}
+
+/**
+ * Decodes all the FLV tags from the source.
+ *
+ * @param block the block to execute for each FLV tag
+ */
+suspend fun FLVDemuxer.decodeAll(block: suspend (FLVTag) -> Unit) {
+    coroutineScope {
+        while (!isEmpty) {
+            block(decode())
+        }
+    }
+}
+
+/**
+ * Decodes all the raw FLV tags from the source.
+ *
+ * @param block the block to execute for each raw FLV tag
+ */
+suspend fun FLVDemuxer.decodeAllRaw(block: suspend (RawFLVTag) -> Unit) {
+    coroutineScope {
+        while (!isEmpty) {
+            block(decodeRaw())
         }
     }
 }

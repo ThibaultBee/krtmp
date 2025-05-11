@@ -15,14 +15,84 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
+import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
+import kotlinx.io.Buffer
 import kotlinx.io.RawSource
+import kotlinx.io.buffered
 
-internal class Audio(timestamp: Int, messageStreamId: Int, payload: RawSource) :
+/**
+ * Creates an audio message with a [ByteArray] payload.
+ *
+ * @param timestamp The timestamp of the message.
+ * @param messageStreamId The stream ID of the message.
+ * @param payload The byte array containing the audio data.
+ * @param chunkStreamId The chunk stream ID for this message, defaulting to the audio channel.
+ */
+fun Audio(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: ByteArray,
+    chunkStreamId: Int = ChunkStreamId.AUDIO_CHANNEL.value
+) = Audio(
+    timestamp = timestamp,
+    messageStreamId = messageStreamId,
+    payload = ByteArrayBackedRawSource(payload),
+    payloadSize = payload.size,
+    chunkStreamId = chunkStreamId
+)
+
+/**
+ * Creates an audio message with a [Buffer] payload.
+ *
+ * @param timestamp The timestamp of the message.
+ * @param messageStreamId The stream ID of the message.
+ * @param payload The buffer containing the audio data.
+ * @param payloadSize The size of the payload in bytes.
+ * @param chunkStreamId The chunk stream ID for this message, defaulting to the audio channel.
+ */
+fun Audio(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: Buffer,
+    chunkStreamId: Int = ChunkStreamId.AUDIO_CHANNEL.value
+) = Audio(
+    timestamp = timestamp,
+    messageStreamId = messageStreamId,
+    payload = payload,
+    payloadSize = payload.size.toInt(),
+    chunkStreamId = chunkStreamId
+)
+
+/**
+ * An audio message in RTMP.
+ *
+ * @property timestamp The timestamp of the message.
+ * @property messageStreamId The stream ID of the message.
+ * @property payload The payload provider containing the audio data.
+ * @property chunkStreamId The chunk stream ID for this message, defaulting to the audio channel.
+ */
+class Audio internal constructor(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: RawSource,
+    payloadSize: Int,
+    chunkStreamId: Int = ChunkStreamId.AUDIO_CHANNEL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.AUDIO_CHANNEL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = messageStreamId,
         timestamp = timestamp,
         messageType = MessageType.AUDIO,
-        payload = payload
-    )
+        payload = payload,
+        payloadSize = payloadSize,
+    ) {
+    override fun toString(): String {
+        return "Audio(timestamp=$timestamp, messageStreamId=$messageStreamId, payload=$payload)"
+    }
+}
+
+
+fun Audio.decode() =
+    AudioData.decode(payload.buffered(), payloadSize, false)

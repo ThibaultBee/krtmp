@@ -19,7 +19,7 @@ class AudioTest {
 
         val writeChannel = ByteChannel(false)
 
-        audio.write(writeChannel, 128, Audio(0, 10, Buffer())) // Empty previous audio
+        audio.write(writeChannel, 128, Audio(0, 10, Buffer(), 0)) // Empty previous audio
         writeChannel.flush()
 
         val actual = ByteArray(writeChannel.availableForRead)
@@ -33,11 +33,11 @@ class AudioTest {
         val expected = Resource("frames/audio/aac/sequence/expected").toByteArray()
 
         val raw = Resource("frames/audio/aac/sequence/sequence").toByteArray()
-        val audio = Audio(78, 10, Buffer().apply { write(raw) })
+        val audio = Audio(78, 10, Buffer().apply { write(raw) }, raw.size)
 
         val writeChannel = ByteChannel(false)
 
-        audio.write(writeChannel, 128, Audio(0, 10, Buffer()))
+        audio.write(writeChannel, 128, Audio(0, 10, Buffer(), 0))
         writeChannel.flush()
 
         val actual = ByteArray(writeChannel.availableForRead)
