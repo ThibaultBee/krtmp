@@ -19,6 +19,9 @@ import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 import kotlin.math.min
 
+/**
+ * A [RawSource] that reads from a [ByteArray].
+ */
 class ByteArrayRawSource(private val array: ByteArray, startIndex: Long = 0) : RawSource {
     private var position = startIndex
     private val size = array.size.toLong()

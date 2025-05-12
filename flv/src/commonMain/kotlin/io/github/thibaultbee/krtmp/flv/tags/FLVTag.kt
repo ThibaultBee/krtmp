@@ -19,6 +19,10 @@ import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag.Type
+import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
+import io.github.thibaultbee.krtmp.flv.tags.audio.LegacyAudioData
+import io.github.thibaultbee.krtmp.flv.tags.script.ScriptDataObject
+import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.extensions.readSource
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import kotlinx.io.Buffer
@@ -33,7 +37,7 @@ import kotlinx.io.readByteArray
  * @property data The data contained in the tag, which can be audio, video, or script data.
  * @property streamId The stream ID of the tag, default is 0.
  */
-class FLVTag(
+data class FLVTag(
     val timestampMs: Int,
     val data: FLVData,
     val streamId: Int = 0,
@@ -42,6 +46,7 @@ class FLVTag(
         is AudioData -> Type.AUDIO
         is VideoData -> Type.VIDEO
         is ScriptDataObject -> Type.SCRIPT
+        else -> throw IllegalArgumentException("Unknown FLV data type: ${data::class.simpleName}")
     }
 
     /**
@@ -85,7 +90,7 @@ class FLVTag(
             val streamId = source.readInt24() // Stream ID
 
             val data = when (type) {
-                Type.AUDIO -> AudioData.decode(source, bodySize, isEncrypted)
+                Type.AUDIO -> LegacyAudioData.decode(source, bodySize, isEncrypted)
                 Type.VIDEO -> VideoData.decode(source, bodySize, isEncrypted)
                 Type.SCRIPT -> ScriptDataObject.decode(source, amfVersion)
             }
@@ -128,7 +133,7 @@ fun FLVTag.readByteArray(amfVersion: AmfVersion = AmfVersion.AMF0): ByteArray {
 /**
  * Represents a raw FLV tag. Raw means that the body is not decoded.
  */
-class RawFLVTag internal constructor(
+data class RawFLVTag internal constructor(
     val isEncrypted: Boolean,
     val type: Type,
     val bodySize: Int,
@@ -136,9 +141,6 @@ class RawFLVTag internal constructor(
     val body: Source,
     val streamId: Int = 0
 ) {
-    fun peek() = RawFLVTag(isEncrypted, type, bodySize, timestampMs, body.peek(), streamId)
-
-
     fun decode(amfVersion: AmfVersion = AmfVersion.AMF0): FLVTag {
         val data = when (type) {
             Type.AUDIO -> AudioData.decode(body, bodySize, isEncrypted)
@@ -181,5 +183,14 @@ class RawFLVTag internal constructor(
         }
     }
 }
+
+/**
+ * Peeks the [body] of the [RawFLVTag] without decoding it.
+ *
+ * Use it when you want to read multiple times the same tag.
+ */
+fun RawFLVTag.peek() = copy(body = body.peek())
+
+
 
 

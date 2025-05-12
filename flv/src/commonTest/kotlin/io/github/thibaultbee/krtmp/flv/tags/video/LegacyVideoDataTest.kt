@@ -1,14 +1,16 @@
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.video
 
 import io.github.thibaultbee.krtmp.flv.Resource
 import io.github.thibaultbee.krtmp.flv.config.CodecID
+import io.github.thibaultbee.krtmp.flv.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.tags.readByteArray
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
-class VideoDataTest {
+class LegacyVideoDataTest {
     @Test
     fun `test write avc key tag`() {
         val expected = Resource("tags/video/avc/key/tag").toByteArray()

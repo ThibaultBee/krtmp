@@ -37,6 +37,7 @@ enum class SoundFormat(val value: Byte) {
     NELLYMOSER(6),
     G711_ALAW(7),
     G711_MLAW(8),
+    EX_HEADER(9),
     AAC(10),
     SPEEX(11),
     MP3_8K(14),

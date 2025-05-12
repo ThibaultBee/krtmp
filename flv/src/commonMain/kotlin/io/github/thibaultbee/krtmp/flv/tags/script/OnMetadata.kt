@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.script
 
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
@@ -22,7 +22,7 @@ import io.github.thibaultbee.krtmp.amf.elements.containers.amfObjectOf
 import io.github.thibaultbee.krtmp.flv.config.FLVAudioConfig
 import io.github.thibaultbee.krtmp.flv.config.FLVVideoConfig
 import io.github.thibaultbee.krtmp.flv.config.SoundType
-import io.github.thibaultbee.krtmp.flv.tags.OnMetadata.Metadata
+import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata.Metadata
 import io.github.thibaultbee.krtmp.flv.util.AmfUtil.amf
 import kotlinx.serialization.Serializable
 

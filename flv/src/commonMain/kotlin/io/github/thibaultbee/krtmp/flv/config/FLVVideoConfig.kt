@@ -42,6 +42,7 @@ enum class CodecID(val value: Byte) {
     }
 }
 
+interface Test
 /**
  * FourCC object
  *

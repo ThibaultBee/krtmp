@@ -1,4 +1,4 @@
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.script
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.Resource
@@ -9,6 +9,8 @@ import io.github.thibaultbee.krtmp.flv.config.SoundRate
 import io.github.thibaultbee.krtmp.flv.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.config.SoundType
 import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
+import io.github.thibaultbee.krtmp.flv.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.tags.readByteArray
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals

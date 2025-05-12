@@ -20,11 +20,10 @@ import kotlinx.io.Buffer
 import kotlinx.io.Sink
 import kotlinx.io.readByteArray
 
-
 /**
  * Interface representing a frame data in FLV format.
  */
-sealed interface FLVData {
+interface FLVData {
     /**
      * Gets the size of the data in bytes.
      *

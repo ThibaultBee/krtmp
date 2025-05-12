@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.audio
 
 import io.github.thibaultbee.krtmp.flv.config.SoundFormat
 import io.github.thibaultbee.krtmp.flv.config.SoundRate
@@ -26,21 +26,21 @@ import io.github.thibaultbee.krtmp.flv.util.readBuffer
 import kotlinx.io.RawSource
 
 /**
- * Creates a legacy AAC [AudioData] from the [AAC.ADTS].
+ * Creates a legacy AAC [LegacyAudioData] from the [AAC.ADTS].
  *
  * @param adts the [ADTS] header
- * @return the [AudioData] with the [ADTS] header
+ * @return the [LegacyAudioData] with the [ADTS] header
  */
-fun aacHeaderAudioData(adts: ADTS): AudioData {
+fun aacHeaderLegacyAudioData(adts: ADTS): LegacyAudioData {
     val audioSpecificConfig = AudioSpecificConfig(adts).readBuffer()
 
-    return AudioData(
+    return LegacyAudioData(
         soundFormat = SoundFormat.AAC,
         soundRate = SoundRate.fromSampleRate(adts.sampleRate),
         soundSize = SoundSize.S_16BITS,
         soundType = SoundType.fromNumOfChannels(adts.channelConfiguration.numOfChannel),
         aacPacketType = AACPacketType.SEQUENCE_HEADER,
-        body = DefaultAudioTagBody(
+        body = RawAudioTagBody(
             data = audioSpecificConfig,
             dataSize = audioSpecificConfig.size.toInt()
         )
@@ -56,22 +56,22 @@ fun aacHeaderAudioData(adts: ADTS): AudioData {
  * @param aacPacketType the AAC packet type
  * @param data the coded AAC [RawSource]
  * @param dataSize the size of the coded AAC [RawSource]
- * @return the [AudioData] with the AAC frame
+ * @return the [LegacyAudioData] with the AAC frame
  */
-fun aacAudioData(
+fun aacLegacyAudioData(
     soundRate: SoundRate,
     soundSize: SoundSize,
     soundType: SoundType,
     aacPacketType: AACPacketType,
     data: RawSource,
     dataSize: Int
-) = AudioData(
+) = LegacyAudioData(
     soundFormat = SoundFormat.AAC,
     soundRate = soundRate,
     soundSize = soundSize,
     soundType = soundType,
     aacPacketType = aacPacketType,
-    body = DefaultAudioTagBody(
+    body = RawAudioTagBody(
         data = data, dataSize = dataSize
     )
 )

@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.video
 
 import io.github.thibaultbee.krtmp.flv.config.CodecID
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.sources.NaluRawSource
+import io.github.thibaultbee.krtmp.flv.tags.video.ManyTrackManyCodecVideoTagBody.OneTrackMultiCodecVideoTagBody
 import io.github.thibaultbee.krtmp.flv.util.av.avc.AVCDecoderConfigurationRecord
 import io.github.thibaultbee.krtmp.flv.util.av.hevc.HEVCDecoderConfigurationRecord
 import io.github.thibaultbee.krtmp.flv.util.readBuffer
@@ -489,14 +490,16 @@ fun oneCodecMultitrackExtendedVideoData(
  *
  * @param frameType the frame type
  * @param framePacketType the frame packet type
- * @param body the [ManyTrackManyCodecVideoTagBody]
+ * @param tracks the set of [OneTrackMultiCodecVideoTagBody]
  */
 fun manyCodecMultitrackExtendedVideoData(
     frameType: VideoFrameType,
     framePacketType: VideoPacketType,
-    body: ManyTrackManyCodecVideoTagBody
+    tracks: Set<OneTrackMultiCodecVideoTagBody>
 ) = ExtendedVideoData(
     packetDescriptor = ExtendedVideoData.MultitrackVideoPacketDescriptor.ManyTrackManyCodecVideoPacketDescriptor(
-        frameType = frameType, framePacketType = framePacketType, body = body
+        frameType = frameType,
+        framePacketType = framePacketType,
+        body = ManyTrackManyCodecVideoTagBody(tracks)
     )
 )

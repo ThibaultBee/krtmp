@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.video
 
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
-import io.github.thibaultbee.krtmp.flv.tags.ExtendedVideoData.SingleVideoPacketDescriptor.Companion.decodeBody
+import io.github.thibaultbee.krtmp.flv.tags.video.ExtendedVideoData.SingleVideoPacketDescriptor.Companion.decodeBody
 import io.github.thibaultbee.krtmp.flv.util.extensions.readSource
-import io.github.thibaultbee.krtmp.flv.util.extensions.writeByte
 import kotlinx.io.RawSource
 import kotlinx.io.Sink
 import kotlinx.io.Source
@@ -135,6 +134,12 @@ class CompositionTimeExtendedVideoTagBody(
 interface MultitrackVideoTagBody : VideoTagBody
 interface OneCodecMultitrackVideoTagBody : MultitrackVideoTagBody
 
+/**
+ * One track video tag body.
+ *
+ * @param trackId The track id of the video.
+ * @param body The video tag body.
+ */
 class OneTrackVideoTagBody(
     val trackId: Byte,
     val body: SingleVideoTagBody
@@ -162,10 +167,15 @@ class OneTrackVideoTagBody(
     }
 }
 
+/**
+ * Many track video tag body with one codec.
+ *
+ * @param tracks The set of tracks.
+ */
 class ManyTrackOneCodecVideoTagBody internal constructor(
     val tracks: Set<OneTrackVideoTagBody>
 ) : OneCodecMultitrackVideoTagBody {
-    override val size = 1 + tracks.sumOf { it.size }
+    override val size = tracks.sumOf { it.size + 3 } // +3 for sizeOfVideoTrack
 
     override fun encode(output: Sink) {
         tracks.forEach { track ->
@@ -186,19 +196,26 @@ class ManyTrackOneCodecVideoTagBody internal constructor(
             val tracks = mutableSetOf<OneTrackVideoTagBody>()
             var remainingSize = sourceSize
             while (remainingSize > 0) {
-                val track = OneTrackVideoTagBody.decode(packetType, fourCC, source, remainingSize)
-                tracks.add(track)
-                remainingSize -= track.size
+                val trackId = source.readByte()
+                val sizeOfVideoTrack = source.readInt24()
+                val body = decodeBody(packetType, fourCC, source, sizeOfVideoTrack)
+                tracks.add(OneTrackVideoTagBody(trackId, body))
+                remainingSize -= sizeOfVideoTrack
             }
             return ManyTrackOneCodecVideoTagBody(tracks)
         }
     }
 }
 
+/**
+ * Many track video tag body with many codecs.
+ *
+ * @param tracks The set of tracks.
+ */
 class ManyTrackManyCodecVideoTagBody(
     val tracks: Set<OneTrackMultiCodecVideoTagBody>
 ) : MultitrackVideoTagBody {
-    override val size = 1 + tracks.sumOf { it.size }
+    override val size = tracks.sumOf { it.size }
 
     override fun encode(output: Sink) {
         tracks.forEach { track ->
@@ -230,10 +247,10 @@ class ManyTrackManyCodecVideoTagBody(
         val trackId: Byte = 0,
         val body: SingleVideoTagBody
     ) {
-        val size = 1 + body.size
+        val size = 8 + body.size
 
         fun encode(output: Sink) {
-            output.writeByte(fourCC.value.code)
+            output.writeInt(fourCC.value.code)
             output.writeByte(trackId)
             output.writeInt24(body.size)
             body.encode(output)
@@ -243,7 +260,11 @@ class ManyTrackManyCodecVideoTagBody(
             fun decode(
                 packetType: VideoPacketType, source: Source, sourceSize: Int
             ): OneTrackMultiCodecVideoTagBody {
-                throw NotImplementedError("OneTrackMultiCodecVideoTagBody decoding not implemented yet")
+                val fourCC = VideoFourCC.codeOf(source.readInt())
+                val trackId = source.readByte()
+                val sizeOfVideoTrack = source.readInt24()
+                val body = decodeBody(packetType, fourCC, source, sizeOfVideoTrack)
+                return OneTrackMultiCodecVideoTagBody(fourCC, trackId, body)
             }
         }
     }

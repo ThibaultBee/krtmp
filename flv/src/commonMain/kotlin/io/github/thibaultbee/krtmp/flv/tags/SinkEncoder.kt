@@ -23,7 +23,7 @@ import kotlinx.io.readByteArray
 /**
  * Interface a [Sink] encoder
  */
-sealed interface SinkEncoder {
+interface SinkEncoder {
     /**
      * The size of the data in bytes.
      */

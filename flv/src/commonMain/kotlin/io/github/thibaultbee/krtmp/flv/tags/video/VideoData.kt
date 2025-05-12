@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.video
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.config.CodecID
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
+import io.github.thibaultbee.krtmp.flv.tags.FLVData
+import io.github.thibaultbee.krtmp.flv.tags.ModEx
+import io.github.thibaultbee.krtmp.flv.tags.ModExFactory
+import io.github.thibaultbee.krtmp.flv.tags.MultitrackType
+import io.github.thibaultbee.krtmp.flv.tags.SinkEncoder
 import io.github.thibaultbee.krtmp.flv.util.WithValue
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.util.extensions.shr
@@ -211,7 +216,7 @@ class ExtendedVideoData internal constructor(
                 videoModExs.add(videoModEx)
                 remainingSize -= videoModEx.size
             }
-            val payload =
+            val packetDescriptor =
                 if ((packetType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
                     CommandVideoPacketDescriptor.decode(source)
                 } else if (packetType == VideoPacketType.MULTITRACK) {
@@ -223,7 +228,7 @@ class ExtendedVideoData internal constructor(
                 } else {
                     SingleVideoPacketDescriptor.decode(frameType, packetType, source, remainingSize)
                 }
-            return ExtendedVideoData(payload, videoModExs)
+            return ExtendedVideoData(packetDescriptor, videoModExs)
         }
     }
 
@@ -385,8 +390,8 @@ class ExtendedVideoData internal constructor(
 
         class OneTrackVideoPacketDescriptor internal constructor(
             override val frameType: VideoFrameType,
-            override val fourCC: VideoFourCC,
             framePacketType: VideoPacketType,
+            override val fourCC: VideoFourCC,
             override val body: OneTrackVideoTagBody
         ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.ONE_TRACK, framePacketType),
             OneCodec {
@@ -397,7 +402,7 @@ class ExtendedVideoData internal constructor(
             }
 
             override fun toString(): String {
-                return "OneTrackVideoPacketDescriptor(frameType=$frameType, fourCC=$fourCC, body=$body)"
+                return "OneTrackVideoPacketDescriptor(frameType=$frameType, packetType=$framePacketType fourCC=$fourCC, body=$body)"
             }
 
             companion object {
@@ -411,15 +416,15 @@ class ExtendedVideoData internal constructor(
                     val remainingSize = sourceSize - 4
                     val body =
                         OneTrackVideoTagBody.decode(packetType, fourCC, source, remainingSize)
-                    return OneTrackVideoPacketDescriptor(frameType, fourCC, packetType, body)
+                    return OneTrackVideoPacketDescriptor(frameType, packetType, fourCC, body)
                 }
             }
         }
 
         class ManyTrackVideoPacketDescriptor internal constructor(
             override val frameType: VideoFrameType,
-            override val fourCC: VideoFourCC,
             framePacketType: VideoPacketType,
+            override val fourCC: VideoFourCC,
             override val body: ManyTrackOneCodecVideoTagBody
         ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.MANY_TRACK, framePacketType),
             OneCodec {
@@ -430,7 +435,7 @@ class ExtendedVideoData internal constructor(
             }
 
             override fun toString(): String {
-                return "ManyTrackVideoPacketDescriptor(frameType=$frameType, fourCC=$fourCC, body=$body)"
+                return "ManyTrackVideoPacketDescriptor(frameType=$frameType, packetType=$framePacketType, fourCC=$fourCC, body=$body)"
             }
 
             companion object {
@@ -449,7 +454,7 @@ class ExtendedVideoData internal constructor(
                             source,
                             remainingSize
                         )
-                    return ManyTrackVideoPacketDescriptor(frameType, fourCC, packetType, body)
+                    return ManyTrackVideoPacketDescriptor(frameType, packetType, fourCC, body)
                 }
             }
         }
@@ -468,7 +473,7 @@ class ExtendedVideoData internal constructor(
             override fun encodeImpl(output: Sink) = Unit
 
             override fun toString(): String {
-                return "ManyTrackManyCodecVideoPacketDescriptor(frameType=$frameType, body=$body)"
+                return "ManyTrackManyCodecVideoPacketDescriptor(frameType=$frameType, packetType=$framePacketType, body=$body)"
             }
 
             companion object {
@@ -503,7 +508,7 @@ sealed class VideoData(
         output: Sink
     )
 
-    protected fun encodeBody(output: Sink) {
+    private fun encodeBody(output: Sink) {
         body.encode(output)
     }
 
@@ -511,7 +516,7 @@ sealed class VideoData(
         output.writeByte(
             ((isExtended shl 7) or // IsExHeader
                     (frameType.value shl 4) or // Frame Type
-                    next4bitsValue).toByte() // PacketType
+                    next4bitsValue).toByte()
         )
         encodeHeaderImpl(output)
         encodeBody(output)

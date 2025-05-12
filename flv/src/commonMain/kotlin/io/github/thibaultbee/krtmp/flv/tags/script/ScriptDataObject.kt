@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.script
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.elements.containers.amf0ContainerFrom
 import io.github.thibaultbee.krtmp.amf.elements.containers.amfContainerOf
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
+import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import kotlinx.io.Sink
 import kotlinx.io.Source
 

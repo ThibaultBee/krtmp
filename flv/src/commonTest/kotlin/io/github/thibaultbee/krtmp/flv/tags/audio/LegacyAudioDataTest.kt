@@ -1,4 +1,4 @@
-package io.github.thibaultbee.krtmp.flv.tags
+package io.github.thibaultbee.krtmp.flv.tags.audio
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.Resource
@@ -6,13 +6,15 @@ import io.github.thibaultbee.krtmp.flv.config.SoundFormat
 import io.github.thibaultbee.krtmp.flv.config.SoundRate
 import io.github.thibaultbee.krtmp.flv.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.config.SoundType
+import io.github.thibaultbee.krtmp.flv.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.tags.readByteArray
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
-class AudioDataTest {
+class LegacyAudioDataTest {
     @Test
     fun `test write aac raw tag`() {
         val expected = Resource("tags/audio/aac/raw/tag").toByteArray()
@@ -22,9 +24,9 @@ class AudioDataTest {
             write(raw)
         }
 
-        val audioTagBody = DefaultAudioTagBody(rawBuffer, rawBuffer.size.toInt())
+        val audioTagBody = RawAudioTagBody(rawBuffer, rawBuffer.size.toInt())
         val audioData =
-            AudioData(
+            LegacyAudioData(
                 soundFormat = SoundFormat.AAC,
                 soundRate = SoundRate.F_44100HZ,
                 soundSize = SoundSize.S_16BITS,
@@ -45,9 +47,9 @@ class AudioDataTest {
             write(raw)
         }
 
-        val audioTagBody = DefaultAudioTagBody(rawBuffer, rawBuffer.size.toInt())
+        val audioTagBody = RawAudioTagBody(rawBuffer, rawBuffer.size.toInt())
         val audioData =
-            AudioData(
+            LegacyAudioData(
                 soundFormat = SoundFormat.AAC,
                 soundRate = SoundRate.F_44100HZ,
                 soundSize = SoundSize.S_16BITS,
@@ -69,9 +71,9 @@ class AudioDataTest {
         }
 
         val audioTagBody =
-            DefaultAudioTagBody(sequenceHeaderBuffer, sequenceHeaderBuffer.size.toInt())
+            RawAudioTagBody(sequenceHeaderBuffer, sequenceHeaderBuffer.size.toInt())
         val audioData =
-            AudioData(
+            LegacyAudioData(
                 soundFormat = SoundFormat.AAC,
                 soundRate = SoundRate.F_44100HZ,
                 soundSize = SoundSize.S_16BITS,
@@ -93,7 +95,7 @@ class AudioDataTest {
         }
 
         val audioTag = FLVTag.decode(muxBuffer, AmfVersion.AMF0)
-        val audioData = audioTag.data as AudioData
+        val audioData = audioTag.data as LegacyAudioData
 
         assertEquals(SoundFormat.AAC, audioData.soundFormat)
         assertEquals(SoundRate.F_44100HZ, audioData.soundRate)
@@ -101,8 +103,9 @@ class AudioDataTest {
         assertEquals(SoundType.STEREO, audioData.soundType)
         assertEquals(AACPacketType.RAW, audioData.aacPacketType)
 
+        val body = audioData.body as RawAudioTagBody
         val actual = Buffer().apply {
-            write(audioData.body.data, audioData.body.dataSize.toLong())
+            write(body.data, body.dataSize.toLong())
         }
 
         assertContentEquals(expected, actual.readByteArray())
@@ -118,7 +121,7 @@ class AudioDataTest {
         }
 
         val audioTag = FLVTag.decode(muxBuffer)
-        val audioData = audioTag.data as AudioData
+        val audioData = audioTag.data as LegacyAudioData
 
         assertEquals(SoundFormat.AAC, audioData.soundFormat)
         assertEquals(SoundRate.F_44100HZ, audioData.soundRate)
@@ -126,8 +129,9 @@ class AudioDataTest {
         assertEquals(SoundType.STEREO, audioData.soundType)
         assertEquals(AACPacketType.SEQUENCE_HEADER, audioData.aacPacketType)
 
+        val body = audioData.body as RawAudioTagBody
         val actual = Buffer().apply {
-            write(audioData.body.data, audioData.body.dataSize.toLong())
+            write(body.data, body.dataSize.toLong())
         }
 
         assertContentEquals(expected, actual.readByteArray())

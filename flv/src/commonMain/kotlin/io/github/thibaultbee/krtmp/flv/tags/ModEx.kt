@@ -15,6 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags
 
+import io.github.thibaultbee.krtmp.flv.tags.video.VideoPacketType
 import io.github.thibaultbee.krtmp.flv.util.WithValue
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.util.extensions.writeByte
