@@ -102,6 +102,11 @@ class FLVDemuxer(private val source: Source, private val amfVersion: AmfVersion 
         return block(source)
     }
 
+    /**
+     * Decodes the FLV header.
+     *
+     * @return the decoded [FLVHeader]
+     */
     fun decodeFlvHeader(): FLVHeader {
         val peek = source.peek()
         val isHeader = try {
@@ -114,6 +119,13 @@ class FLVDemuxer(private val source: Source, private val amfVersion: AmfVersion 
         } else {
             throw IllegalStateException("Not a FLV header")
         }
+    }
+
+    /**
+     * Closes the demuxer and releases any resources.
+     */
+    fun close() {
+        source.close()
     }
 }
 

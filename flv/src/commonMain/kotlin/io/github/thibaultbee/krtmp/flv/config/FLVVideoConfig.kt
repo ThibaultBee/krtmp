@@ -43,6 +43,7 @@ enum class CodecID(val value: Byte) {
 }
 
 interface Test
+
 /**
  * FourCC object
  *
@@ -87,7 +88,15 @@ enum class VideoMediaType(val codecID: CodecID?, val fourCCs: VideoFourCC?) {
     VP6_ALPHA(CodecID.VP6_ALPHA, null),
     SCREEN_2(CodecID.SCREEN_2, null),
     SORENSON_H263(CodecID.SORENSON_H263, null),
+
+    /**
+     * AVC/H.264
+     */
     AVC(CodecID.AVC, VideoFourCC.AVC),
+
+    /**
+     * HEVC/H.265
+     */
     HEVC(null, VideoFourCC.HEVC),
     VP8(null, VideoFourCC.VP8),
     VP9(null, VideoFourCC.VP9),

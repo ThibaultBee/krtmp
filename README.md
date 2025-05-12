@@ -84,8 +84,9 @@ Features:
 - [x] Demuxer for FLV
 - [x] AMF0 metadata
 - [ ] AMF3 metadata
-- [x] Supported audio codec: AAC
-- [x] Supported video codec: AVC/H.264 and enhanced RTMP codecs: HEVC/H.265, VP9, AV1
+- [x] Support for legacy RTMP
+- [x] Support for enhanced RTMP v1: AV1, HEVC, VP8, VP9
+- [x] Support for enhanced RTMP v2: Multitrack, Opus,...
 
 ## Installation
 
@@ -100,36 +101,36 @@ implementation("io.github.thibaultbee.krtmp:flv:1.0.0")
 Creates a FLV muxer and add audio/video data:
 
 ```kotlin
-val muxer = FlvMuxer()
+val muxer = FLVMuxer(path = "/path/to/file.flv")
+
+// Write file header
+flvMuxer.encodeFlvHeader(header.hasAudio, header.hasVideo)
 
 // Register audio configurations (if any)
-val audioConfig = FlvAudioConfig(
+val audioConfig = FLVAudioConfig(
     FlvAudioConfig.SoundFormat.AAC,
     FlvAudioConfig.SoundRate.KHZ44,
     FlvAudioConfig.SoundSize.SND8BIT,
     FlvAudioConfig.SoundType.STEREO
 )
-val audioId = muxer.addStream(audioConfig)
-
-// Register audio configurations (if any)
-val videoConfig = FlvVideoConfig(
-
+// Register video configurations (if any)
+val videoConfig = FLVVideoConfig(
 )
-val videoId = muxer.addStream(videoConfig)
 
-// Start the muxer (write FlvTag (if needed) and onMetaData)
-muxer.startStream()
+// Write onMetadata
+muxer.encode(0, OnMetadata(audioConfig, videoConfig))
 
 // Write audio/video data
 muxer.write(audioFrame)
 muxer.write(videoFrame)
 muxer.write(audioFrame)
 muxer.write(videoFrame)
-// till you're done
 
-// Stop the muxer
-muxer.stopStream()
+// Till you're done, then
+muxer.flush()
 
+// Close the output
+muxer.close()
 ```
 
 # AMF
