@@ -173,7 +173,7 @@ val array = Amf.encodeToByteArray(MyData.serializer(), data)
 
 # TODO
 
-- [x] A FLV/RTMP parameter for supported level: (legacy, enhanced v1, enhanced v2,...)
+- [ ] More tests (missing tests samples)
 
 # Licence
 
