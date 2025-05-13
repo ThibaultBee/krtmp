@@ -9,18 +9,30 @@ val javadocJar by tasks.registering(Jar::class) {
 
 publishing {
     repositories {
-        maven(url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/") {
-            name = "mavenCentral"
-            credentials {
-                username = project.loadProperty("ossrh_username")
-                password = project.loadProperty("ossrh_password")
+        maven(url = "https://central.sonatype.com/api/v1/publisher/deployments/download/") {
+            name = "centralPortal"
+            project.loadProperty("centralPortalToken")?.let {
+                authentication {
+                    create<HttpHeaderAuthentication>("header")
+                }
+
+                credentials(HttpHeaderCredentials::class) {
+                    name = "Authorization"
+                    value = "Bearer $it"
+                }
             }
         }
-        maven(url = "https://s01.oss.sonatype.org/content/repositories/snapshots/") {
-            name = "mavenCentralSnapshots"
-            credentials {
-                username = project.loadProperty("ossrh_username")
-                password = project.loadProperty("ossrh_password")
+        maven(url = "https://central.sonatype.com/repository/maven-snapshots/") {
+            name = "centralPortalSnapshots"
+            project.loadProperty("centralPortalToken")?.let {
+                authentication {
+                    create<HttpHeaderAuthentication>("header")
+                }
+
+                credentials(HttpHeaderCredentials::class) {
+                    name = "Authorization"
+                    value = "Bearer $it"
+                }
             }
         }
     }
