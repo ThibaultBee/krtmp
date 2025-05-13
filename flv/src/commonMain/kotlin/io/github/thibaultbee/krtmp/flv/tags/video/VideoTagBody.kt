@@ -15,6 +15,11 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags.video
 
+import io.github.thibaultbee.krtmp.amf.AmfVersion
+import io.github.thibaultbee.krtmp.amf.elements.AmfElement
+import io.github.thibaultbee.krtmp.amf.elements.containers.amf0ContainerFrom
+import io.github.thibaultbee.krtmp.amf.elements.containers.amfContainerOf
+import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
@@ -29,10 +34,38 @@ import kotlinx.io.Source
  */
 interface VideoTagBody {
     val size: Int
-    fun encode(output: Sink)
+    fun encode(output: Sink, amfVersion: AmfVersion)
 }
 
 interface SingleVideoTagBody : VideoTagBody
+
+/**
+ * Metadata video tag body.
+ */
+class MetadataVideoTagBody(
+    val name: String,
+    val value: AmfElement
+) : SingleVideoTagBody {
+    private val container = amfContainerOf(listOf(name, value))
+    override val size = container.size0
+
+    override fun encode(output: Sink, amfVersion: AmfVersion) {
+        container.write(amfVersion, output)
+    }
+
+    override fun toString(): String {
+        return "MetadataVideoTagBody(name=$name, value=$value)"
+    }
+
+    companion object {
+        fun decode(source: Source, sourceSize: Int): MetadataVideoTagBody {
+            val container = amf0ContainerFrom(2, source)
+            val name = (container.first() as AmfString)
+            val value = container.last()
+            return MetadataVideoTagBody(name.value, value)
+        }
+    }
+}
 
 /**
  * Default video tag body.
@@ -43,7 +76,7 @@ class RawVideoTagBody(
 ) : SingleVideoTagBody {
     override val size = dataSize
 
-    override fun encode(output: Sink) {
+    override fun encode(output: Sink, amfVersion: AmfVersion) {
         output.write(data, dataSize.toLong())
     }
 
@@ -63,7 +96,7 @@ internal class CommandLegacyVideoTagBody(
 ) : VideoTagBody {
     override val size = 1
 
-    override fun encode(output: Sink) {
+    override fun encode(output: Sink, amfVersion: AmfVersion) {
         output.writeByte(command.value)
     }
 
@@ -81,7 +114,8 @@ internal class CommandLegacyVideoTagBody(
  */
 internal class EmptyVideoTagBody : SingleVideoTagBody {
     override val size = 0
-    override fun encode(output: Sink) = Unit  // End of sequence does not have a body
+    override fun encode(output: Sink, amfVersion: AmfVersion) =
+        Unit  // End of sequence does not have a body
 
     override fun toString(): String {
         return "Empty"
@@ -106,7 +140,7 @@ class CompositionTimeExtendedVideoTagBody(
 ) : SingleVideoTagBody {
     override val size = 3 + dataSize
 
-    override fun encode(output: Sink) {
+    override fun encode(output: Sink, amfVersion: AmfVersion) {
         output.writeInt24(compositionTime)
         output.write(data, dataSize.toLong())
     }
@@ -146,9 +180,9 @@ class OneTrackVideoTagBody(
 ) : OneCodecMultitrackVideoTagBody {
     override val size = 1 + body.size
 
-    override fun encode(output: Sink) {
+    override fun encode(output: Sink, amfVersion: AmfVersion) {
         output.writeByte(trackId)
-        body.encode(output)
+        body.encode(output, amfVersion)
     }
 
     override fun toString(): String {
@@ -177,11 +211,11 @@ class ManyTrackOneCodecVideoTagBody internal constructor(
 ) : OneCodecMultitrackVideoTagBody {
     override val size = tracks.sumOf { it.size + 3 } // +3 for sizeOfVideoTrack
 
-    override fun encode(output: Sink) {
+    override fun encode(output: Sink, amfVersion: AmfVersion) {
         tracks.forEach { track ->
             output.writeByte(track.trackId)
             output.writeInt24(track.body.size)
-            track.body.encode(output)
+            track.body.encode(output, amfVersion)
         }
     }
 
@@ -217,9 +251,9 @@ class ManyTrackManyCodecVideoTagBody(
 ) : MultitrackVideoTagBody {
     override val size = tracks.sumOf { it.size }
 
-    override fun encode(output: Sink) {
+    override fun encode(output: Sink, amfVersion: AmfVersion) {
         tracks.forEach { track ->
-            track.encode(output)
+            track.encode(output, amfVersion)
         }
     }
 
@@ -249,11 +283,11 @@ class ManyTrackManyCodecVideoTagBody(
     ) {
         val size = 8 + body.size
 
-        fun encode(output: Sink) {
+        fun encode(output: Sink, amfVersion: AmfVersion) {
             output.writeInt(fourCC.value.code)
             output.writeByte(trackId)
             output.writeInt24(body.size)
-            body.encode(output)
+            body.encode(output, amfVersion)
         }
 
         companion object {

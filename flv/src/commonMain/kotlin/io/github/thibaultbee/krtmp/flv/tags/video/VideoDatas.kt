@@ -15,6 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags.video
 
+import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import io.github.thibaultbee.krtmp.flv.config.CodecID
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.sources.NaluRawSource
@@ -421,6 +422,21 @@ fun endOfSequenceExtendedVideoData(
 )
 
 /**
+ * Creates an [ExtendedVideoData] for the metadata.
+ *
+ * @param fourCC the FourCCs
+ * @param name the name of the metadata
+ * @param value the value of the metadata
+ */
+fun metadataExtendedVideoData(
+    fourCC: VideoFourCC,
+    name: String,
+    value: AmfElement
+) = ExtendedVideoData(
+    VideoFrameType.KEY, VideoPacketType.META_DATA, fourCC, MetadataVideoTagBody(name, value)
+)
+
+/**
  * Creates a [MultitrackVideoTagBody] for one track video data.
  *
  * @param frameType the frame type
@@ -430,7 +446,7 @@ fun endOfSequenceExtendedVideoData(
  * @param body the coded [RawSource]
  * @param bodySize the size of the coded [RawSource]
  */
-fun oneTrackExtendedVideoData(
+fun oneTrackMultitrackExtendedVideoData(
     frameType: VideoFrameType,
     fourCC: VideoFourCC,
     framePacketType: VideoPacketType,

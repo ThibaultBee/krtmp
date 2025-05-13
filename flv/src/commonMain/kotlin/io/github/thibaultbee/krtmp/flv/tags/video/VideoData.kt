@@ -508,8 +508,8 @@ sealed class VideoData(
         output: Sink
     )
 
-    private fun encodeBody(output: Sink) {
-        body.encode(output)
+    private fun encodeBody(output: Sink, amfVersion: AmfVersion) {
+        body.encode(output, amfVersion)
     }
 
     override fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean) {
@@ -519,7 +519,7 @@ sealed class VideoData(
                     next4bitsValue).toByte()
         )
         encodeHeaderImpl(output)
-        encodeBody(output)
+        encodeBody(output, amfVersion)
     }
 
     companion object {
