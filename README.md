@@ -103,7 +103,7 @@ Creates a FLV muxer and add audio/video data:
 ```kotlin
 val muxer = FLVMuxer(path = "/path/to/file.flv")
 
-// Write file header
+// Write FLV header
 flvMuxer.encodeFlvHeader(hasAudio, hasVideo)
 
 // Register audio configurations (if any)
