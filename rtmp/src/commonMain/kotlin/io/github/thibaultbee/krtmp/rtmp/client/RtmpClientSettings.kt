@@ -16,8 +16,8 @@
 package io.github.thibaultbee.krtmp.rtmp.client
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.flv.models.config.AudioMediaType
-import io.github.thibaultbee.krtmp.flv.models.config.VideoMediaType
+import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
+import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_AUDIO_CODECS
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_FLASH_VER
@@ -33,20 +33,17 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
  * @param clock Clock used to timestamp RTMP messages. You should use the same clock for your video and audio timestamps.
  */
 open class RtmpClientSettings(
-    writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
-    writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
-    amfVersion: AmfVersion = AmfVersion.AMF0,
-    clock: RtmpClock = RtmpClock.Default()
-) : RtmpConfiguration(
-    writeChunkSize,
-    writeWindowAcknowledgementSize,
-    amfVersion,
-    clock
+    val writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
+    val writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
+    val amfVersion: AmfVersion = AmfVersion.AMF0,
+    val clock: RtmpClock = RtmpClock.Default(),
 ) {
     /**
      * The default instance of [RtmpClientSettings]
      */
-    companion object Default : RtmpClientSettings()
+    companion object Default : RtmpClientSettings() {
+        const val DEFAULT_CHUNK_SIZE = RtmpConfiguration.DEFAULT_CHUNK_SIZE // bytes
+    }
 }
 
 /**

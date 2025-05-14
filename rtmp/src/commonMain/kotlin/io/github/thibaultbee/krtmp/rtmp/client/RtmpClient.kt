@@ -13,28 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.client.publish
+package io.github.thibaultbee.krtmp.rtmp.client
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
 import io.github.thibaultbee.krtmp.common.logger.Logger
-import io.github.thibaultbee.krtmp.flv.FLVMuxer
-import io.github.thibaultbee.krtmp.flv.models.sources.ByteArrayRawSource
-import io.github.thibaultbee.krtmp.flv.models.sources.RawSourceWithSize
-import io.github.thibaultbee.krtmp.flv.models.tags.FLVTag
-import io.github.thibaultbee.krtmp.flv.models.tags.OnMetadata
-import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
+import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
+import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
+import io.github.thibaultbee.krtmp.flv.sources.ByteArrayRawSource
+import io.github.thibaultbee.krtmp.flv.tags.FLVData
+import io.github.thibaultbee.krtmp.flv.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
+import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
+import io.github.thibaultbee.krtmp.flv.tags.readBuffer
+import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
+import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
-import io.github.thibaultbee.krtmp.rtmp.client.RemoteServerException
-import io.github.thibaultbee.krtmp.rtmp.client.RtmpClientConnectInformation
-import io.github.thibaultbee.krtmp.rtmp.client.RtmpClientSettings
-import io.github.thibaultbee.krtmp.rtmp.client.publish.RtmpClient.Factory
-import io.github.thibaultbee.krtmp.rtmp.extensions.clientHandshake
-import io.github.thibaultbee.krtmp.rtmp.extensions.isTunneledRtmp
+import io.github.thibaultbee.krtmp.rtmp.client.RtmpClient.Companion.TAG
 import io.github.thibaultbee.krtmp.rtmp.extensions.streamKey
-import io.github.thibaultbee.krtmp.rtmp.extensions.validateRtmp
 import io.github.thibaultbee.krtmp.rtmp.extensions.write
 import io.github.thibaultbee.krtmp.rtmp.messages.Acknowledgement
 import io.github.thibaultbee.krtmp.rtmp.messages.AmfMessage
@@ -57,22 +55,12 @@ import io.github.thibaultbee.krtmp.rtmp.util.NetStreamCommand
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.TransactionCommandCompletion
-import io.github.thibaultbee.krtmp.rtmp.util.connections.HttpConnection
+import io.github.thibaultbee.krtmp.rtmp.util.connections.ConnectionFactory
 import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
-import io.github.thibaultbee.krtmp.rtmp.util.connections.TcpConnection
 import io.ktor.http.URLBuilder
-import io.ktor.network.sockets.SocketOptions
-import io.ktor.utils.io.CancellationException
-import kotlinx.coroutines.CompletableJob
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import kotlinx.coroutines.channels.ClosedSendChannelException
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.Buffer
@@ -80,16 +68,42 @@ import kotlinx.io.IOException
 import kotlinx.io.RawSource
 import kotlinx.io.startsWith
 
+/**
+ * Creates a new [RtmpClient] instance.
+ *
+ * It will connect to the RTMP server and perform the handshake.
+ * You will need to call [connect] to send a connect message to the server.
+ *
+ * @param url the RTMP URL to connect to
+ * @param settings the settings to use for the client
+ */
+suspend fun RtmpClient(
+    url: String,
+    settings: RtmpClient.Settings = RtmpClient.Settings
+) = RtmpClient(RtmpURLBuilder(url), settings)
 
-class RtmpClientFactory(settings: RtmpClient.Settings)
+/**
+ * Creates a new [RtmpClient] instance.
+ *
+ * It will connect to the RTMP server and perform the handshake.
+ * You will need to call [connect] to send a connect message to the server.
+ *
+ * @param urlBuilder the RTMP URL builder to connect to
+ * @param settings the settings to use for the client
+ */
+suspend fun RtmpClient(
+    urlBuilder: URLBuilder,
+    settings: RtmpClient.Settings = RtmpClient.Settings,
+): RtmpClient {
+    val connection = ConnectionFactory(settings.clock).create(urlBuilder)
+    return RtmpClient(urlBuilder, connection, settings)
+}
 
 /**
  * A RTMP client to publish stream.
  *
- * To create a client, use [Factory.create].
- *
  * The usage is:
- *  - Connect to the server with [Factory.create]
+ *  - Send RTMP connect command with [connect]
  *  - Send RTMP create stream command with [createStream]
  *  - Send RTMP publish command with [publish]
  *
@@ -97,7 +111,7 @@ class RtmpClientFactory(settings: RtmpClient.Settings)
  *
  * - Close the connection with [close]
  */
-class RtmpClient internal constructor(
+class RtmpClient(
     private val urlBuilder: URLBuilder,
     private val connection: IConnection,
     private val settings: Settings
@@ -108,86 +122,43 @@ class RtmpClient internal constructor(
     private val transactionId: Long
         get() = _transactionId++
 
-    private var writeChunkSize: Int = settings.writeChunkSize
-    private var readChunkSize = RtmpConfiguration.DEFAULT_CHUNK_SIZE
-    private var readWindowAcknowledgementSize = Int.MAX_VALUE
-    private var lastReadWindowAcknowledgementSize = Int.MAX_VALUE
-
-    private val commandChannels = TransactionCommandCompletion()
-
-    private var messageStreamId = 0
-
-    private var _flvMuxer: FLVMuxer? = null
-
-    override val coroutineContext: CompletableJob = Job()
-
     /**
-     * Gets the cause of the connection closure.
-     */
-    val closedCause: Throwable?
-        get() {
-            return try {
-                connection.closedCause
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-    /**
-     * Returns the FLV muxer that can be used to write FLV tags directly.
-     *
-     * The muxer is created on the first call and reused for subsequent calls.
-     *
-     * When using this muxer, you don't have to call [writeAudio] neither [writeVideo] (and
-     * assimilated).
-     *
-     * @return the FLV muxer
-     */
-    val flvMuxer: FLVMuxer
-        get() {
-            _flvMuxer?.let { return it }
-
-            val listener = object : FLVMuxer.Listener {
-                override fun onOutputPacket(outputPacket: Packet) {
-                    // Throw exception if connection is closed so the user can handle it
-                    if (connection.isClosed) {
-                        throw IOException("Connection closed", closedCause)
-                    }
-                    try {
-                        connection.launch {
-                            try {
-                                writePacket(outputPacket)
-                            } catch (e: TimeoutCancellationException) {
-                                Logger.w(TAG, "Timeout while writing packet: ${e.message}")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        throw IOException("Failed to write packet", e)
-                    }
-                }
-            }
-            val muxer = FLVMuxer().apply {
-                addListener(listener)
-            }
-            _flvMuxer = muxer
-            return muxer
-        }
-
-    /**
-     * Returns true if the connection is closed.
-     */
-    val isClosed: Boolean
-        get() = connection.isClosed
-
-    /**
-     * Returns the write chunk size.
+     * The write chunk size.
      *
      * The default value is [RtmpConfiguration.DEFAULT_CHUNK_SIZE].
      *
      * @return the write chunk size
      * @see [setWriteChunkSize]
      */
-    fun getWriteChunkSize() = writeChunkSize
+    var writeChunkSize: Int = settings.writeChunkSize
+        private set
+    var readChunkSize = RtmpClientSettings.DEFAULT_CHUNK_SIZE
+        private set
+    var readWindowAcknowledgementSize = Int.MAX_VALUE
+        private set
+    private var lastReadWindowAcknowledgementSize = Int.MAX_VALUE
+
+    private val commandChannels = TransactionCommandCompletion()
+
+    private var messageStreamId = 0
+
+    override val coroutineContext = connection.coroutineContext
+
+    private val _messageFlow = MutableSharedFlow<Message>()
+    val messageFlow = _messageFlow.asSharedFlow()
+
+    init {
+        // Launch coroutine to handle RTMP messages
+        connection.launch {
+            handleRtmpMessages()
+        }
+    }
+
+    /**
+     * Returns true if the connection is closed.
+     */
+    val isClosed: Boolean
+        get() = connection.isClosed
 
     /**
      * Sets the write chunk size.
@@ -205,24 +176,11 @@ class RtmpClient internal constructor(
     }
 
     /**
-     * Connects to the server and handshakes.
-     */
-    suspend fun establishConnection() {
-        connection.connect()
-        connection.invokeOnCompletion { throwable -> clear(throwable) }
-        connection.clientHandshake(settings.clock)
-    }
-
-    /**
      * Connects to the server.
      *
      * @return the [Command.Result] send by the server
      */
     suspend fun connect(connectInformation: ConnectInformation = ConnectInformation): Command.Result {
-        if (connection.isClosed) {
-            establishConnection()
-        }
-
         // Prepare connect object
         val objectEncoding = if (settings.amfVersion == AmfVersion.AMF0) {
             Command.Connect.ObjectEncoding.AMF0
@@ -240,21 +198,15 @@ class RtmpClient internal constructor(
             objectEncoding = objectEncoding
         )
 
-        // Launch coroutine to handle RTMP messages
-        connection.launch {
-            handleRtmpMessages()
-        }
-
         settings.clock.reset()
 
         val connectTransactionId = transactionId
         val connectCommand = Command.Connect(
             connectTransactionId, settings.clock.nowInMs, connectObject
         )
-        connectCommand.write()
 
         try {
-            return commandChannels.waitForResponse(connectTransactionId) as Command.Result
+            return connectCommand.writeWithResponse(connectTransactionId) as Command.Result
         } catch (e: RemoteServerException) {
             throw RemoteServerException("Connect command failed: ${e.message}", e.command)
         } catch (e: Exception) {
@@ -282,10 +234,12 @@ class RtmpClient internal constructor(
         val createStreamCommand =
             Command.CreateStream(createStreamTransactionId, settings.clock.nowInMs)
 
-        listOf(releaseStreamCommand, fcPublishCommand, createStreamCommand).writeAmfMessages()
-
         val result = try {
-            commandChannels.waitForResponse(createStreamTransactionId)
+            listOf(
+                releaseStreamCommand,
+                fcPublishCommand,
+                createStreamCommand
+            ).writeAmfMessagesWithResponse(createStreamTransactionId)
         } catch (e: RemoteServerException) {
             throw RemoteServerException("Create stream command failed: ${e.message}", e.command)
         } catch (e: Exception) {
@@ -313,7 +267,7 @@ class RtmpClient internal constructor(
         publishCommand.write()
 
         return try {
-            commandChannels.waitForResponse(NetStreamCommand.PUBLISH) as Command.OnStatus
+            publishCommand.writeWithResponse(NetStreamCommand.PUBLISH) as Command.OnStatus
         } catch (e: RemoteServerException) {
             throw RemoteServerException("Publish command failed: ${e.message}", e.command)
         } catch (e: Exception) {
@@ -372,83 +326,6 @@ class RtmpClient internal constructor(
             onMetadata
         )
         return dataFrameDataAmf.write()
-    }
-
-    suspend fun writeFrame(array: ByteArray) {
-        writeFrame(Buffer().apply { write(array) })
-    }
-
-    /**
-     * Writes a raw frame.
-     *
-     * The frame must be in the FLV format.
-     *
-     * Internally, it will parse the frame to extract the header and the body.
-     * It is not the most efficient way to write frames but it is convenient.
-     * If you have a frame in the FLV format, prefer using [writeAudio] or [writeVideo].
-     *
-     * @param buffer the frame to write
-     */
-    suspend fun writeFrame(buffer: Buffer) {
-        /**
-         * Dropping FLV header that is not needed. It starts with 'F', 'L' and 'V'.
-         * Just check the first byte to simplify.
-         */
-        if (buffer.startsWith('F'.code.toByte())) {
-            Logger.i(TAG, "Dropping FLV header")
-            return
-        }
-        try {
-            val header = FlvTagPacket.Header.read(buffer)
-            val tag = RawSourceWithSize(buffer, header.bodySize.toLong())
-            when (header.type) {
-                FLVTag.Type.AUDIO -> writeAudio(header.timestampMs, tag)
-                FLVTag.Type.VIDEO -> writeVideo(header.timestampMs, tag)
-                FLVTag.Type.SCRIPT -> writeSetDataFrame(tag)
-                else -> throw IllegalArgumentException("Frame type ${header.type} not supported")
-            }
-        } catch (e: Exception) {
-            throw IOException("Failed to write frame", e)
-        }
-    }
-
-    /**
-     * Writes an [Packet].
-     *
-     * @param packet the FLV packet to write
-     */
-    suspend fun writePacket(packet: Packet) {
-        // Only FlvTagOutputPacket matters here
-        if (packet is FlvTagPacket) {
-            writeFlvTagOutputPacket(packet)
-        }
-    }
-
-    /**
-     * Writes a FLV tag wrapped in a [FlvTagPacket].
-     *
-     * @param tagPacket the FLV tag output packet to write
-     */
-    private suspend fun writeFlvTagOutputPacket(tagPacket: FlvTagPacket) {
-        return when {
-            tagPacket.tag.type == FLVTag.Type.AUDIO -> writeAudio(
-                tagPacket.timestampMs,
-                tagPacket.bodyOutputPacket.readRawSource()
-            )
-
-            tagPacket.tag.type == FLVTag.Type.VIDEO -> writeVideo(
-                tagPacket.timestampMs,
-                tagPacket.bodyOutputPacket.readRawSource()
-            )
-
-            tagPacket.tag is OnMetadata -> {
-                val flvTag = tagPacket.tag as OnMetadata
-                flvTag.amfVersion = settings.amfVersion
-                writeSetDataFrame(flvTag.metadata)
-            }
-
-            else -> throw IllegalArgumentException("Packet type ${tagPacket.tag::class.simpleName} not supported")
-        }
     }
 
     /**
@@ -519,19 +396,7 @@ class RtmpClient internal constructor(
         closeCommand.write()
 
         connection.close()
-        clear()
-        coroutineContext.cancelChildren()
-    }
-
-    private fun clear(throwable: Throwable? = null) {
         messagesManager.clear()
-        if (!coroutineContext.isCompleted) {
-            if (throwable != null) {
-                coroutineContext.completeExceptionally(throwable)
-            } else {
-                coroutineContext.complete()
-            }
-        }
     }
 
     private suspend fun handleRtmpMessages() {
@@ -539,18 +404,9 @@ class RtmpClient internal constructor(
             while (true) {
                 handleRtmpMessage()
             }
-        } catch (e: CancellationException) {
-            commandChannels.completeAllExceptionally(e)
-            Logger.i(TAG, "Connection cancelled")
-        } catch (e: ClosedReceiveChannelException) {
-            commandChannels.completeAllExceptionally(e)
-            Logger.i(TAG, "Received channel closed")
-        } catch (e: ClosedSendChannelException) {
-            commandChannels.completeAllExceptionally(e)
-            Logger.i(TAG, "Send channel closed")
         } catch (t: Throwable) {
             commandChannels.completeAllExceptionally(t)
-            Logger.e(TAG, "Error while handling RTMP messages", t)
+            Logger.i(TAG, "Connection cancelled")
         } finally {
             close()
         }
@@ -574,10 +430,6 @@ class RtmpClient internal constructor(
                  * `writeWindowAcknowledgementSize` bytes send.
                  * We don't do anything with this message.
                  */
-            }
-
-            is Audio -> {
-                throw NotImplementedError("Audio not supported")
             }
 
             is CommandMessage -> {
@@ -633,16 +485,13 @@ class RtmpClient internal constructor(
                 }
             }
 
-            is Video -> {
-                throw NotImplementedError("Video not supported")
-            }
-
             is WindowAcknowledgementSize -> {
                 readWindowAcknowledgementSize = message.windowSize
             }
 
             else -> {
-                throw IllegalArgumentException("Message $message not supported (type: ${message.messageType})")
+                _messageFlow.emit(message)
+                Logger.e(TAG, "Unknown message type: ${message::class.simpleName}")
             }
         }
     }
@@ -657,9 +506,19 @@ class RtmpClient internal constructor(
         }
     }
 
+    private suspend fun List<AmfMessage>.writeAmfMessagesWithResponse(id: Any = transactionId): Command {
+        writeAmfMessages()
+        return commandChannels.waitForResponse(id)
+    }
+
     private suspend fun List<AmfMessage>.writeAmfMessages() {
         val messages = map { it.createMessage(settings.amfVersion) }
         messages.writeMessages()
+    }
+
+    private suspend fun AmfMessage.writeWithResponse(id: Any = transactionId): Command {
+        val message = createMessage(settings.amfVersion)
+        return message.writeWithResponse(id)
     }
 
     private suspend fun AmfMessage.write() {
@@ -692,7 +551,12 @@ class RtmpClient internal constructor(
         }
     }
 
-    private suspend fun Message.write() {
+    suspend fun Message.writeWithResponse(id: Any = transactionId): Command {
+        write()
+        return commandChannels.waitForResponse(id)
+    }
+
+    suspend fun Message.write() {
         messagesManager.getPreviousWrittenMessage(this) { previousMessage ->
             val chunks = this.createChunks(writeChunkSize, previousMessage)
             val length = chunks.sumOf { it.size }
@@ -703,13 +567,13 @@ class RtmpClient internal constructor(
     }
 
     companion object {
-        private const val TAG = "RtmpPublishClient"
+        internal const val TAG = "RtmpClient"
     }
 
     open class ConnectInformation(
         flashVer: String = DEFAULT_FLASH_VER,
-        audioCodecs: List<MediaType>? = DEFAULT_AUDIO_CODECS,
-        videoCodecs: List<MediaType>? = DEFAULT_VIDEO_CODECS,
+        audioCodecs: List<AudioMediaType>? = DEFAULT_AUDIO_CODECS,
+        videoCodecs: List<VideoMediaType>? = DEFAULT_VIDEO_CODECS,
     ) : RtmpClientConnectInformation(flashVer, audioCodecs, videoCodecs) {
         /**
          * The default instance of [ConnectInformation]
@@ -729,8 +593,9 @@ class RtmpClient internal constructor(
         amfVersion: AmfVersion = AmfVersion.AMF0,
         clock: RtmpClock = RtmpClock.Default(),
         val enableTooLateFrameDrop: Boolean = false,
-        val tooLateFrameDropTimeoutInMs: Long = DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS
-    ) : RtmpClientSettings(
+        val tooLateFrameDropTimeoutInMs: Long = DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS,
+
+        ) : RtmpClientSettings(
         writeChunkSize,
         writeWindowAcknowledgementSize,
         amfVersion,
@@ -743,79 +608,79 @@ class RtmpClient internal constructor(
             const val DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS = 2000L // ms
         }
     }
+}
 
+
+/**
+ * Writes a raw frame.
+ *
+ * The frame must be in the FLV format.
+ *
+ * Internally, it will parse the frame to extract the header and the body.
+ * It is not the most efficient way to write frames but it is convenient.
+ * If you have a frame in the FLV format, prefer using [writeAudio] or [writeVideo].
+ *
+ * @param array the frame to write
+ */
+suspend fun RtmpClient.write(array: ByteArray) {
+    write(Buffer().apply { write(array) })
+}
+
+/**
+ * Writes a raw frame.
+ *
+ * The frame must be in the FLV format.
+ *
+ * @param buffer the frame to write
+ */
+suspend fun RtmpClient.write(buffer: Buffer) {
     /**
-     * A factory that creates [RtmpClient].
-     * @param settings the RTMP settings. By default it creates a configuration for a RTMP client.
+     * Dropping FLV header that is not needed. It starts with 'F', 'L' and 'V'.
+     * Just check the first byte to simplify.
      */
-    class Factory(
-        private val settings: Settings = Settings
-    ) {
-        /**
-         * Connects to the server. It establishes a TCP socket connection. You still have to execute
-         * [RtmpClient.connect] afterwards.
-         *
-         * @param url the RTMP url
-         * @return a [RtmpClient]
-         */
-        fun create(url: String): RtmpClient {
-            return create(RtmpURLBuilder(url))
-        }
-
-        /**
-         * Connects to the server. It establishes a TCP socket connection. You still have to execute
-         * [RtmpClient.connect] afterwards.
-         *
-         * @param urlBuilder the RTMP url builder
-         * @return a [RtmpClient]
-         */
-        fun create(
-            urlBuilder: URLBuilder
-        ): RtmpClient {
-            urlBuilder.validateRtmp()
-
-            return if (urlBuilder.protocol.isTunneledRtmp) {
-                createTunneling(urlBuilder)
-            } else {
-                createTcpConnection(urlBuilder)
-            }
-        }
-
-        /**
-         * Creates a RTMP client based on TCP (for `RTMP` and `RTMPS`).
-         *
-         * @param urlBuilder the RTMP url builder
-         * @param dispatcher the coroutine dispatcher to use. Default is [Dispatchers.IO]
-         * @param socketOptions the socket options to use. Default is empty.
-         * @return a [RtmpClient]
-         */
-        fun createTcpConnection(
-            urlBuilder: URLBuilder,
-            dispatcher: CoroutineDispatcher = Dispatchers.IO,
-            socketOptions: SocketOptions.PeerSocketOptions.() -> Unit = {},
-        ): RtmpClient {
-            urlBuilder.validateRtmp()
-            require(!urlBuilder.protocol.isTunneledRtmp) { "URL must not be tunneled" }
-
-            val connection: IConnection =
-                TcpConnection(urlBuilder, dispatcher, socketOptions)
-            return RtmpClient(urlBuilder, connection, settings)
-        }
-
-        /**
-         * Creates a RTMP client based on HTTP (for `RTMPT` and `RTMPTS`).
-         *
-         * @param urlBuilder the RTMP url builder
-         * @return a [RtmpClient]
-         */
-        fun createTunneling(
-            urlBuilder: URLBuilder
-        ): RtmpClient {
-            urlBuilder.validateRtmp()
-            require(urlBuilder.protocol.isTunneledRtmp) { "URL must be tunneled" }
-
-            val connection: IConnection = HttpConnection(urlBuilder)
-            return RtmpClient(urlBuilder, connection, settings)
-        }
+    if (buffer.startsWith('F'.code.toByte())) {
+        Logger.i(TAG, "Dropping FLV header")
+        return
+    }
+    val tag = RawFLVTag.decode(buffer)
+    when (tag.type) {
+        FLVTag.Type.AUDIO -> writeAudio(tag.timestampMs, tag.body)
+        FLVTag.Type.VIDEO -> writeVideo(tag.timestampMs, tag.body)
+        FLVTag.Type.SCRIPT -> writeSetDataFrame(tag.body)
+        else -> throw IllegalArgumentException("Frame type ${tag.type} not supported")
     }
 }
+
+/**
+ * Writes a [FLVData].
+ *
+ * @param timestampMs the timestamp of the frame in milliseconds
+ * @param data the frame to write
+ */
+suspend fun RtmpClient.write(timestampMs: Int, data: FLVData) {
+    return when (data) {
+        is AudioData -> writeAudio(
+            timestampMs,
+            data.readBuffer()
+        )
+
+        is VideoData -> writeVideo(
+            timestampMs,
+            data.readBuffer()
+        )
+
+        is OnMetadata -> {
+            writeSetDataFrame(data.readBuffer())
+        }
+
+        else -> throw IllegalArgumentException("Packet type ${data::class.simpleName} not supported")
+    }
+}
+
+/**
+ * Writes a [FLVTag].
+ *
+ * @param tag the FLV tag to write
+ */
+suspend fun RtmpClient.write(tag: FLVTag) = write(tag.timestampMs, tag.data)
+

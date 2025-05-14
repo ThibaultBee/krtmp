@@ -39,7 +39,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlin.coroutines.cancellation.CancellationException
 
-internal class HttpConnection(private val urlBuilder: URLBuilder) : IConnection {
+internal class HttpConnection internal constructor(private val urlBuilder: URLBuilder) : IConnection {
     private val client = HttpClient {
         defaultRequest {
             headers {
@@ -70,14 +70,6 @@ internal class HttpConnection(private val urlBuilder: URLBuilder) : IConnection 
     private var _totalBytesWritten: Long = 0
     override val totalBytesWritten: Long
         get() = _totalBytesWritten
-
-    private var _closedCause: Throwable? = null
-    override val closedCause: Throwable?
-        get() = _closedCause
-
-    override fun invokeOnCompletion(handler: CompletionHandler) {
-        client.coroutineContext.job.invokeOnCompletion { handler(it) }
-    }
 
     override suspend fun connect() {
         try {
@@ -197,7 +189,6 @@ internal class HttpConnection(private val urlBuilder: URLBuilder) : IConnection 
             post("close/$it", ByteArray(0))
         }
         client.close()
-        client.coroutineContext.cancelChildren()
         postByteReadChannels.clear()
         connectionId = null
         _isClosed = true
@@ -219,7 +210,7 @@ internal class HttpConnection(private val urlBuilder: URLBuilder) : IConnection 
         }
 
     private fun throwException(t: Throwable) {
-        _closedCause = t
+
     }
 
     companion object {

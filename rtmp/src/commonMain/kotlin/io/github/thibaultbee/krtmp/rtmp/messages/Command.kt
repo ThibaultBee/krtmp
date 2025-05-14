@@ -21,9 +21,9 @@ import io.github.thibaultbee.krtmp.amf.elements.Amf3ElementReader
 import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory
 import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
-import io.github.thibaultbee.krtmp.flv.models.config.AudioMediaType
-import io.github.thibaultbee.krtmp.flv.models.config.VideoFourCC
-import io.github.thibaultbee.krtmp.flv.models.config.VideoMediaType
+import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
+import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
+import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import io.github.thibaultbee.krtmp.rtmp.extensions.orNull
 import io.github.thibaultbee.krtmp.rtmp.util.AmfUtil.amf

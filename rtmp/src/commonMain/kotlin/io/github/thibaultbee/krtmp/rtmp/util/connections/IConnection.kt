@@ -17,16 +17,12 @@ package io.github.thibaultbee.krtmp.rtmp.util.connections
 
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
-import kotlinx.coroutines.CompletionHandler
 import kotlinx.coroutines.CoroutineScope
 
-internal interface IConnection : CoroutineScope {
+interface IConnection : CoroutineScope {
     val isClosed: Boolean
     val totalBytesRead: Long
     val totalBytesWritten: Long
-    val closedCause: Throwable?
-
-    fun invokeOnCompletion(handler: CompletionHandler)
 
     suspend fun connect()
 

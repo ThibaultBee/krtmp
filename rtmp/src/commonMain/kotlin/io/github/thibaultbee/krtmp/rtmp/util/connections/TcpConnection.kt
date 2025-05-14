@@ -28,15 +28,15 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.CountedByteReadChannel
 import io.ktor.utils.io.CountedByteWriteChannel
-import kotlinx.coroutines.CompletionHandler
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlin.coroutines.CoroutineContext
 
-internal class TcpConnection(
+internal class TcpConnection internal constructor(
     private val urlBuilder: URLBuilder,
-    private val dispatcher: CoroutineDispatcher,
-    private val socketOptions: SocketOptions.PeerSocketOptions.() -> Unit = {},
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val socketOptions: SocketOptions.TCPClientSocketOptions.() -> Unit = {},
 ) : IConnection {
     private val selectorManager = SelectorManager(dispatcher)
     private val tcpSocket = aSocket(selectorManager).tcp()
@@ -51,7 +51,7 @@ internal class TcpConnection(
     }
 
     override val coroutineContext: CoroutineContext
-        get() = connection?.socket?.coroutineContext
+        get() = connection?.socket?.socketContext
             ?: throw IllegalStateException("Connection is closed")
 
     override val isClosed: Boolean
@@ -62,14 +62,6 @@ internal class TcpConnection(
 
     override val totalBytesWritten: Long
         get() = output.totalBytesWritten
-
-    @OptIn(InternalCoroutinesApi::class)
-    override val closedCause: Throwable?
-        get() = connection?.socket?.socketContext?.getCancellationException()?.cause
-
-    override fun invokeOnCompletion(handler: CompletionHandler) {
-        connection!!.socket.socketContext.invokeOnCompletion(handler)
-    }
 
     override suspend fun connect() {
         var socket = tcpSocket.connect(urlBuilder.host, urlBuilder.port, socketOptions)
@@ -94,7 +86,6 @@ internal class TcpConnection(
     }
 
     override suspend fun close() {
-        connection?.socket?.close()
         selectorManager.close()
     }
 }

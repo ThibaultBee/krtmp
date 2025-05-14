@@ -2,7 +2,8 @@ package io.github.thibaultbee.krtmp.rtmp.messages
 
 import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.common.MimeType
+import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
+import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.availableForRead
 import io.ktor.utils.io.readAvailable
@@ -24,8 +25,16 @@ class CommandTest {
             swfUrl = "testSwfUrl",
             fpad = false,
             capabilities = 239,
-            audioCodecs = listOf(MimeType.AUDIO_G711A, MimeType.AUDIO_G711U, MimeType.AUDIO_AAC),
-            videoCodecs = listOf(MimeType.VIDEO_AVC, MimeType.VIDEO_H263, MimeType.VIDEO_HEVC),
+            audioCodecs = listOf(
+                AudioMediaType.G711_ALAW,
+                AudioMediaType.G711_MLAW,
+                AudioMediaType.AAC
+            ),
+            videoCodecs = listOf(
+                VideoMediaType.AVC,
+                VideoMediaType.SORENSON_H263,
+                VideoMediaType.HEVC
+            ),
             videoFunction = emptyList(),
             pageUrl = "testPageUrl",
             objectEncoding = Command.Connect.ObjectEncoding.AMF0
@@ -47,8 +56,16 @@ class CommandTest {
             swfUrl = "testSwfUrl",
             fpad = false,
             capabilities = 239,
-            audioCodecs = listOf(MimeType.AUDIO_G711A, MimeType.AUDIO_G711U, MimeType.AUDIO_AAC),
-            videoCodecs = listOf(MimeType.VIDEO_AVC, MimeType.VIDEO_H263, MimeType.VIDEO_HEVC),
+            audioCodecs = listOf(
+                AudioMediaType.G711_ALAW,
+                AudioMediaType.G711_MLAW,
+                AudioMediaType.AAC
+            ),
+            videoCodecs = listOf(
+                VideoMediaType.AVC,
+                VideoMediaType.SORENSON_H263,
+                VideoMediaType.HEVC
+            ),
             videoFunction = emptyList(),
             pageUrl = "testPageUrl",
             objectEncoding = Command.Connect.ObjectEncoding.AMF0
