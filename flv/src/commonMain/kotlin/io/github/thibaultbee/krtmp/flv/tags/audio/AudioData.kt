@@ -87,14 +87,13 @@ class LegacyAudioData(
         ): LegacyAudioData {
             return if (soundFormat == SoundFormat.AAC) {
                 val aacPacketType = AACPacketType.entryOf(source.readByte())
-                val remainingSize = sourceSize - 2
+                val remainingSize = sourceSize - 1
                 require(!isEncrypted) { "Encrypted audio is not supported." }
                 val body = RawAudioTagBody.decode(source, remainingSize)
                 LegacyAudioData(soundFormat, soundRate, soundSize, soundType, body, aacPacketType)
             } else {
-                val remainingSize = sourceSize - 1
                 require(!isEncrypted) { "Encrypted audio is not supported." }
-                val body = RawAudioTagBody.decode(source, remainingSize)
+                val body = RawAudioTagBody.decode(source, sourceSize)
                 LegacyAudioData(soundFormat, soundRate, soundSize, soundType, body)
             }
         }
