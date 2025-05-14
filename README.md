@@ -104,7 +104,7 @@ Creates a FLV muxer and add audio/video data:
 val muxer = FLVMuxer(path = "/path/to/file.flv")
 
 // Write file header
-flvMuxer.encodeFlvHeader(header.hasAudio, header.hasVideo)
+flvMuxer.encodeFlvHeader(hasAudio, hasVideo)
 
 // Register audio configurations (if any)
 val audioConfig = FLVAudioConfig(
