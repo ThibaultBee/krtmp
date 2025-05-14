@@ -1,5 +1,6 @@
 [versions]
 agp = "8.9.1"
+clikt = "5.0.3"
 flexMessagingCore = "4.8.0"
 jcodec = "0.2.5"
 kotlin = "2.1.20"
@@ -14,6 +15,7 @@ detekt = "1.23.8"
 publish = "2.0.0"
 
 [libraries]
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 flex-messaging-core = { module = "org.apache.flex.blazeds:flex-messaging-core", version.ref = "flexMessagingCore" }
 jcodec = { module = "org.jcodec:jcodec", version.ref = "jcodec" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
