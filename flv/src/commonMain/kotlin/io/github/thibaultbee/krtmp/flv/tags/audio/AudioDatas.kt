@@ -15,10 +15,12 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags.audio
 
+import io.github.thibaultbee.krtmp.flv.config.AudioFourCC
 import io.github.thibaultbee.krtmp.flv.config.SoundFormat
 import io.github.thibaultbee.krtmp.flv.config.SoundRate
 import io.github.thibaultbee.krtmp.flv.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.config.SoundType
+import io.github.thibaultbee.krtmp.flv.tags.audio.ManyTrackManyCodecAudioTagBody.OneTrackMultiCodecAudioTagBody
 import io.github.thibaultbee.krtmp.flv.util.av.AudioSpecificConfig
 import io.github.thibaultbee.krtmp.flv.util.av.aac.AAC
 import io.github.thibaultbee.krtmp.flv.util.av.aac.ADTS
@@ -73,5 +75,80 @@ fun aacLegacyAudioData(
     aacPacketType = aacPacketType,
     body = RawAudioTagBody(
         data = data, dataSize = dataSize
+    )
+)
+
+
+/**
+ * Creates a [MultitrackAudioTagBody] for one track audio data.
+ *
+ * @param fourCC the FourCCs
+ * @param framePacketType the frame packet type
+ * @param trackID the track ID
+ * @param body the coded [RawSource]
+ * @param bodySize the size of the coded [RawSource]
+ */
+fun oneTrackMultitrackExtendedAudioData(
+    fourCC: AudioFourCC,
+    framePacketType: AudioPacketType,
+    trackID: Byte,
+    body: RawSource,
+    bodySize: Int
+) = ExtendedAudioData(
+    packetDescriptor = ExtendedAudioData.MultitrackAudioPacketDescriptor.OneTrackAudioPacketDescriptor(
+        fourCC = fourCC,
+        framePacketType = framePacketType,
+        body = OneTrackAudioTagBody(
+            trackId = trackID, body = RawAudioTagBody(data = body, dataSize = bodySize)
+        )
+    )
+)
+
+/**
+ * Creates a [MultitrackAudioTagBody] for a one codec multitrack audio data (either one or many tracks).
+ *
+ * @param fourCC the FourCCs
+ * @param framePacketType the frame packet type
+ * @param tracks the set of [OneTrackAudioTagBody]. If there is only one track in the set it is considered as a one track audio data.
+ */
+fun oneCodecMultitrackExtendedAudioData(
+    fourCC: AudioFourCC,
+    framePacketType: AudioPacketType,
+    tracks: Set<OneTrackAudioTagBody>
+) {
+    val packetDescriptor = if (tracks.size == 1) {
+        ExtendedAudioData.MultitrackAudioPacketDescriptor.OneTrackAudioPacketDescriptor(
+            fourCC = fourCC,
+            framePacketType = framePacketType,
+            body = tracks.first()
+        )
+    } else if (tracks.size > 1) {
+        ExtendedAudioData.MultitrackAudioPacketDescriptor.ManyTrackAudioPacketDescriptor(
+            fourCC = fourCC,
+            framePacketType = framePacketType,
+            body = ManyTrackOneCodecAudioTagBody(tracks)
+        )
+    } else {
+        throw IllegalArgumentException("No track in the set")
+    }
+
+    ExtendedAudioData(
+        packetDescriptor = packetDescriptor
+    )
+}
+
+/**
+ * Creates a [MultitrackAudioTagBody] for a many codec and many track audio data.
+ *
+ * @param framePacketType the frame packet type
+ * @param tracks the set of [OneTrackMultiCodecAudioTagBody]
+ */
+fun manyCodecMultitrackExtendedAudioData(
+    framePacketType: AudioPacketType,
+    tracks: Set<OneTrackMultiCodecAudioTagBody>
+) = ExtendedAudioData(
+    packetDescriptor = ExtendedAudioData.MultitrackAudioPacketDescriptor.ManyTrackManyCodecAudioPacketDescriptor(
+        framePacketType = framePacketType,
+        body = ManyTrackManyCodecAudioTagBody(tracks)
     )
 )

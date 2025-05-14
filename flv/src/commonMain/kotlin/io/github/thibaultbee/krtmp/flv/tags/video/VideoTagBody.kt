@@ -23,7 +23,7 @@ import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
-import io.github.thibaultbee.krtmp.flv.tags.video.ExtendedVideoData.SingleVideoPacketDescriptor.Companion.decodeBody
+import io.github.thibaultbee.krtmp.flv.tags.video.SingleVideoTagBody.Companion.decode
 import io.github.thibaultbee.krtmp.flv.util.extensions.readSource
 import kotlinx.io.RawSource
 import kotlinx.io.Sink
@@ -37,7 +37,28 @@ interface VideoTagBody {
     fun encode(output: Sink, amfVersion: AmfVersion)
 }
 
-interface SingleVideoTagBody : VideoTagBody
+interface SingleVideoTagBody : VideoTagBody {
+    companion object {
+        internal fun decode(
+            packetType: VideoPacketType,
+            fourCC: VideoFourCC,
+            source: Source,
+            sourceSize: Int
+        ): SingleVideoTagBody {
+            return if (sourceSize == 0) {
+                EmptyVideoTagBody()
+            } else if ((packetType == VideoPacketType.CODED_FRAMES) && ((fourCC == VideoFourCC.HEVC) ||
+                        (fourCC == VideoFourCC.AVC))
+            ) {
+                CompositionTimeExtendedVideoTagBody.decode(source, sourceSize)
+            } else if (packetType == VideoPacketType.META_DATA) {
+                MetadataVideoTagBody.decode(source, sourceSize)
+            } else {
+                RawVideoTagBody.decode(source, sourceSize)
+            }
+        }
+    }
+}
 
 /**
  * Metadata video tag body.
@@ -195,7 +216,7 @@ class OneTrackVideoTagBody(
         ): OneTrackVideoTagBody {
             require(sourceSize >= 1) { "One track video tag body must have at least 1 byte" }
             val trackId = source.readByte()
-            val body = decodeBody(packetType, fourCC, source, sourceSize - 1)
+            val body = SingleVideoTagBody.decode(packetType, fourCC, source, sourceSize - 1)
             return OneTrackVideoTagBody(trackId, body)
         }
     }
@@ -232,7 +253,7 @@ class ManyTrackOneCodecVideoTagBody internal constructor(
             while (remainingSize > 0) {
                 val trackId = source.readByte()
                 val sizeOfVideoTrack = source.readInt24()
-                val body = decodeBody(packetType, fourCC, source, sizeOfVideoTrack)
+                val body = SingleVideoTagBody.decode(packetType, fourCC, source, sizeOfVideoTrack)
                 tracks.add(OneTrackVideoTagBody(trackId, body))
                 remainingSize -= sizeOfVideoTrack
             }
@@ -297,7 +318,7 @@ class ManyTrackManyCodecVideoTagBody(
                 val fourCC = VideoFourCC.codeOf(source.readInt())
                 val trackId = source.readByte()
                 val sizeOfVideoTrack = source.readInt24()
-                val body = decodeBody(packetType, fourCC, source, sizeOfVideoTrack)
+                val body = decode(packetType, fourCC, source, sizeOfVideoTrack)
                 return OneTrackMultiCodecVideoTagBody(fourCC, trackId, body)
             }
         }

@@ -82,8 +82,9 @@ enum class AudioFourCC(val value: FourCC) {
     );
 
     companion object {
+        @OptIn(ExperimentalStdlibApi::class)
         fun codeOf(value: Int) = entries.firstOrNull { it.value.code == value }
-            ?: throw IllegalArgumentException("Invalid audio FourCC code: $value")
+            ?: throw IllegalArgumentException("Invalid audio FourCC code: ${value.toHexString()}")
     }
 }
 

@@ -20,7 +20,6 @@ import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag.Type
 import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
-import io.github.thibaultbee.krtmp.flv.tags.audio.LegacyAudioData
 import io.github.thibaultbee.krtmp.flv.tags.script.ScriptDataObject
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.extensions.readSource
@@ -90,7 +89,7 @@ data class FLVTag(
             val streamId = source.readInt24() // Stream ID
 
             val data = when (type) {
-                Type.AUDIO -> LegacyAudioData.decode(source, bodySize, isEncrypted)
+                Type.AUDIO -> AudioData.decode(source, bodySize, isEncrypted)
                 Type.VIDEO -> VideoData.decode(source, bodySize, isEncrypted)
                 Type.SCRIPT -> ScriptDataObject.decode(source, amfVersion)
             }

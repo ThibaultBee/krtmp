@@ -22,9 +22,11 @@ import io.github.thibaultbee.krtmp.flv.config.CodecID
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.ModEx
-import io.github.thibaultbee.krtmp.flv.tags.ModExFactory
+import io.github.thibaultbee.krtmp.flv.tags.ModExCodec
+import io.github.thibaultbee.krtmp.flv.tags.ModExEncoder
 import io.github.thibaultbee.krtmp.flv.tags.MultitrackType
 import io.github.thibaultbee.krtmp.flv.tags.SinkEncoder
+import io.github.thibaultbee.krtmp.flv.tags.audio.AudioModEx
 import io.github.thibaultbee.krtmp.flv.util.WithValue
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.util.extensions.shr
@@ -138,37 +140,30 @@ fun ExtendedVideoData(
         packetType,
         fourCC,
         body
-    )
+    ),
+    modExs = setOf(VideoModEx.TimestampOffsetNano(123))
 )
 
 /**
  * Representation of extended video data in enhanced FLV format (v1 and v2).
  *
  * @param packetDescriptor the packet descriptor
- * @param videoModExs the set of video mod ex
+ * @param modExs the set of video mod ex
  */
 class ExtendedVideoData internal constructor(
     val packetDescriptor: VideoPacketDescriptor,
-    val videoModExs: Set<ModEx<VideoPacketModExType>> = emptySet()
+    val modExs: Set<ModEx<VideoPacketModExType, *>> = emptySet()
 ) : VideoData(
-    true, packetDescriptor.frameType, if (videoModExs.isEmpty()) {
+    true, packetDescriptor.frameType, if (modExs.isEmpty()) {
         packetDescriptor.packetType.value
     } else {
         VideoPacketType.MOD_EX.value
     }.toInt(), packetDescriptor.body
 ) {
-    override val size = super.size + packetDescriptor.size
+    override val size = super.size + packetDescriptor.size + VideoModExCodec.encoder.getSize(modExs)
     val packetType = packetDescriptor.packetType
 
     override fun encodeHeaderImpl(output: Sink) {
-        videoModExs.forEachIndexed { index, modEx ->
-            val nextPacketType = if (index == videoModExs.size - 1) {
-                packetDescriptor.packetType
-            } else {
-                VideoPacketType.MOD_EX
-            }
-            modEx.encode(output, nextPacketType)
-        }
         if ((packetType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
             require(packetDescriptor is CommandVideoPacketDescriptor) {
                 "Invalid frame type for command: $frameType. Only CommandHeaderExtension is supported."
@@ -178,11 +173,12 @@ class ExtendedVideoData internal constructor(
                 "Invalid frame type for multitrack: $frameType. Only MultitrackHeaderExtension is supported."
             }
         }
+        VideoModExCodec.encoder.encode(output, modExs, packetType.value)
         packetDescriptor.encode(output)
     }
 
     override fun toString(): String {
-        return "ExtendedVideoData(frameType=$frameType, packetType=${packetType}, packetDescriptor=$packetDescriptor, videoModExs=$videoModExs)"
+        return "ExtendedVideoData(frameType=$frameType, packetType=${packetType}, packetDescriptor=$packetDescriptor, modExs=$modExs)"
     }
 
     companion object {
@@ -209,26 +205,34 @@ class ExtendedVideoData internal constructor(
             source: Source,
             sourceSize: Int
         ): ExtendedVideoData {
-            var remainingSize = sourceSize
-            val videoModExs = mutableSetOf<ModEx<VideoPacketModExType>>()
-            while (packetType == VideoPacketType.MOD_EX) {
-                val videoModEx = ModEx.decode<VideoPacketModExType>(source)
-                videoModExs.add(videoModEx)
-                remainingSize -= videoModEx.size
+            var nextPacketType = packetType
+            val modExs = if (packetType == VideoPacketType.MOD_EX) {
+                val modExDatas = VideoModExCodec.encoder.decode(source)
+                nextPacketType = VideoPacketType.entryOf(modExDatas.nextPacketType)
+                modExDatas.modExs
+            } else {
+                emptySet()
             }
+
+            val remainingSize = sourceSize - VideoModExCodec.encoder.getSize(modExs)
             val packetDescriptor =
-                if ((packetType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
+                if ((nextPacketType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
                     CommandVideoPacketDescriptor.decode(source)
-                } else if (packetType == VideoPacketType.MULTITRACK) {
+                } else if (nextPacketType == VideoPacketType.MULTITRACK) {
                     MultitrackVideoPacketDescriptor.decode(
                         frameType,
                         source,
                         remainingSize
                     )
                 } else {
-                    SingleVideoPacketDescriptor.decode(frameType, packetType, source, remainingSize)
+                    SingleVideoPacketDescriptor.decode(
+                        frameType,
+                        nextPacketType,
+                        source,
+                        remainingSize
+                    )
                 }
-            return ExtendedVideoData(packetDescriptor, videoModExs)
+            return ExtendedVideoData(packetDescriptor, modExs)
         }
     }
 
@@ -250,11 +254,11 @@ class ExtendedVideoData internal constructor(
             require(packetType != VideoPacketType.MULTITRACK) {
                 "Invalid packet type for single video: $packetType. Use MultitrackVideoPacketDescriptor instead."
             }
-            require(frameType != VideoFrameType.COMMAND) {
-                "Invalid frame type for single video: $frameType. Use CommandVideoPacketDescriptor instead."
-            }
             require(packetType != VideoPacketType.MOD_EX) {
                 "Invalid packet type for single video: $packetType. MOD_EX is not a valid packet type."
+            }
+            require(frameType != VideoFrameType.COMMAND) {
+                "Invalid frame type for single video: $frameType. Use CommandVideoPacketDescriptor instead."
             }
         }
 
@@ -275,25 +279,8 @@ class ExtendedVideoData internal constructor(
             ): SingleVideoPacketDescriptor {
                 val fourCC = VideoFourCC.codeOf(source.readInt())
                 val remainingSize = sourceSize - 4
-                val body = decodeBody(packetType, fourCC, source, remainingSize)
+                val body = SingleVideoTagBody.decode(packetType, fourCC, source, remainingSize)
                 return SingleVideoPacketDescriptor(frameType, packetType, fourCC, body)
-            }
-
-            internal fun decodeBody(
-                packetType: VideoPacketType,
-                fourCC: VideoFourCC,
-                source: Source,
-                sourceSize: Int
-            ): SingleVideoTagBody {
-                return if (sourceSize == 0) {
-                    EmptyVideoTagBody()
-                } else if ((packetType == VideoPacketType.CODED_FRAMES) && ((fourCC == VideoFourCC.HEVC) ||
-                            (fourCC == VideoFourCC.AVC))
-                ) {
-                    CompositionTimeExtendedVideoTagBody.decode(source, sourceSize)
-                } else {
-                    RawVideoTagBody.decode(source, sourceSize)
-                }
             }
         }
     }
@@ -600,8 +587,8 @@ enum class VideoCommand(val value: Byte) {
  * @see AVCPacketType
  */
 enum class VideoPacketType(
-    val value: Byte, val avcPacketType: AVCPacketType? = null
-) {
+    override val value: Byte, val avcPacketType: AVCPacketType? = null
+) : WithValue<Byte> {
     SEQUENCE_START(0, AVCPacketType.SEQUENCE_HEADER), // Sequence Start
     CODED_FRAMES(1, AVCPacketType.NALU),
     SEQUENCE_END(
@@ -656,16 +643,39 @@ enum class VideoPacketModExType(override val value: Byte) : WithValue<Byte> {
     }
 }
 
-abstract class VideoModExFactory<T>(type: VideoPacketModExType) :
-    ModExFactory<VideoPacketModExType, T>(type)
+sealed class VideoModEx<T>(type: VideoPacketModExType, value: T) :
+    ModEx<VideoPacketModExType, T>(type, value) {
+    override fun toString(): String {
+        return "VideoModEx(type=$type, value=$value)"
+    }
 
-object VideoModExFactories {
-    val TIMESTAMP_OFFSET_NANO =
-        object : VideoModExFactory<Int>(VideoPacketModExType.TIMESTAMP_OFFSET_NANO) {
-            override fun create(value: Int): ModEx<VideoPacketModExType> {
-                return ModEx(type, 3, { sink ->
-                    sink.writeInt24(value)
-                })
-            }
+    class TimestampOffsetNano(value: Int) : VideoModEx<Int>(
+        VideoPacketModExType.TIMESTAMP_OFFSET_NANO,
+        value
+    )
+}
+
+internal sealed class VideoModExCodec<T> : ModExCodec<VideoPacketModExType, T> {
+    object timestampOffsetNano : VideoModExCodec<Int>() {
+        override val type = VideoPacketModExType.TIMESTAMP_OFFSET_NANO
+        override val size = 3
+        override fun encode(output: Sink, value: Int) {
+            output.writeInt24(value)
         }
+
+        override fun decode(source: Source): VideoModEx.TimestampOffsetNano {
+            return VideoModEx.TimestampOffsetNano(source.readInt24())
+        }
+    }
+
+    companion object {
+        private val codecs =
+            setOf(timestampOffsetNano)
+
+        internal fun codecOf(type: VideoPacketModExType) =
+            codecs.firstOrNull { it.type == type }
+                ?: throw IllegalArgumentException("Invalid VideoModExCodec type: $type")
+
+        internal val encoder = ModExEncoder(codecs, VideoPacketType.MOD_EX.value)
+    }
 }

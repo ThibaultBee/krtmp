@@ -16,14 +16,20 @@
 package io.github.thibaultbee.krtmp.flv.tags.audio
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
+import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
+import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
 import io.github.thibaultbee.krtmp.flv.config.AudioFourCC
 import io.github.thibaultbee.krtmp.flv.config.SoundFormat
 import io.github.thibaultbee.krtmp.flv.config.SoundRate
 import io.github.thibaultbee.krtmp.flv.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.config.SoundType
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
+import io.github.thibaultbee.krtmp.flv.tags.ModEx
+import io.github.thibaultbee.krtmp.flv.tags.ModExCodec
+import io.github.thibaultbee.krtmp.flv.tags.ModExEncoder
 import io.github.thibaultbee.krtmp.flv.tags.MultitrackType
 import io.github.thibaultbee.krtmp.flv.tags.SinkEncoder
+import io.github.thibaultbee.krtmp.flv.util.WithValue
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.util.extensions.shr
 import io.github.thibaultbee.krtmp.flv.util.extensions.writeByte
@@ -95,20 +101,46 @@ class LegacyAudioData(
     }
 }
 
-class ExtendedAudioData(
-    val packetDescriptor: AudioPacketDescriptor
+/**
+ * Creates an [ExtendedAudioData] from the given [AudioPacketType], [AudioFourCC], and [SingleAudioTagBody].
+ *
+ * @param packetType the [AudioPacketType] of the audio data
+ * @param fourCC the [AudioFourCC] of the audio data
+ * @param body the [SingleAudioTagBody] of the audio data
+ */
+fun ExtendedAudioData(
+    packetType: AudioPacketType,
+    fourCC: AudioFourCC,
+    body: SingleAudioTagBody
+) = ExtendedAudioData(
+    packetDescriptor = ExtendedAudioData.SingleAudioPacketDescriptor(
+        packetType = packetType,
+        fourCC = fourCC,
+        body = body
+    )
+)
+
+class ExtendedAudioData internal constructor(
+    val packetDescriptor: AudioPacketDescriptor,
+    val modExs: Set<ModEx<AudioPacketModExType, *>> = emptySet()
 ) : AudioData(
-    SoundFormat.EX_HEADER, packetDescriptor.packetType.value.toInt(), packetDescriptor.body
+    SoundFormat.EX_HEADER, if (modExs.isEmpty()) {
+        packetDescriptor.packetType.value
+    } else {
+        AudioPacketType.MOD_EX.value
+    }.toInt(), packetDescriptor.body
 ) {
-    override val size = super.size + packetDescriptor.size
+    override val size =
+        super.size + packetDescriptor.size + AudioModExCodec.encoder.getSize(modExs)
     val packetType = packetDescriptor.packetType
-    
+
     override fun encodeHeaderImpl(output: Sink) {
+        AudioModExCodec.encoder.encode(output, modExs, packetType.value)
         packetDescriptor.encode(output)
     }
 
     override fun toString(): String {
-        return "ExtendedAudioData(packetType=${packetType}, packetDescriptor=$packetDescriptor)"
+        return "ExtendedAudioData(packetType=$packetType, packetDescriptor=$packetDescriptor, modExs=$modExs)"
     }
 
     companion object {
@@ -126,13 +158,23 @@ class ExtendedAudioData(
             sourceSize: Int
         ): ExtendedAudioData {
             require(soundFormat == SoundFormat.EX_HEADER) { "Invalid sound format: $soundFormat. Only EX_HEADER is supported" }
+            var nextPacketType = packetType
+            val modExs = if (packetType == AudioPacketType.MOD_EX) {
+                val modExDatas = AudioModExCodec.encoder.decode(source)
+                nextPacketType = AudioPacketType.entryOf(modExDatas.nextPacketType)
+                modExDatas.modExs
+            } else {
+                emptySet()
+            }
+
+            val remainingSize = sourceSize - AudioModExCodec.encoder.getSize(modExs)
             val packetDescriptor = when (packetType) {
                 AudioPacketType.MULTITRACK -> MultitrackAudioPacketDescriptor.decode(
                     source,
-                    sourceSize
+                    remainingSize
                 )
 
-                else -> SingleAudioPacketDescriptor.decode(packetType, source, sourceSize)
+                else -> SingleAudioPacketDescriptor.decode(nextPacketType, source, remainingSize)
             }
             return ExtendedAudioData(packetDescriptor)
         }
@@ -396,7 +438,7 @@ enum class AACPacketType(val value: Byte) {
 
 enum class AudioPacketType(val value: Byte) {
     SEQUENCE_START(0), CODED_FRAME(1), SEQUENCE_END(2), MULTICHANNEL_CONFIG(4), MULTITRACK(5), MOD_EX(
-        6
+        7
     );
 
     companion object {
@@ -428,5 +470,54 @@ enum class AudioChannelOrder(val value: Byte) {
             entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
                 "Invalid AudioChannelOrder value: $value"
             )
+    }
+}
+
+
+enum class AudioPacketModExType(override val value: Byte) : WithValue<Byte> {
+    TIMESTAMP_OFFSET_NANO(0);
+
+    companion object {
+        fun entryOf(value: Byte) =
+            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
+                "Invalid AudioPacketModExType value: $value"
+            )
+    }
+}
+
+sealed class AudioModEx<T>(type: AudioPacketModExType, value: T) :
+    ModEx<AudioPacketModExType, T>(type, value) {
+    override fun toString(): String {
+        return "AudioModEx(type=$type, value=$value)"
+    }
+
+    class TimestampOffsetNano(value: Int) : AudioModEx<Int>(
+        AudioPacketModExType.TIMESTAMP_OFFSET_NANO,
+        value
+    )
+}
+
+internal sealed class AudioModExCodec<T> : ModExCodec<AudioPacketModExType, T> {
+    object timestampOffsetNano : AudioModExCodec<Int>() {
+        override val type = AudioPacketModExType.TIMESTAMP_OFFSET_NANO
+        override val size = 3
+        override fun encode(output: Sink, value: Int) {
+            output.writeInt24(value)
+        }
+
+        override fun decode(source: Source): AudioModEx.TimestampOffsetNano {
+            return AudioModEx.TimestampOffsetNano(source.readInt24())
+        }
+    }
+
+    companion object {
+        private val codecs =
+            setOf(timestampOffsetNano)
+
+        internal fun codecOf(type: AudioPacketModExType) =
+            codecs.firstOrNull { it.type == type }
+                ?: throw IllegalArgumentException("Invalid AudioModExCodec type: $type")
+
+        internal val encoder = ModExEncoder(codecs, AudioPacketType.MOD_EX.value)
     }
 }

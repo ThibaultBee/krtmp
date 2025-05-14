@@ -15,50 +15,137 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags
 
-import io.github.thibaultbee.krtmp.flv.tags.video.VideoPacketType
 import io.github.thibaultbee.krtmp.flv.util.WithValue
+import io.github.thibaultbee.krtmp.flv.util.extensions.readSource
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.util.extensions.writeByte
 import io.github.thibaultbee.krtmp.flv.util.extensions.writeShort
 import kotlinx.io.Sink
 import kotlinx.io.Source
-import kotlinx.io.readByteArray
 import kotlin.experimental.and
 
-open class ModEx<T : WithValue<Byte>>(
-    val type: T,
-    val size: Int,
-    val encode: (Sink) -> Unit
+open class ModEx<T : WithValue<Byte>, V>(val type: T, val value: V)
+
+internal interface ModExCodec<T : WithValue<Byte>, V> {
+    val type: T
+    val size: Int
+    fun encode(output: Sink, value: V)
+    fun decode(source: Source): ModEx<T, V>
+}
+
+internal class ModExEncoder<T : WithValue<Byte>>(
+    private val codec: Set<ModExCodec<T, *>>,
+    private val modExPacketType: Byte
 ) {
-    fun encode(output: Sink, framePacketType: VideoPacketType) {
-        val writtenSize = size - 1
+    private fun codecOf(type: Byte): ModExCodec<T, *> {
+        return codec.firstOrNull { it.type.value == type }
+            ?: throw IllegalArgumentException("No codec found for type: $type")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <V> codecOf(type: T): ModExCodec<T, V> {
+        return (codec.firstOrNull { it.type == type }
+            ?: throw IllegalArgumentException("No codec found for type: $type")) as ModExCodec<T, V>
+    }
+
+    /**
+     * Gets the size of a set of [ModEx] objects.
+     */
+    internal fun getSize(
+        modExs: Set<ModEx<T, *>>,
+    ) = modExs.sumOf { getSize(it) }
+
+    private fun <V> getSize(
+        modEx: ModEx<T, V>,
+    ): Int {
+        val modExSize = codecOf<V>(modEx.type).size
+        return modExSize + 1 + if (modExSize >= 255) {
+            3
+        } else {
+            1
+        }
+    }
+
+    /**
+     * Encodes a set of ModEx objects.
+     */
+    internal fun encode(output: Sink, modExs: Set<ModEx<T, *>>, nextPacketType: Byte) {
+        modExs.forEachIndexed { index, modEx ->
+            encodeOne(
+                output, modEx, if (index == modExs.size - 1) {
+                    nextPacketType
+                } else {
+                    modExPacketType
+                }
+            )
+        }
+    }
+
+    /**
+     * Encodes a single ModEx object.
+     */
+    private fun <V> encodeOne(
+        output: Sink, modEx: ModEx<T, V>, nextPacketType: Byte
+    ) {
+        val codec = codecOf<V>(modEx.type)
+        val writtenSize = codec.size - 1
         if (writtenSize >= 255) {
             output.writeByte(0xFF.toByte())
             output.writeShort(writtenSize)
         } else {
             output.writeByte((writtenSize).toByte())
         }
-        encode(output)
-        output.writeByte((type.value shl 4) or framePacketType.value.toInt())
+        codec.encode(output, modEx.value)
+        output.writeByte((modEx.type.value shl 4) or nextPacketType.toInt())
     }
 
-    companion object {
-        fun <T : WithValue<Byte>> decode(
-            source: Source,
-        ): ModEx<T> {
-            var modExDataSize = source.readByte() + 1
-            if (modExDataSize == 0xFF) {
-                modExDataSize = source.readShort() + 1
-            }
-            val modExData = source.readByteArray(modExDataSize)
-            val byte = source.readByte()
-            val videoPacketModExType = (byte and 0xF0.toByte()) shl 4
-            val framePacketType = VideoPacketType.entryOf(byte and 0x0F.toByte())
-            throw NotImplementedError("ModEx decoding not implemented yet")
+    /**
+     * A data class that holds a set of decoded ModEx data and the next packet type.
+     */
+    data class ModExDatas<T : WithValue<Byte>>(
+        val modExs: Set<ModEx<T, *>>,
+        val nextPacketType: Byte
+    )
+
+    internal fun decode(
+        source: Source,
+    ): ModExDatas<T> {
+        val modExs = mutableSetOf<ModEx<T, *>>()
+        var nextPacketType = modExPacketType
+
+        while (nextPacketType == modExPacketType) {
+            val modEx = decodeOne(source)
+            modExs.add(modEx.modExs)
+            nextPacketType = modEx.nextPacketType
         }
-    }
-}
 
-abstract class ModExFactory<T : WithValue<Byte>, U>(val type: T) {
-    abstract fun create(value: U): ModEx<T>
+        return ModExDatas(modExs, nextPacketType)
+    }
+
+    /**
+     * A data class that holds a single decoded ModEx data and the next packet type.
+     */
+    data class ModExData<T : WithValue<Byte>, V>(
+        val modExs: ModEx<T, V>,
+        val nextPacketType: Byte,
+    )
+
+    private fun decodeOne(
+        source: Source,
+    ): ModExData<T, *> {
+        val modExDataSize = source.readByte() + 1
+        if (modExDataSize == 0xFF) {
+            source.readShort()
+        }
+        val modExData = source.readSource(modExDataSize.toLong())
+
+        val byte = source.readByte()
+        val packetModExType = ((byte and 0xF0.toByte()) shl 4).toByte()
+        val codec = codecOf(packetModExType)
+
+        return ModExData(
+            codec.decode(modExData),
+            (byte and 0x0F)
+        )
+    }
 }
