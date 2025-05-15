@@ -1,11 +1,12 @@
 package io.github.thibaultbee.krtmp.flvparser.cli
 
-import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.command.SuspendingCliktCommand
+import com.github.ajalt.clikt.command.main
 import com.github.ajalt.clikt.core.Context
-import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import io.github.thibaultbee.krtmp.flv.FLVDemuxer
+import io.github.thibaultbee.krtmp.flv.decodeAllRaw
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.audio.ExtendedAudioData
@@ -15,7 +16,7 @@ import io.github.thibaultbee.krtmp.flv.tags.video.ExtendedVideoData
 import io.github.thibaultbee.krtmp.flv.tags.video.LegacyVideoData
 import kotlinx.io.files.Path
 
-class FLVParser : CliktCommand() {
+class FLVParser : SuspendingCliktCommand() {
     override fun help(context: Context): String {
         return "Parse a FLV file"
     }
@@ -68,7 +69,7 @@ class FLVParser : CliktCommand() {
         }
     }
 
-    override fun run() {
+    override suspend fun run() {
         require(filePath.endsWith(".flv")) { "The file must be a .flv file" }
 
         echo("Parsing FLV file: $filePath")
@@ -77,8 +78,8 @@ class FLVParser : CliktCommand() {
         val header = parser.decodeFlvHeader()
         echo("Parsed FLV header: $header")
         var i = 0
-        while (!parser.isEmpty) {
-            val tag = parser.decodeRaw()
+
+        parser.decodeAllRaw { tag ->
             try {
                 val decodedTag = tag.decode()
                 echo(prettyTag(i++, decodedTag))
@@ -89,4 +90,4 @@ class FLVParser : CliktCommand() {
     }
 }
 
-fun main(args: Array<String>) = FLVParser().main(args)
+suspend fun main(args: Array<String>) = FLVParser().main(args)

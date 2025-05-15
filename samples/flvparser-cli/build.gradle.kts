@@ -11,6 +11,7 @@ dependencies {
     implementation(project(":flv"))
 
     implementation(libs.kotlinx.io.core)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.clikt)
     
     testImplementation(kotlin("test"))

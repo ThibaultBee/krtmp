@@ -47,6 +47,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.io.core)
             implementation(libs.kotlinx.serialization.core)
+            implementation(libs.kotlinx.coroutines.core)
             api(project(":amf"))
             api(project(":common"))
         }
