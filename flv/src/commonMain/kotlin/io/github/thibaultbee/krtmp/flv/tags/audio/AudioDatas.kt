@@ -78,6 +78,26 @@ fun aacLegacyAudioData(
     )
 )
 
+/**
+ * Creates an [ExtendedAudioData] for multichannel config audio data.
+ *
+ * @param packetType the packet type
+ * @param fourCC the FourCCs
+ * @param channelOrder the channel order
+ */
+fun unspecifiedMultiChannelConfigAudioData(
+    packetType: AudioPacketType,
+    fourCC: AudioFourCC,
+    channelCount: Byte
+) = ExtendedAudioData(
+    packetDescriptor = ExtendedAudioData.SingleAudioPacketDescriptor(
+        packetType = packetType,
+        fourCC = fourCC,
+        body = MultichannelConfigAudioTagBody.UnspecifiedMultichannelConfigAudioTagBody(
+            channelCount = channelCount
+        )
+    )
+)
 
 /**
  * Creates a [MultitrackAudioTagBody] for one track audio data.
