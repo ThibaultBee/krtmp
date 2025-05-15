@@ -448,31 +448,6 @@ enum class AudioPacketType(val value: Byte) {
     }
 }
 
-enum class AudioChannelOrder(val value: Byte) {
-    /**
-     * Only the channel count is specified
-     */
-    UNSPECIFIED(0),
-
-    /**
-     * The native channel order
-     */
-    NATIVE(1),
-
-    /**
-     * The channel order does not correspond to any predefined order and is stored as an explicit map.
-     */
-    CUSTOM(2);
-
-    companion object {
-        fun entryOf(value: Byte) =
-            entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
-                "Invalid AudioChannelOrder value: $value"
-            )
-    }
-}
-
-
 enum class AudioPacketModExType(override val value: Byte) : WithValue<Byte> {
     TIMESTAMP_OFFSET_NANO(0);
 

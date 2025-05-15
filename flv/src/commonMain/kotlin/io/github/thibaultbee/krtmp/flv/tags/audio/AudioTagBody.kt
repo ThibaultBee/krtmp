@@ -39,6 +39,130 @@ class RawAudioTagBody(
     }
 }
 
+sealed class MultichannelConfigAudioTagBody(
+    val channelOrder: AudioChannelOrder,
+    val channelCount: Byte,
+) : SingleAudioTagBody {
+    override val size = 8
+
+    abstract fun encodeImpl(output: Sink)
+
+    override fun encode(output: Sink) {
+        output.writeByte(channelOrder.value)
+        output.writeByte(channelCount)
+    }
+
+    override fun toString(): String {
+        return "MultichannelConfigAudioTagBody(channelOrder=$channelOrder, channelCount=$channelCount)"
+    }
+
+    companion object {
+        fun decode(
+            source: Source,
+            sourceSize: Int
+        ): MultichannelConfigAudioTagBody {
+            require(sourceSize >= 2) { "Multichannel audio tag body must have at least 2 bytes" }
+            val channelOrder = AudioChannelOrder.entryOf(source.readByte())
+            val channelCount = source.readByte()
+            val remainingSize = sourceSize - 2
+            return when (channelOrder) {
+                AudioChannelOrder.NATIVE -> NativeMultichannelConfigAudioTagBody.decode(
+                    channelCount,
+                    source,
+                    remainingSize
+                )
+
+                AudioChannelOrder.CUSTOM -> CustomMultichannelConfigAudioTagBody.decode(
+                    channelCount,
+                    source,
+                    remainingSize
+                )
+
+                AudioChannelOrder.UNSPECIFIED -> UnspecifiedMultichannelConfigAudioTagBody(
+                    channelCount
+                )
+            }
+        }
+    }
+
+    class UnspecifiedMultichannelConfigAudioTagBody(
+        channelCount: Byte,
+    ) : MultichannelConfigAudioTagBody(
+        channelOrder = AudioChannelOrder.UNSPECIFIED,
+        channelCount = channelCount,
+    ) {
+        override fun encodeImpl(output: Sink) = Unit
+    }
+
+    class NativeMultichannelConfigAudioTagBody(
+        channelCount: Byte,
+    ) : MultichannelConfigAudioTagBody(
+        channelOrder = AudioChannelOrder.NATIVE,
+        channelCount = channelCount,
+    ) {
+        override fun encodeImpl(output: Sink) = TODO("Not yet implemented")
+
+        companion object {
+            fun decode(
+                channelCount: Byte,
+                source: Source,
+                sourceSize: Int
+            ): NativeMultichannelConfigAudioTagBody {
+                require(sourceSize >= 4) { "Native multichannel audio tag body must have at least 4 bytes" }
+                source.skip(4)
+                return NativeMultichannelConfigAudioTagBody(channelCount)
+            }
+        }
+    }
+
+    class CustomMultichannelConfigAudioTagBody(
+        channelCount: Byte,
+    ) : MultichannelConfigAudioTagBody(
+        channelOrder = AudioChannelOrder.CUSTOM,
+        channelCount = channelCount,
+    ) {
+        override fun encodeImpl(output: Sink) = TODO("Not yet implemented")
+
+        companion object {
+            fun decode(
+                channelCount: Byte,
+                source: Source,
+                sourceSize: Int
+            ): CustomMultichannelConfigAudioTagBody {
+                require(sourceSize == channelCount.toInt()) { "Custom multichannel audio tag body must have at least $channelCount bytes" }
+                source.skip(channelCount.toLong())
+                return CustomMultichannelConfigAudioTagBody(channelCount)
+            }
+        }
+    }
+
+
+    enum class AudioChannelOrder(val value: Byte) {
+        /**
+         * Only the channel count is specified
+         */
+        UNSPECIFIED(0),
+
+        /**
+         * The native channel order
+         */
+        NATIVE(1),
+
+        /**
+         * The channel order does not correspond to any predefined order and is stored as an explicit map.
+         */
+        CUSTOM(2);
+
+        companion object {
+            fun entryOf(value: Byte) =
+                entries.firstOrNull { it.value == value } ?: throw IllegalArgumentException(
+                    "Invalid AudioChannelOrder value: $value"
+                )
+        }
+    }
+}
+
+
 interface MultitrackAudioTagBody : AudioTagBody
 interface OneCodecMultitrackAudioTagBody : MultitrackAudioTagBody
 
