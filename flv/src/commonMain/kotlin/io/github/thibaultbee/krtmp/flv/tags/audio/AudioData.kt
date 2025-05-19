@@ -112,7 +112,7 @@ fun ExtendedAudioData(
     fourCC: AudioFourCC,
     body: SingleAudioTagBody
 ) = ExtendedAudioData(
-    packetDescriptor = ExtendedAudioData.SingleAudioPacketDescriptor(
+    packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
         packetType = packetType,
         fourCC = fourCC,
         body = body
@@ -120,7 +120,7 @@ fun ExtendedAudioData(
 )
 
 class ExtendedAudioData internal constructor(
-    val packetDescriptor: AudioPacketDescriptor,
+    val packetDescriptor: AudioDataDescriptor,
     val modExs: Set<ModEx<AudioPacketModExType, *>> = emptySet()
 ) : AudioData(
     SoundFormat.EX_HEADER, if (modExs.isEmpty()) {
@@ -168,27 +168,31 @@ class ExtendedAudioData internal constructor(
 
             val remainingSize = sourceSize - AudioModExCodec.encoder.getSize(modExs)
             val packetDescriptor = when (packetType) {
-                AudioPacketType.MULTITRACK -> MultitrackAudioPacketDescriptor.decode(
+                AudioPacketType.MULTITRACK -> MultitrackAudioDataDescriptor.decode(
                     source,
                     remainingSize
                 )
 
-                else -> SingleAudioPacketDescriptor.decode(nextPacketType, source, remainingSize)
+                else -> SingleAudioDataDescriptor.decode(nextPacketType, source, remainingSize)
             }
             return ExtendedAudioData(packetDescriptor)
         }
     }
 
-    interface AudioPacketDescriptor : SinkEncoder {
+    interface OneAudioCodec {
+        val fourCC: AudioFourCC
+    }
+
+    interface AudioDataDescriptor : SinkEncoder {
         val packetType: AudioPacketType
         val body: AudioTagBody
     }
 
-    class SingleAudioPacketDescriptor internal constructor(
+    class SingleAudioDataDescriptor internal constructor(
         override val packetType: AudioPacketType,
         val fourCC: AudioFourCC,
         override val body: SingleAudioTagBody
-    ) : AudioPacketDescriptor {
+    ) : AudioDataDescriptor {
         override val size = 4
 
         init {
@@ -209,10 +213,10 @@ class ExtendedAudioData internal constructor(
                 packetType: AudioPacketType,
                 source: Source,
                 sourceSize: Int
-            ): SingleAudioPacketDescriptor {
+            ): SingleAudioDataDescriptor {
                 val fourCC = AudioFourCC.codeOf(source.readInt())
                 val body = RawAudioTagBody.decode(source, sourceSize - 4)
-                return SingleAudioPacketDescriptor(
+                return SingleAudioDataDescriptor(
                     packetType = packetType,
                     fourCC = fourCC,
                     body = body
@@ -224,11 +228,11 @@ class ExtendedAudioData internal constructor(
     /**
      * The multitrack extended audio packet descriptor.
      */
-    sealed class MultitrackAudioPacketDescriptor(
+    sealed class MultitrackAudioDataDescriptor(
         val multitrackType: MultitrackType,
         val framePacketType: AudioPacketType
     ) :
-        AudioPacketDescriptor {
+        AudioDataDescriptor {
         override val packetType = AudioPacketType.MULTITRACK
         override val size = 1
 
@@ -245,34 +249,30 @@ class ExtendedAudioData internal constructor(
             encodeImpl(output)
         }
 
-        private interface OneCodec : SinkEncoder {
-            val fourCC: AudioFourCC
-        }
-
         companion object {
             fun decode(
                 source: Source,
                 sourceSize: Int
-            ): MultitrackAudioPacketDescriptor {
+            ): MultitrackAudioDataDescriptor {
                 val byte = source.readByte()
                 val multitrackType =
                     MultitrackType.entryOf(((byte and 0xF0.toByte()) shr 4).toByte())
                 val framePacketType = AudioPacketType.entryOf(byte and 0x0F.toByte())
                 val remainingSize = sourceSize - 1
                 return when (multitrackType) {
-                    MultitrackType.ONE_TRACK -> OneTrackAudioPacketDescriptor.decode(
+                    MultitrackType.ONE_TRACK -> OneTrackAudioDataDescriptor.decode(
                         framePacketType,
                         source,
                         remainingSize
                     )
 
-                    MultitrackType.MANY_TRACK -> ManyTrackAudioPacketDescriptor.decode(
+                    MultitrackType.MANY_TRACK -> ManyTrackAudioDataDescriptor.decode(
                         framePacketType,
                         source,
                         remainingSize
                     )
 
-                    MultitrackType.MANY_TRACK_MANY_CODEC -> ManyTrackManyCodecAudioPacketDescriptor.decode(
+                    MultitrackType.MANY_TRACK_MANY_CODEC -> ManyTrackManyCodecAudioDataDescriptor.decode(
                         framePacketType,
                         source,
                         remainingSize
@@ -281,12 +281,12 @@ class ExtendedAudioData internal constructor(
             }
         }
 
-        class OneTrackAudioPacketDescriptor internal constructor(
+        class OneTrackAudioDataDescriptor internal constructor(
             framePacketType: AudioPacketType,
             override val fourCC: AudioFourCC,
             override val body: OneTrackAudioTagBody
-        ) : MultitrackAudioPacketDescriptor(MultitrackType.ONE_TRACK, framePacketType),
-            OneCodec {
+        ) : MultitrackAudioDataDescriptor(MultitrackType.ONE_TRACK, framePacketType),
+            OneAudioCodec {
             override val size = super.size + 4
 
             override fun encodeImpl(output: Sink) {
@@ -302,22 +302,22 @@ class ExtendedAudioData internal constructor(
                     packetType: AudioPacketType,
                     source: Source,
                     sourceSize: Int
-                ): OneTrackAudioPacketDescriptor {
+                ): OneTrackAudioDataDescriptor {
                     val fourCC = AudioFourCC.codeOf(source.readInt())
                     val remainingSize = sourceSize - 4
                     val body =
                         OneTrackAudioTagBody.decode(source, remainingSize)
-                    return OneTrackAudioPacketDescriptor(packetType, fourCC, body)
+                    return OneTrackAudioDataDescriptor(packetType, fourCC, body)
                 }
             }
         }
 
-        class ManyTrackAudioPacketDescriptor internal constructor(
+        class ManyTrackAudioDataDescriptor internal constructor(
             framePacketType: AudioPacketType,
             override val fourCC: AudioFourCC,
             override val body: ManyTrackOneCodecAudioTagBody
-        ) : MultitrackAudioPacketDescriptor(MultitrackType.MANY_TRACK, framePacketType),
-            OneCodec {
+        ) : MultitrackAudioDataDescriptor(MultitrackType.MANY_TRACK, framePacketType),
+            OneAudioCodec {
             override val size = super.size + 4
 
             override fun encodeImpl(output: Sink) {
@@ -333,7 +333,7 @@ class ExtendedAudioData internal constructor(
                     packetType: AudioPacketType,
                     source: Source,
                     sourceSize: Int
-                ): ManyTrackAudioPacketDescriptor {
+                ): ManyTrackAudioDataDescriptor {
                     val fourCC = AudioFourCC.codeOf(source.readInt())
                     val remainingSize = sourceSize - 4
                     val body =
@@ -341,15 +341,15 @@ class ExtendedAudioData internal constructor(
                             source,
                             remainingSize
                         )
-                    return ManyTrackAudioPacketDescriptor(packetType, fourCC, body)
+                    return ManyTrackAudioDataDescriptor(packetType, fourCC, body)
                 }
             }
         }
 
-        class ManyTrackManyCodecAudioPacketDescriptor internal constructor(
+        class ManyTrackManyCodecAudioDataDescriptor internal constructor(
             framePacketType: AudioPacketType,
             override val body: ManyTrackManyCodecAudioTagBody
-        ) : MultitrackAudioPacketDescriptor(
+        ) : MultitrackAudioDataDescriptor(
             MultitrackType.MANY_TRACK_MANY_CODEC,
             framePacketType
         ) {
@@ -366,9 +366,9 @@ class ExtendedAudioData internal constructor(
                     packetType: AudioPacketType,
                     source: Source,
                     sourceSize: Int
-                ): ManyTrackManyCodecAudioPacketDescriptor {
+                ): ManyTrackManyCodecAudioDataDescriptor {
                     val body = ManyTrackManyCodecAudioTagBody.decode(source, sourceSize)
-                    return ManyTrackManyCodecAudioPacketDescriptor(
+                    return ManyTrackManyCodecAudioDataDescriptor(
                         packetType,
                         body
                     )

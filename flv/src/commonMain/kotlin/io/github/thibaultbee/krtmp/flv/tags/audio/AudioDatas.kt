@@ -90,7 +90,7 @@ fun unspecifiedMultiChannelConfigAudioData(
     fourCC: AudioFourCC,
     channelCount: Byte
 ) = ExtendedAudioData(
-    packetDescriptor = ExtendedAudioData.SingleAudioPacketDescriptor(
+    packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
         packetType = packetType,
         fourCC = fourCC,
         body = MultichannelConfigAudioTagBody.UnspecifiedMultichannelConfigAudioTagBody(
@@ -115,7 +115,7 @@ fun oneTrackMultitrackExtendedAudioData(
     body: RawSource,
     bodySize: Int
 ) = ExtendedAudioData(
-    packetDescriptor = ExtendedAudioData.MultitrackAudioPacketDescriptor.OneTrackAudioPacketDescriptor(
+    packetDescriptor = ExtendedAudioData.MultitrackAudioDataDescriptor.OneTrackAudioDataDescriptor(
         fourCC = fourCC,
         framePacketType = framePacketType,
         body = OneTrackAudioTagBody(
@@ -137,13 +137,13 @@ fun oneCodecMultitrackExtendedAudioData(
     tracks: Set<OneTrackAudioTagBody>
 ) {
     val packetDescriptor = if (tracks.size == 1) {
-        ExtendedAudioData.MultitrackAudioPacketDescriptor.OneTrackAudioPacketDescriptor(
+        ExtendedAudioData.MultitrackAudioDataDescriptor.OneTrackAudioDataDescriptor(
             fourCC = fourCC,
             framePacketType = framePacketType,
             body = tracks.first()
         )
     } else if (tracks.size > 1) {
-        ExtendedAudioData.MultitrackAudioPacketDescriptor.ManyTrackAudioPacketDescriptor(
+        ExtendedAudioData.MultitrackAudioDataDescriptor.ManyTrackAudioDataDescriptor(
             fourCC = fourCC,
             framePacketType = framePacketType,
             body = ManyTrackOneCodecAudioTagBody(tracks)
@@ -167,7 +167,7 @@ fun manyCodecMultitrackExtendedAudioData(
     framePacketType: AudioPacketType,
     tracks: Set<OneTrackMultiCodecAudioTagBody>
 ) = ExtendedAudioData(
-    packetDescriptor = ExtendedAudioData.MultitrackAudioPacketDescriptor.ManyTrackManyCodecAudioPacketDescriptor(
+    packetDescriptor = ExtendedAudioData.MultitrackAudioDataDescriptor.ManyTrackManyCodecAudioDataDescriptor(
         framePacketType = framePacketType,
         body = ManyTrackManyCodecAudioTagBody(tracks)
     )

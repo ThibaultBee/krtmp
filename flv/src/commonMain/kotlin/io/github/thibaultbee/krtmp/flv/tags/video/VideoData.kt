@@ -26,7 +26,6 @@ import io.github.thibaultbee.krtmp.flv.tags.ModExCodec
 import io.github.thibaultbee.krtmp.flv.tags.ModExEncoder
 import io.github.thibaultbee.krtmp.flv.tags.MultitrackType
 import io.github.thibaultbee.krtmp.flv.tags.SinkEncoder
-import io.github.thibaultbee.krtmp.flv.tags.audio.AudioModEx
 import io.github.thibaultbee.krtmp.flv.util.WithValue
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.util.extensions.shr
@@ -135,13 +134,9 @@ fun ExtendedVideoData(
     fourCC: VideoFourCC,
     body: SingleVideoTagBody
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.SingleVideoPacketDescriptor(
-        frameType,
-        packetType,
-        fourCC,
-        body
-    ),
-    modExs = setOf(VideoModEx.TimestampOffsetNano(123))
+    packetDescriptor = ExtendedVideoData.SingleVideoDataDescriptor(
+        frameType, packetType, fourCC, body
+    ), modExs = setOf(VideoModEx.TimestampOffsetNano(123))
 )
 
 /**
@@ -151,7 +146,7 @@ fun ExtendedVideoData(
  * @param modExs the set of video mod ex
  */
 class ExtendedVideoData internal constructor(
-    val packetDescriptor: VideoPacketDescriptor,
+    val packetDescriptor: VideoDataDescriptor,
     val modExs: Set<ModEx<VideoPacketModExType, *>> = emptySet()
 ) : VideoData(
     true, packetDescriptor.frameType, if (modExs.isEmpty()) {
@@ -165,11 +160,11 @@ class ExtendedVideoData internal constructor(
 
     override fun encodeHeaderImpl(output: Sink) {
         if ((packetType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
-            require(packetDescriptor is CommandVideoPacketDescriptor) {
+            require(packetDescriptor is CommandVideoDataDescriptor) {
                 "Invalid frame type for command: $frameType. Only CommandHeaderExtension is supported."
             }
         } else if (packetType == VideoPacketType.MULTITRACK) {
-            require(packetDescriptor is MultitrackVideoPacketDescriptor) {
+            require(packetDescriptor is MultitrackVideoDataDescriptor) {
                 "Invalid frame type for multitrack: $frameType. Only MultitrackHeaderExtension is supported."
             }
         }
@@ -200,10 +195,7 @@ class ExtendedVideoData internal constructor(
         }
 
         internal fun decode(
-            frameType: VideoFrameType,
-            packetType: VideoPacketType,
-            source: Source,
-            sourceSize: Int
+            frameType: VideoFrameType, packetType: VideoPacketType, source: Source, sourceSize: Int
         ): ExtendedVideoData {
             var nextPacketType = packetType
             val modExs = if (packetType == VideoPacketType.MOD_EX) {
@@ -217,37 +209,39 @@ class ExtendedVideoData internal constructor(
             val remainingSize = sourceSize - VideoModExCodec.encoder.getSize(modExs)
             val packetDescriptor =
                 if ((nextPacketType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
-                    CommandVideoPacketDescriptor.decode(source)
+                    CommandVideoDataDescriptor.decode(source)
                 } else if (nextPacketType == VideoPacketType.MULTITRACK) {
-                    MultitrackVideoPacketDescriptor.decode(
-                        frameType,
-                        source,
-                        remainingSize
+                    MultitrackVideoDataDescriptor.decode(
+                        frameType, source, remainingSize
                     )
                 } else {
-                    SingleVideoPacketDescriptor.decode(
-                        frameType,
-                        nextPacketType,
-                        source,
-                        remainingSize
+                    SingleVideoDataDescriptor.decode(
+                        frameType, nextPacketType, source, remainingSize
                     )
                 }
             return ExtendedVideoData(packetDescriptor, modExs)
         }
     }
 
-    interface VideoPacketDescriptor : SinkEncoder {
+    interface OneVideoCodec {
+        val fourCC: VideoFourCC
+    }
+
+    /**
+     * Description of an extended video data.
+     */
+    interface VideoDataDescriptor : SinkEncoder {
         val frameType: VideoFrameType
         val packetType: VideoPacketType
         val body: VideoTagBody
     }
 
-    class SingleVideoPacketDescriptor internal constructor(
+    class SingleVideoDataDescriptor internal constructor(
         override val frameType: VideoFrameType,
         override val packetType: VideoPacketType,
-        val fourCC: VideoFourCC,
+        override val fourCC: VideoFourCC,
         override val body: SingleVideoTagBody
-    ) : VideoPacketDescriptor {
+    ) : VideoDataDescriptor, OneVideoCodec {
         override val size = 4
 
         init {
@@ -276,19 +270,19 @@ class ExtendedVideoData internal constructor(
                 packetType: VideoPacketType,
                 source: Source,
                 sourceSize: Int
-            ): SingleVideoPacketDescriptor {
+            ): SingleVideoDataDescriptor {
                 val fourCC = VideoFourCC.codeOf(source.readInt())
                 val remainingSize = sourceSize - 4
                 val body = SingleVideoTagBody.decode(packetType, fourCC, source, remainingSize)
-                return SingleVideoPacketDescriptor(frameType, packetType, fourCC, body)
+                return SingleVideoDataDescriptor(frameType, packetType, fourCC, body)
             }
         }
     }
 
-    class CommandVideoPacketDescriptor internal constructor(
+    class CommandVideoDataDescriptor internal constructor(
         override val packetType: VideoPacketType,
         val command: VideoCommand,
-    ) : VideoPacketDescriptor {
+    ) : VideoDataDescriptor {
         override val frameType = VideoFrameType.COMMAND
         override val body = EmptyVideoTagBody() as VideoTagBody
 
@@ -303,9 +297,9 @@ class ExtendedVideoData internal constructor(
         }
 
         companion object {
-            fun decode(source: Source): CommandVideoPacketDescriptor {
+            fun decode(source: Source): CommandVideoDataDescriptor {
                 val command = VideoCommand.entryOf(source.readByte())
-                return CommandVideoPacketDescriptor(VideoPacketType.MOD_EX, command)
+                return CommandVideoDataDescriptor(VideoPacketType.MOD_EX, command)
             }
         }
     }
@@ -313,12 +307,11 @@ class ExtendedVideoData internal constructor(
     /**
      * The multitrack extended video packet descriptor.
      */
-    sealed class MultitrackVideoPacketDescriptor(
+    sealed class MultitrackVideoDataDescriptor(
         override val frameType: VideoFrameType,
         val multitrackType: MultitrackType,
         val framePacketType: VideoPacketType
-    ) :
-        VideoPacketDescriptor {
+    ) : VideoDataDescriptor {
         override val packetType = VideoPacketType.MULTITRACK
         override val size = 1
 
@@ -335,53 +328,38 @@ class ExtendedVideoData internal constructor(
             encodeImpl(output)
         }
 
-        private interface OneCodec : SinkEncoder {
-            val fourCC: VideoFourCC
-        }
-
         companion object {
             fun decode(
-                frameType: VideoFrameType,
-                source: Source,
-                sourceSize: Int
-            ): MultitrackVideoPacketDescriptor {
+                frameType: VideoFrameType, source: Source, sourceSize: Int
+            ): MultitrackVideoDataDescriptor {
                 val byte = source.readByte()
                 val multitrackType =
                     MultitrackType.entryOf(((byte and 0xF0.toByte()) shr 4).toByte())
                 val framePacketType = VideoPacketType.entryOf(byte and 0x0F.toByte())
                 val remainingSize = sourceSize - 1
                 return when (multitrackType) {
-                    MultitrackType.ONE_TRACK -> OneTrackVideoPacketDescriptor.decode(
-                        frameType,
-                        framePacketType,
-                        source,
-                        remainingSize
+                    MultitrackType.ONE_TRACK -> OneTrackVideoDataDescriptor.decode(
+                        frameType, framePacketType, source, remainingSize
                     )
 
-                    MultitrackType.MANY_TRACK -> ManyTrackVideoPacketDescriptor.decode(
-                        frameType,
-                        framePacketType,
-                        source,
-                        remainingSize
+                    MultitrackType.MANY_TRACK -> ManyTrackVideoDataDescriptor.decode(
+                        frameType, framePacketType, source, remainingSize
                     )
 
-                    MultitrackType.MANY_TRACK_MANY_CODEC -> ManyTrackManyCodecVideoPacketDescriptor.decode(
-                        frameType,
-                        framePacketType,
-                        source,
-                        remainingSize
+                    MultitrackType.MANY_TRACK_MANY_CODEC -> ManyTrackManyCodecVideoDataDescriptor.decode(
+                        frameType, framePacketType, source, remainingSize
                     )
                 }
             }
         }
 
-        class OneTrackVideoPacketDescriptor internal constructor(
+        class OneTrackVideoDataDescriptor internal constructor(
             override val frameType: VideoFrameType,
             framePacketType: VideoPacketType,
             override val fourCC: VideoFourCC,
             override val body: OneTrackVideoTagBody
-        ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.ONE_TRACK, framePacketType),
-            OneCodec {
+        ) : MultitrackVideoDataDescriptor(frameType, MultitrackType.ONE_TRACK, framePacketType),
+            OneVideoCodec {
             override val size = super.size + 4
 
             override fun encodeImpl(output: Sink) {
@@ -398,23 +376,23 @@ class ExtendedVideoData internal constructor(
                     packetType: VideoPacketType,
                     source: Source,
                     sourceSize: Int
-                ): OneTrackVideoPacketDescriptor {
+                ): OneTrackVideoDataDescriptor {
                     val fourCC = VideoFourCC.codeOf(source.readInt())
                     val remainingSize = sourceSize - 4
                     val body =
                         OneTrackVideoTagBody.decode(packetType, fourCC, source, remainingSize)
-                    return OneTrackVideoPacketDescriptor(frameType, packetType, fourCC, body)
+                    return OneTrackVideoDataDescriptor(frameType, packetType, fourCC, body)
                 }
             }
         }
 
-        class ManyTrackVideoPacketDescriptor internal constructor(
+        class ManyTrackVideoDataDescriptor internal constructor(
             override val frameType: VideoFrameType,
             framePacketType: VideoPacketType,
             override val fourCC: VideoFourCC,
             override val body: ManyTrackOneCodecVideoTagBody
-        ) : MultitrackVideoPacketDescriptor(frameType, MultitrackType.MANY_TRACK, framePacketType),
-            OneCodec {
+        ) : MultitrackVideoDataDescriptor(frameType, MultitrackType.MANY_TRACK, framePacketType),
+            OneVideoCodec {
             override val size = super.size + 4
 
             override fun encodeImpl(output: Sink) {
@@ -431,29 +409,23 @@ class ExtendedVideoData internal constructor(
                     packetType: VideoPacketType,
                     source: Source,
                     sourceSize: Int
-                ): ManyTrackVideoPacketDescriptor {
+                ): ManyTrackVideoDataDescriptor {
                     val fourCC = VideoFourCC.codeOf(source.readInt())
                     val remainingSize = sourceSize - 4
-                    val body =
-                        ManyTrackOneCodecVideoTagBody.decode(
-                            packetType,
-                            fourCC,
-                            source,
-                            remainingSize
-                        )
-                    return ManyTrackVideoPacketDescriptor(frameType, packetType, fourCC, body)
+                    val body = ManyTrackOneCodecVideoTagBody.decode(
+                        packetType, fourCC, source, remainingSize
+                    )
+                    return ManyTrackVideoDataDescriptor(frameType, packetType, fourCC, body)
                 }
             }
         }
 
-        class ManyTrackManyCodecVideoPacketDescriptor internal constructor(
+        class ManyTrackManyCodecVideoDataDescriptor internal constructor(
             override val frameType: VideoFrameType,
             framePacketType: VideoPacketType,
             override val body: ManyTrackManyCodecVideoTagBody
-        ) : MultitrackVideoPacketDescriptor(
-            frameType,
-            MultitrackType.MANY_TRACK_MANY_CODEC,
-            framePacketType
+        ) : MultitrackVideoDataDescriptor(
+            frameType, MultitrackType.MANY_TRACK_MANY_CODEC, framePacketType
         ) {
             override val size = super.size
 
@@ -469,12 +441,10 @@ class ExtendedVideoData internal constructor(
                     packetType: VideoPacketType,
                     source: Source,
                     sourceSize: Int
-                ): ManyTrackManyCodecVideoPacketDescriptor {
+                ): ManyTrackManyCodecVideoDataDescriptor {
                     val body = ManyTrackManyCodecVideoTagBody.decode(packetType, source, sourceSize)
-                    return ManyTrackManyCodecVideoPacketDescriptor(
-                        frameType,
-                        packetType,
-                        body
+                    return ManyTrackManyCodecVideoDataDescriptor(
+                        frameType, packetType, body
                     )
                 }
             }
@@ -517,19 +487,12 @@ sealed class VideoData(
             return if (isExHeader) {
                 val packetType = VideoPacketType.entryOf(firstByte and 0x0F)
                 ExtendedVideoData.decode(
-                    frameType,
-                    packetType,
-                    source,
-                    sourceSize - 1
+                    frameType, packetType, source, sourceSize - 1
                 )
             } else {
                 val codecID = CodecID.entryOf(firstByte and 0x0F)
                 LegacyVideoData.decode(
-                    frameType,
-                    codecID,
-                    source,
-                    sourceSize - 1,
-                    isEncrypted
+                    frameType, codecID, source, sourceSize - 1, isEncrypted
                 )
             }
         }
@@ -590,16 +553,14 @@ enum class VideoPacketType(
     override val value: Byte, val avcPacketType: AVCPacketType? = null
 ) : WithValue<Byte> {
     SEQUENCE_START(0, AVCPacketType.SEQUENCE_HEADER), // Sequence Start
-    CODED_FRAMES(1, AVCPacketType.NALU),
-    SEQUENCE_END(
+    CODED_FRAMES(1, AVCPacketType.NALU), SEQUENCE_END(
         2, AVCPacketType.END_OF_SEQUENCE
     ),
 
     /**
      * Composition time is implicitly set to 0.
      */
-    CODED_FRAMES_X(3, null),
-    META_DATA(
+    CODED_FRAMES_X(3, null), META_DATA(
         4, null
     ),
 
@@ -650,8 +611,7 @@ sealed class VideoModEx<T>(type: VideoPacketModExType, value: T) :
     }
 
     class TimestampOffsetNano(value: Int) : VideoModEx<Int>(
-        VideoPacketModExType.TIMESTAMP_OFFSET_NANO,
-        value
+        VideoPacketModExType.TIMESTAMP_OFFSET_NANO, value
     )
 }
 
@@ -669,12 +629,10 @@ internal sealed class VideoModExCodec<T> : ModExCodec<VideoPacketModExType, T> {
     }
 
     companion object {
-        private val codecs =
-            setOf(timestampOffsetNano)
+        private val codecs = setOf(timestampOffsetNano)
 
-        internal fun codecOf(type: VideoPacketModExType) =
-            codecs.firstOrNull { it.type == type }
-                ?: throw IllegalArgumentException("Invalid VideoModExCodec type: $type")
+        internal fun codecOf(type: VideoPacketModExType) = codecs.firstOrNull { it.type == type }
+            ?: throw IllegalArgumentException("Invalid VideoModExCodec type: $type")
 
         internal val encoder = ModExEncoder(codecs, VideoPacketType.MOD_EX.value)
     }

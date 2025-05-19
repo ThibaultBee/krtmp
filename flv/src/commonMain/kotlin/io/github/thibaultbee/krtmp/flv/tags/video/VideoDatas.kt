@@ -166,7 +166,7 @@ fun avcEndOfSequenceLegacyVideoData() = LegacyVideoData(
 fun CommandExtendedVideoData(
     packetType: VideoPacketType, command: VideoCommand
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.CommandVideoPacketDescriptor(
+    packetDescriptor = ExtendedVideoData.CommandVideoDataDescriptor(
         command = command, packetType = packetType
     )
 )
@@ -454,7 +454,7 @@ fun oneTrackMultitrackExtendedVideoData(
     body: RawSource,
     bodySize: Int
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.MultitrackVideoPacketDescriptor.OneTrackVideoPacketDescriptor(
+    packetDescriptor = ExtendedVideoData.MultitrackVideoDataDescriptor.OneTrackVideoDataDescriptor(
         frameType = frameType,
         fourCC = fourCC,
         framePacketType = framePacketType,
@@ -479,14 +479,14 @@ fun oneCodecMultitrackExtendedVideoData(
     tracks: Set<OneTrackVideoTagBody>
 ) {
     val packetDescriptor = if (tracks.size == 1) {
-        ExtendedVideoData.MultitrackVideoPacketDescriptor.OneTrackVideoPacketDescriptor(
+        ExtendedVideoData.MultitrackVideoDataDescriptor.OneTrackVideoDataDescriptor(
             frameType = frameType,
             fourCC = fourCC,
             framePacketType = framePacketType,
             body = tracks.first()
         )
     } else if (tracks.size > 1) {
-        ExtendedVideoData.MultitrackVideoPacketDescriptor.ManyTrackVideoPacketDescriptor(
+        ExtendedVideoData.MultitrackVideoDataDescriptor.ManyTrackVideoDataDescriptor(
             frameType = frameType,
             fourCC = fourCC,
             framePacketType = framePacketType,
@@ -513,7 +513,7 @@ fun manyCodecMultitrackExtendedVideoData(
     framePacketType: VideoPacketType,
     tracks: Set<OneTrackMultiCodecVideoTagBody>
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.MultitrackVideoPacketDescriptor.ManyTrackManyCodecVideoPacketDescriptor(
+    packetDescriptor = ExtendedVideoData.MultitrackVideoDataDescriptor.ManyTrackManyCodecVideoDataDescriptor(
         frameType = frameType,
         framePacketType = framePacketType,
         body = ManyTrackManyCodecVideoTagBody(tracks)
