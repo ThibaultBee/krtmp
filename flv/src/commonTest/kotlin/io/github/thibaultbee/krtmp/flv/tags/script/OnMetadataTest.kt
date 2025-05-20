@@ -10,7 +10,7 @@ import io.github.thibaultbee.krtmp.flv.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.config.SoundType
 import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
-import io.github.thibaultbee.krtmp.flv.tags.readByteArray
+import io.github.thibaultbee.krtmp.flv.util.readByteArray
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals

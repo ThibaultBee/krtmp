@@ -28,7 +28,7 @@ import io.github.thibaultbee.krtmp.flv.tags.ModEx
 import io.github.thibaultbee.krtmp.flv.tags.ModExCodec
 import io.github.thibaultbee.krtmp.flv.tags.ModExEncoder
 import io.github.thibaultbee.krtmp.flv.tags.MultitrackType
-import io.github.thibaultbee.krtmp.flv.tags.SinkEncoder
+import io.github.thibaultbee.krtmp.flv.util.SinkEncoder
 import io.github.thibaultbee.krtmp.flv.util.WithValue
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
 import io.github.thibaultbee.krtmp.flv.util.extensions.shr
