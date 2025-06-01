@@ -4,6 +4,7 @@ import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
 import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
+import io.github.thibaultbee.krtmp.rtmp.util.AmfUtil.amf
 import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.availableForRead
 import io.ktor.utils.io.readAvailable
@@ -40,7 +41,7 @@ class CommandTest {
             objectEncoding = ObjectEncoding.AMF0
         )
         val actual =
-            Amf.encodeToByteArray(ConnectObject.serializer(), connectObject)
+            amf.encodeToByteArray(ConnectObject.serializer(), connectObject)
         assertEquals(expected, actual.toHexString())
     }
 
