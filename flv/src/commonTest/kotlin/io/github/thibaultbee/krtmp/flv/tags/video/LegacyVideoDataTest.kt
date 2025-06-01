@@ -3,6 +3,7 @@ package io.github.thibaultbee.krtmp.flv.tags.video
 import io.github.thibaultbee.krtmp.flv.Resource
 import io.github.thibaultbee.krtmp.flv.config.CodecID
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.tags.readByteArray
 import io.github.thibaultbee.krtmp.flv.util.readByteArray
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray

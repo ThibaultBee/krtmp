@@ -7,6 +7,7 @@ import io.github.thibaultbee.krtmp.flv.config.SoundRate
 import io.github.thibaultbee.krtmp.flv.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.config.SoundType
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
+import io.github.thibaultbee.krtmp.flv.tags.readByteArray
 import io.github.thibaultbee.krtmp.flv.util.readByteArray
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
