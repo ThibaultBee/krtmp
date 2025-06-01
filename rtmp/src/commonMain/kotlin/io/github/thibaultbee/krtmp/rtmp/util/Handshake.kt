@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp
+package io.github.thibaultbee.krtmp.rtmp.util
 
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
-import io.github.thibaultbee.krtmp.rtmp.util.connections.TcpConnection
+import io.github.thibaultbee.krtmp.rtmp.util.connections.tcp.TcpSocketConnection
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readByte
@@ -36,7 +35,7 @@ internal class Handshake(
     private val clock: RtmpClock,
     private val version: Byte = 0x3,
 ) {
-    suspend fun startClient() {
+    internal suspend fun startClient() {
         val c0 = Zero(version)
         val c1 = One(0, Random.nextBytes(RANDOM_DATA_SIZE))
         connection.write(Zero.LENGTH + One.LENGTH.toLong()) {
@@ -53,9 +52,7 @@ internal class Handshake(
             One.read(it)
         }
 
-        val time2 = clock.nowInMs
-
-        val c2 = Two(s1.timestamp, time2, s1.random)
+        val c2 = Two(s1.timestamp, clock.nowInMs, s1.random)
         connection.write(Two.LENGTH.toLong()) {
             c2.write(it)
         }
@@ -64,9 +61,40 @@ internal class Handshake(
             Two.read(it)
         }
 
-        if (connection is TcpConnection) {
+        if (connection is TcpSocketConnection) {
             require(s2.timestamp == c1.timestamp) { "Handshake failed: S2 and C1 must have the same timestamp" }
             require(s2.random.contentEquals(c1.random)) { "Handshake failed: S2 and C1 must have the same random sequence" }
+        }
+    }
+
+    internal suspend fun starServer() {
+        val c0 = connection.read {
+            Zero.read(it)
+        }
+        require(c0.version == version) { "Handshake failed: S0 and C0 must have the same version: ${c0.version} instead of $version" }
+
+        val s0 = Zero(version)
+        val s1 = One(0, Random.nextBytes(RANDOM_DATA_SIZE))
+        connection.write(Zero.LENGTH + One.LENGTH.toLong()) {
+            s0.write(it)
+            s1.write(it)
+        }
+
+        val c1 = connection.read {
+            One.read(it)
+        }
+        val s2 = Two(c1.timestamp, clock.nowInMs, c1.random)
+        connection.write(Two.LENGTH.toLong()) {
+            s2.write(it)
+        }
+
+        val c2 = connection.read {
+            Two.read(it)
+        }
+
+        if (connection is TcpSocketConnection) {
+            require(c2.timestamp == c1.timestamp) { "Handshake failed: C2 and S1 must have the same timestamp" }
+            require(c2.random.contentEquals(s1.random)) { "Handshake failed: C2 and S1 must have the same random sequence" }
         }
     }
 

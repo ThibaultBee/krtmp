@@ -53,7 +53,7 @@ internal open class DataAmfMessage(
         )
 }
 
-internal open class DataAmf(
+open class DataAmf(
     val messageStreamId: Int,
     val timestamp: Int,
     val name: String,

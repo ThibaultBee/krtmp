@@ -23,6 +23,9 @@ internal fun UserControl(timestamp: Int, payload: Buffer) = UserControl(
     UserControl.EventType.from(payload.readShort()),
     Buffer().apply { payload.readAtMostTo(this, payload.size - Short.SIZE_BYTES) })
 
+internal fun UserControl(timestamp: Int, eventType: UserControl.EventType) =
+    UserControl(timestamp, eventType, Buffer())
+
 internal class UserControl(timestamp: Int, val eventType: EventType, val data: Buffer) :
     Message(
         chunkStreamId = ChunkStreamId.PROTOCOL_CONTROL.value,

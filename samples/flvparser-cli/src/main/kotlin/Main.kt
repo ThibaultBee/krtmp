@@ -16,12 +16,12 @@ import io.github.thibaultbee.krtmp.flv.tags.video.ExtendedVideoData
 import io.github.thibaultbee.krtmp.flv.tags.video.LegacyVideoData
 import kotlinx.io.files.Path
 
-class FLVParser : SuspendingCliktCommand() {
+class FLVParserCli : SuspendingCliktCommand() {
     override fun help(context: Context): String {
         return "Parse a FLV file"
     }
 
-    val filePath: String by option("-i", "--input", help = "The FLV file to parse")
+    private val filePath: String by option("-i", "--input", help = "The FLV file to parse")
         .required()
 
     private fun prettyTag(index: Int, tag: FLVTag): String {
@@ -90,4 +90,4 @@ class FLVParser : SuspendingCliktCommand() {
     }
 }
 
-suspend fun main(args: Array<String>) = FLVParser().main(args)
+suspend fun main(args: Array<String>) = FLVParserCli().main(args)

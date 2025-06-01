@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.util
 
-import io.github.thibaultbee.krtmp.rtmp.client.RemoteServerException
+import io.github.thibaultbee.krtmp.rtmp.streamer.RemoteServerException
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
 import kotlinx.coroutines.CompletableDeferred
 

@@ -15,16 +15,17 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.util.connections
 
+import io.ktor.http.URLBuilder
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.coroutines.CoroutineScope
 
-interface IConnection : CoroutineScope {
+internal interface IConnection : CoroutineScope {
+    val urlBuilder: URLBuilder
+
     val isClosed: Boolean
     val totalBytesRead: Long
     val totalBytesWritten: Long
-
-    suspend fun connect()
 
     suspend fun write(
         length: Long,

@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.client
+package io.github.thibaultbee.krtmp.rtmp.streamer
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
 import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
-import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_AUDIO_CODECS
-import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_FLASH_VER
-import io.github.thibaultbee.krtmp.rtmp.messages.Command.Connect.ConnectObject.Companion.DEFAULT_VIDEO_CODECS
+import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject.Companion.DEFAULT_AUDIO_CODECS
+import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject.Companion.DEFAULT_FLASH_VER
+import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject.Companion.DEFAULT_VIDEO_CODECS
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
@@ -31,18 +31,23 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
  * @param writeWindowAcknowledgementSize RTMP acknowledgement window size in bytes
  * @param amfVersion AMF version
  * @param clock Clock used to timestamp RTMP messages. You should use the same clock for your video and audio timestamps.
+ * @param enableTooLateFrameDrop enable dropping too late frames. Default is false. It will drop frames if they are are too late if set to true. If enable, make sure frame timestamps are on on the same clock as [clock].
+ * @param tooLateFrameDropTimeoutInMs the timeout after which a frame will be dropped (from frame timestamps). Default is 3000ms.
  */
-open class RtmpClientSettings(
+open class RtmpSettings(
     val writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
     val writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
     val amfVersion: AmfVersion = AmfVersion.AMF0,
     val clock: RtmpClock = RtmpClock.Default(),
+    val enableTooLateFrameDrop: Boolean = false,
+    val tooLateFrameDropTimeoutInMs: Long = DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS
 ) {
     /**
-     * The default instance of [RtmpClientSettings]
+     * The default instance of [RtmpSettings]
      */
-    companion object Default : RtmpClientSettings() {
+    companion object Default : RtmpSettings() {
         const val DEFAULT_CHUNK_SIZE = RtmpConfiguration.DEFAULT_CHUNK_SIZE // bytes
+        const val DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS = 2000L // ms
     }
 }
 
@@ -53,13 +58,13 @@ open class RtmpClientSettings(
  * @param audioCodecs List of supported audio codecs
  * @param videoCodecs List of supported video codecs (including extended RTMP codecs)
  */
-open class RtmpClientConnectInformation(
+open class ConnectInformation(
     val flashVer: String = DEFAULT_FLASH_VER,
     val audioCodecs: List<AudioMediaType>? = DEFAULT_AUDIO_CODECS,
     val videoCodecs: List<VideoMediaType>? = DEFAULT_VIDEO_CODECS,
 ) {
     /**
-     * The default instance of [RtmpClientConnectInformation]
+     * The default instance of [ConnectInformation]
      */
-    companion object Default : RtmpClientConnectInformation()
+    companion object Default : ConnectInformation()
 }

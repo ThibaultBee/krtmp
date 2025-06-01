@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.client
+package io.github.thibaultbee.krtmp.rtmp.streamer
 
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
 

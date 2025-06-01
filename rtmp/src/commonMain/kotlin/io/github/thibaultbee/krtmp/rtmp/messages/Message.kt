@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.common.logger.Logger
+import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.chunk.MessageHeader
@@ -42,6 +42,10 @@ sealed class Message(
         require(timestamp >= 0) { "Timestamp must be positive but $timestamp" }
     }
 
+    override fun toString(): String {
+        return "Message(chunkStreamId=$chunkStreamId, messageStreamId=$messageStreamId, timestamp=$timestamp, messageType=$messageType, payloadSize=$payloadSize)"
+    }
+
     private fun buildHeader0(): MessageHeader0 {
         return MessageHeader0(
             timestamp = timestamp,
@@ -56,7 +60,7 @@ sealed class Message(
             buildHeader0()
         } else {
             if (previousMessage.timestamp > timestamp) {
-                Logger.w(
+                KrtmpLogger.w(
                     TAG,
                     "Timestamps are not in order. Previous: ${previousMessage.timestamp}, current: $timestamp"
                 )
@@ -141,44 +145,44 @@ sealed class Message(
                 is MessageHeader0 -> firstChunk.messageHeader.messageLength
                 is MessageHeader1 -> firstChunk.messageHeader.messageLength
                 is MessageHeader2 -> previousMessage?.payloadSize
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
 
                 is MessageHeader3 -> previousMessage?.payloadSize
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
             }
 
             val messageType = when (firstChunk.messageHeader) {
                 is MessageHeader0 -> firstChunk.messageHeader.messageType
                 is MessageHeader1 -> firstChunk.messageHeader.messageType
                 is MessageHeader2 -> previousMessage?.messageType
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
 
                 is MessageHeader3 -> previousMessage?.messageType
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
             }
 
             val messageStreamId = when (firstChunk.messageHeader) {
                 is MessageHeader0 -> firstChunk.messageHeader.messageStreamId
                 is MessageHeader1 -> previousMessage?.messageStreamId
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header1: Previous message must not be null")
 
                 is MessageHeader2 -> previousMessage?.messageStreamId
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
 
                 is MessageHeader3 -> previousMessage?.messageStreamId
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
             }
 
             val timestamp = when (firstChunk.messageHeader) {
                 is MessageHeader0 -> firstChunk.messageHeader.timestamp
                 is MessageHeader1 -> previousMessage?.timestamp?.plus(firstChunk.messageHeader.timestampDelta)
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header1: Previous message must not be null")
 
                 is MessageHeader2 -> previousMessage?.timestamp?.plus(firstChunk.messageHeader.timestampDelta)
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
 
                 is MessageHeader3 -> previousMessage?.timestamp
-                    ?: throw IllegalArgumentException("Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
             }
 
             while (payload.size < messageLength) {
@@ -225,6 +229,25 @@ sealed class Message(
                     messageStreamId = messageStreamId,
                     timestamp = timestamp,
                     messageType = messageType,
+                    payload = payload
+                )
+
+                MessageType.DATA_AMF0, MessageType.DATA_AMF3 -> DataAmfMessage(
+                    messageStreamId = messageStreamId,
+                    timestamp = timestamp,
+                    messageType = messageType,
+                    payload = payload
+                )
+
+                MessageType.VIDEO -> Video(
+                    messageStreamId = messageStreamId,
+                    timestamp = timestamp,
+                    payload = payload
+                )
+
+                MessageType.AUDIO -> Audio(
+                    messageStreamId = messageStreamId,
+                    timestamp = timestamp,
                     payload = payload
                 )
 

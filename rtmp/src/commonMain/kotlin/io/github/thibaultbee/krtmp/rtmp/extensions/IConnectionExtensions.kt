@@ -15,9 +15,12 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.extensions
 
-import io.github.thibaultbee.krtmp.rtmp.Handshake
+import io.github.thibaultbee.krtmp.rtmp.util.Handshake
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
 
 internal suspend fun IConnection.clientHandshake(clock: RtmpClock = RtmpClock.Default()) =
     Handshake(this, clock = clock).startClient()
+
+internal suspend fun IConnection.serverHandshake(clock: RtmpClock = RtmpClock.Default()) =
+    Handshake(this, clock = clock).starServer()

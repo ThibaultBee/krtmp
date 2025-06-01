@@ -13,63 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.util.connections
+package io.github.thibaultbee.krtmp.rtmp.util.connections.tcp
 
-import io.github.thibaultbee.krtmp.rtmp.extensions.isSecureRtmp
+import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
 import io.ktor.http.URLBuilder
-import io.ktor.network.selector.SelectorManager
 import io.ktor.network.sockets.Connection
-import io.ktor.network.sockets.SocketOptions
-import io.ktor.network.sockets.aSocket
+import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.connection
 import io.ktor.network.sockets.isClosed
-import io.ktor.network.tls.tls
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.CountedByteReadChannel
 import io.ktor.utils.io.CountedByteWriteChannel
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlin.coroutines.CoroutineContext
 
-internal class TcpConnection internal constructor(
-    private val urlBuilder: URLBuilder,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val socketOptions: SocketOptions.TCPClientSocketOptions.() -> Unit = {},
+internal fun TcpSocketConnection(
+    socket: Socket
+): TcpSocketConnection = TcpSocketConnection(socket.connection())
+
+/**
+ * TCP connection implementation of [IConnection].
+ */
+internal open class TcpSocketConnection(
+    private val connection: Connection
 ) : IConnection {
-    private val selectorManager = SelectorManager(dispatcher)
-    private val tcpSocket = aSocket(selectorManager).tcp()
-    private var connection: Connection? = null
+
+   override val urlBuilder = URLBuilder(connection.socket.remoteAddress.toString())
     private val input by lazy {
-        connection?.let { CountedByteReadChannel(it.input) }
-            ?: throw IllegalStateException("Trying to get input without connection")
+        CountedByteReadChannel(connection.input)
     }
     private val output by lazy {
-        connection?.let { CountedByteWriteChannel(it.output) }
-            ?: throw IllegalStateException("Trying to get output without connection")
+        CountedByteWriteChannel(connection.output)
     }
 
     override val coroutineContext: CoroutineContext
-        get() = connection?.socket?.socketContext
-            ?: throw IllegalStateException("Connection is closed")
+        get() = connection.socket.socketContext
 
     override val isClosed: Boolean
-        get() = connection?.socket?.isClosed ?: true
+        get() = connection.socket.isClosed
 
     override val totalBytesRead: Long
         get() = input.totalBytesRead
 
     override val totalBytesWritten: Long
         get() = output.totalBytesWritten
-
-    override suspend fun connect() {
-        var socket = tcpSocket.connect(urlBuilder.host, urlBuilder.port, socketOptions)
-        if (urlBuilder.protocol.isSecureRtmp) {
-            socket = socket.tls(dispatcher)
-        }
-        connection = socket.connection()
-    }
 
     override suspend fun write(
         length: Long,
@@ -86,6 +73,6 @@ internal class TcpConnection internal constructor(
     }
 
     override suspend fun close() {
-        selectorManager.close()
+        connection.socket.close()
     }
 }

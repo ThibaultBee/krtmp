@@ -15,14 +15,23 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
+import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import kotlinx.io.RawSource
+import kotlinx.io.buffered
 
-internal class Audio(timestamp: Int, messageStreamId: Int, payload: RawSource) :
+class Audio internal constructor(timestamp: Int, messageStreamId: Int, payload: RawSource) :
     Message(
         chunkStreamId = ChunkStreamId.AUDIO_CHANNEL.value,
         messageStreamId = messageStreamId,
         timestamp = timestamp,
         messageType = MessageType.AUDIO,
         payload = payload
-    )
+    ) {
+    override fun toString(): String {
+        return "Audio(timestamp=$timestamp, messageStreamId=$messageStreamId, payloadSize=$payloadSize)"
+    }
+}
+
+
+fun Audio.decode() = AudioData.decode(payload.buffered(), payloadSize, false)
