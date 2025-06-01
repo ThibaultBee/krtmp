@@ -44,6 +44,7 @@ import io.ktor.network.sockets.ServerSocket
 import kotlinx.coroutines.job
 import kotlin.coroutines.cancellation.CancellationException
 
+//TODO: add a way to not use scheme
 suspend fun RtmpServer(
     url: String,
     callback: RtmpServerCallback,
@@ -181,7 +182,7 @@ internal class RtmpServerCallbackImpl(
                             level = NetStreamOnStatusLevelStatus,
                             code = NetStreamOnStatusCodePlayStart,
                             description = "$streamKey is now published",
-                            details = streamKey
+                            details = "$streamKey"
                         )
                     )
                 )

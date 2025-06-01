@@ -28,10 +28,12 @@ implementation("io.github.thibaultbee.krtmp:rtmp:1.0.0")
 
 ## Usage
 
-Creates a RTMP publish client with the Factory `RtmpClientConnectionFactory`:
+### Client
+
+Creates a RTMP client with the Factory `RtmpClient`:
 
 ```kotlin
-val client = RtmpPublishClientConnectionFactory().create(
+val client = RtmpClient(
     "rtmp://my.server.com/app/streamkey" // Your RTMP server URL (incl app name and stream key)
 )
 ```
@@ -43,15 +45,6 @@ client.connect()
 client.createStream()
 client.publish(Command.Publish.Type.LIVE)
 ```
-
-If you have raw audio and video frames, you need to mux them into FLV tag headers. You can use
-the `FlvMuxer` class for that.
-
-```kotlin
-val flvMuxer = client.flvMuxer
-```
-
-See [FLV](#flv) for more details to write audio and video frames..
 
 If you already have FLV data, write your video/audio data:
 
@@ -72,7 +65,21 @@ try {
 }
 ```
 
-For advanced configuration, see `RtmpClientSettings`.
+See [FLV](#flv) for more details to write audio and video frames..
+
+### Server
+
+Use the `RtmpServer` to create a RTMP server:
+
+```kotlin
+val server = RtmpServer("0.0.0.0:1935") // Listening on port 1935
+```
+
+Then start the server:
+
+```kotlin
+server.listen()
+```
 
 # FLV
 
@@ -121,10 +128,10 @@ val videoConfig = FLVVideoConfig(
 muxer.encode(0, OnMetadata(audioConfig, videoConfig))
 
 // Write audio/video data
-muxer.write(audioFrame)
-muxer.write(videoFrame)
-muxer.write(audioFrame)
-muxer.write(videoFrame)
+muxer.encode(audioFrame)
+muxer.encode(videoFrame)
+muxer.encode(audioFrame)
+muxer.encode(videoFrame)
 
 // Till you're done, then
 muxer.flush()
@@ -141,7 +148,7 @@ Features:
 
 - [x] Serializer for AMF0
 - [ ] Serializer for AMF3
-- [ ] Deserializer for AMF0
+- [x] Deserializer for AMF0
 - [ ] Deserializer for AMF3
 
 ## Installation
