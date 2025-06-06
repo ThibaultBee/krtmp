@@ -20,18 +20,25 @@ import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import kotlinx.io.RawSource
 import kotlinx.io.buffered
 
-class Video internal constructor(timestamp: Int, messageStreamId: Int, payload: RawSource) :
+class Video internal constructor(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: RawSource,
+    payloadSize: Int,
+    chunkStreamId: Int = ChunkStreamId.VIDEO_CHANNEL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.VIDEO_CHANNEL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = messageStreamId,
         timestamp = timestamp,
         messageType = MessageType.VIDEO,
-        payload = payload
+        payload = payload,
+        payloadSize = payloadSize
     ) {
     override fun toString(): String {
-        return "Video(timestamp=$timestamp, messageStreamId=$messageStreamId, payloadSize=$payloadSize)"
+        return "Video(timestamp=$timestamp, messageStreamId=$messageStreamId, payload=$payload)"
     }
 }
 
-    fun Video.decode() =
-        VideoData.decode(payload.buffered(), payloadSize, false)
+fun Video.decode() =
+    VideoData.decode(payload.buffered(), payloadSize, false)

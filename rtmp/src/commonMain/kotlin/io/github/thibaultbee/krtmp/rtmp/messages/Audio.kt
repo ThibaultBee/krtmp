@@ -20,16 +20,23 @@ import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import kotlinx.io.RawSource
 import kotlinx.io.buffered
 
-class Audio internal constructor(timestamp: Int, messageStreamId: Int, payload: RawSource) :
+class Audio internal constructor(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: RawSource,
+    payloadSize: Int,
+    chunkStreamId: Int = ChunkStreamId.AUDIO_CHANNEL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.AUDIO_CHANNEL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = messageStreamId,
         timestamp = timestamp,
         messageType = MessageType.AUDIO,
-        payload = payload
+        payload = payload,
+        payloadSize = payloadSize
     ) {
     override fun toString(): String {
-        return "Audio(timestamp=$timestamp, messageStreamId=$messageStreamId, payloadSize=$payloadSize)"
+        return "Audio(timestamp=$timestamp, messageStreamId=$messageStreamId, payload=$payload)"
     }
 }
 

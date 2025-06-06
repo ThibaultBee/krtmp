@@ -8,7 +8,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import io.github.thibaultbee.krtmp.common.logger.IKrtmpLogger
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
+import io.github.thibaultbee.krtmp.flv.FLVDemuxer
+import io.github.thibaultbee.krtmp.flv.decodeAllRaw
 import io.github.thibaultbee.krtmp.rtmp.client.RtmpClient
+import kotlinx.io.files.Path
 
 class RTMPServerCli : SuspendingCliktCommand() {
     init {
@@ -27,18 +30,52 @@ class RTMPServerCli : SuspendingCliktCommand() {
     )
 
     override suspend fun run() {
-        echo("Trying to connect to $rtmpUrlPath")
+        echo("Trying to open file $filePath")
+        val path = Path(filePath)
+        val parser = FLVDemuxer(path = path)
 
+        echo("Trying to connect to $rtmpUrlPath")
         // Create the RTMP client
         val client = RtmpClient(rtmpUrlPath)
-        val result = try {
-            client.connect()
+        try {
+            val result = client.connect()
+            echo("Connected to RTMP server: $result")
+
+            client.createStream()
+            client.publish()
         } catch (t: Throwable) {
-            echo("Error connecting to send connect server: ${t.message}")
+            echo("Error connecting to connect server: ${t.message}")
             client.close()
             throw t
         }
-        echo("Result $result")
+
+        // Read the FLV file and send it to the RTMP server
+        try {
+            echo("Sending FLV file: $filePath")
+
+            val header = parser.decodeFlvHeader()
+            echo("Parsed FLV header: $header")
+
+            parser.decodeAllRaw { tag ->
+                echo("Sending: $tag")
+                client.write(tag)
+            }
+        } catch (t: Throwable) {
+            echo("Error reading FLV file: ${t.message}")
+            client.close()
+            throw t
+        }
+
+        // Close the connection gracefully
+        try {
+            echo("Closing connection to the server")
+            client.deleteStream()
+            client.close()
+        } catch (t: Throwable) {
+            echo("Error connecting to close connection to the server: ${t.message}")
+            client.close()
+            throw t
+        }
     }
 
 

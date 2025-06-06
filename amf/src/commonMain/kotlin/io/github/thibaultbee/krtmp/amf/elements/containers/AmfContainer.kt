@@ -64,5 +64,5 @@ class AmfContainer internal constructor(private val elements: MutableList<AmfEle
     override fun equals(other: Any?): Boolean = elements == other
     override fun hashCode(): Int = elements.hashCode()
     override fun toString(): String =
-        elements.joinToString(prefix = "[", postfix = "]", separator = ",")
+        elements.joinToString(prefix = "[", postfix = "]", separator = ", ")
 }

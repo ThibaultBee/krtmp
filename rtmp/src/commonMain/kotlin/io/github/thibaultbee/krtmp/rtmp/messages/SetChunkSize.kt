@@ -18,11 +18,16 @@ package io.github.thibaultbee.krtmp.rtmp.messages
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import kotlinx.io.Buffer
 
-internal fun SetChunkSize(timestamp: Int, payload: Buffer) = SetChunkSize(timestamp, payload.readInt())
+internal fun SetChunkSize(timestamp: Int, chunkStreamId: Int, payload: Buffer) =
+    SetChunkSize(timestamp, payload.readInt(), chunkStreamId)
 
-internal class SetChunkSize(timestamp: Int, val chunkSize: Int) :
+internal class SetChunkSize(
+    timestamp: Int,
+    val chunkSize: Int,
+    chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.PROTOCOL_CONTROL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = MessageStreamId.PROTOCOL_CONTROL.value,
         timestamp = timestamp,
         messageType = MessageType.SET_CHUNK_SIZE,

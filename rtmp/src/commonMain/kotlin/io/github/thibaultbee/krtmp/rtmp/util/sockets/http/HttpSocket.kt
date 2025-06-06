@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.util.connections.http
+package io.github.thibaultbee.krtmp.rtmp.util.sockets.http
 
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
-import io.github.thibaultbee.krtmp.rtmp.util.connections.http.HttpConnection.Companion.createRtmptClient
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.http.HttpSocket.Companion.createRtmptClient
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.headers
@@ -36,25 +36,25 @@ import kotlinx.coroutines.isActive
 import kotlin.coroutines.cancellation.CancellationException
 
 
-internal suspend fun HttpConnection(
+internal suspend fun HttpSocket(
     urlBuilder: URLBuilder,
-): HttpConnection {
+): HttpSocket {
     val client = createRtmptClient()
     try {
-        val sessionId = HttpConnection.connect(urlBuilder, client)
-        return HttpConnection(urlBuilder, client, sessionId)
+        val sessionId = HttpSocket.connect(urlBuilder, client)
+        return HttpSocket(urlBuilder, client, sessionId)
     } catch (e: Throwable) {
         client.close()
         throw e
     }
 }
 
-internal class HttpConnection internal constructor(
+internal class HttpSocket internal constructor(
     override val urlBuilder: URLBuilder,
     private val client: HttpClient,
     private val sessionId: String
 ) :
-    IConnection {
+    ISocket {
     private val postByteReadChannels = mutableListOf<ByteReadChannel>()
 
     private var _index = 1L

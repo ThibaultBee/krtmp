@@ -17,12 +17,14 @@ package io.github.thibaultbee.krtmp.rtmp.messages
 
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
+import io.github.thibaultbee.krtmp.rtmp.chunk.BasicHeader
 import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.chunk.MessageHeader
 import io.github.thibaultbee.krtmp.rtmp.chunk.MessageHeader0
 import io.github.thibaultbee.krtmp.rtmp.chunk.MessageHeader1
 import io.github.thibaultbee.krtmp.rtmp.chunk.MessageHeader2
 import io.github.thibaultbee.krtmp.rtmp.chunk.MessageHeader3
+import io.github.thibaultbee.krtmp.rtmp.extensions.readFully
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.io.Buffer
@@ -35,12 +37,28 @@ sealed class Message(
     val timestamp: Int,
     val messageType: MessageType,
     val payload: RawSource,
+    val payloadSize: Int
 ) {
-    var payloadSize: Int = 0
+    private var readPayloadSize: Int = 0
 
     init {
         require(timestamp >= 0) { "Timestamp must be positive but $timestamp" }
     }
+
+    constructor(
+        chunkStreamId: Int,
+        messageStreamId: Int,
+        timestamp: Int,
+        messageType: MessageType,
+        payload: Buffer
+    ) : this(
+        chunkStreamId = chunkStreamId,
+        messageStreamId = messageStreamId,
+        timestamp = timestamp,
+        messageType = messageType,
+        payload = payload,
+        payloadSize = payload.size.toInt()
+    )
 
     override fun toString(): String {
         return "Message(chunkStreamId=$chunkStreamId, messageStreamId=$messageStreamId, timestamp=$timestamp, messageType=$messageType, payloadSize=$payloadSize)"
@@ -87,7 +105,7 @@ sealed class Message(
      */
     internal fun createChunks(chunkSize: Int, previousMessage: Message?): List<Chunk> {
         val firstBuffer = Buffer()
-        payloadSize += payload.readAtMostTo(firstBuffer, chunkSize.toLong()).toInt()
+        readPayloadSize += payload.readAtMostTo(firstBuffer, chunkSize.toLong()).toInt()
         val chunks = mutableListOf<Chunk>()
 
         do {
@@ -95,13 +113,16 @@ sealed class Message(
             val bytesRead = payload.readAtMostTo(buffer, chunkSize.toLong()).toInt()
             if (bytesRead > 0) {
                 chunks.add(Chunk(chunkStreamId, MessageHeader3(), buffer))
-                payloadSize += bytesRead
+                readPayloadSize += bytesRead
             }
         } while (bytesRead > 0)
 
         val header = buildFirstHeader(previousMessage)
         chunks.add(0, Chunk(chunkStreamId, header, firstBuffer))
 
+        require(payloadSize == readPayloadSize) {
+            "Payload size mismatch: expected $payloadSize but read $readPayloadSize"
+        }
         return chunks
     }
 
@@ -137,52 +158,60 @@ sealed class Message(
             getPreviousMessage: suspend (Int) -> Message?
         ): Message {
             val payload = Buffer()
-            val firstChunk = Chunk.read(channel, chunkSize, payload)
 
-            val previousMessage = getPreviousMessage(firstChunk.basicHeader.chunkStreamId.toInt())
+            // Read first chunk
+            val basicHeader = BasicHeader.read(channel)
 
-            val messageLength = when (firstChunk.messageHeader) {
-                is MessageHeader0 -> firstChunk.messageHeader.messageLength
-                is MessageHeader1 -> firstChunk.messageHeader.messageLength
+            val chunkStreamId = basicHeader.chunkStreamId.toInt()
+            val previousMessage = getPreviousMessage(chunkStreamId)
+
+            val messageHeader = MessageHeader.read(channel, basicHeader.headerType)
+            val messageLength = when (messageHeader) {
+                is MessageHeader0 -> messageHeader.messageLength
+                is MessageHeader1 -> messageHeader.messageLength
                 is MessageHeader2 -> previousMessage?.payloadSize
-                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message with $chunkStreamId must not be null")
 
                 is MessageHeader3 -> previousMessage?.payloadSize
-                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message with $chunkStreamId must not be null")
             }
+            require(messageLength > 0) { "Message length must be greater than 0 but is $messageLength" }
+
+            channel.readFully(payload, min(messageLength, chunkSize))
+            val firstChunk = Chunk(basicHeader, messageHeader, payload)
 
             val messageType = when (firstChunk.messageHeader) {
                 is MessageHeader0 -> firstChunk.messageHeader.messageType
                 is MessageHeader1 -> firstChunk.messageHeader.messageType
                 is MessageHeader2 -> previousMessage?.messageType
-                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message with $chunkStreamId must not be null")
 
                 is MessageHeader3 -> previousMessage?.messageType
-                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message with $chunkStreamId must not be null")
             }
-
+         
             val messageStreamId = when (firstChunk.messageHeader) {
                 is MessageHeader0 -> firstChunk.messageHeader.messageStreamId
                 is MessageHeader1 -> previousMessage?.messageStreamId
-                    ?: throw IllegalArgumentException("Header1: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header1: Previous message with $chunkStreamId must not be null")
 
                 is MessageHeader2 -> previousMessage?.messageStreamId
-                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message with $chunkStreamId must not be null")
 
                 is MessageHeader3 -> previousMessage?.messageStreamId
-                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message with $chunkStreamId must not be null")
             }
 
             val timestamp = when (firstChunk.messageHeader) {
                 is MessageHeader0 -> firstChunk.messageHeader.timestamp
                 is MessageHeader1 -> previousMessage?.timestamp?.plus(firstChunk.messageHeader.timestampDelta)
-                    ?: throw IllegalArgumentException("Header1: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header1: Previous message with $chunkStreamId must not be null")
 
                 is MessageHeader2 -> previousMessage?.timestamp?.plus(firstChunk.messageHeader.timestampDelta)
-                    ?: throw IllegalArgumentException("Header2: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header2: Previous message with $chunkStreamId must not be null")
 
                 is MessageHeader3 -> previousMessage?.timestamp
-                    ?: throw IllegalArgumentException("Header3: Previous message must not be null")
+                    ?: throw IllegalArgumentException("Header3: Previous message with $chunkStreamId must not be null")
             }
 
             while (payload.size < messageLength) {
@@ -195,37 +224,43 @@ sealed class Message(
 
             return when (messageType) {
                 MessageType.SET_CHUNK_SIZE -> SetChunkSize(
+                    chunkStreamId = chunkStreamId,
                     timestamp = timestamp,
                     payload = payload
                 )
 
                 MessageType.ABORT -> Abort(
+                    chunkStreamId = chunkStreamId,
                     timestamp = timestamp,
                     payload = payload
                 )
 
                 MessageType.ACK -> Acknowledgement(
+                    chunkStreamId = chunkStreamId,
                     timestamp = timestamp,
                     payload = payload
                 )
 
                 MessageType.USER_CONTROL -> UserControl(
+                    chunkStreamId = chunkStreamId,
                     timestamp = timestamp,
                     payload = payload
                 )
 
                 MessageType.WINDOW_ACK_SIZE -> WindowAcknowledgementSize(
+                    chunkStreamId = chunkStreamId,
                     timestamp = timestamp,
                     payload = payload
                 )
 
                 MessageType.SET_PEER_BANDWIDTH -> SetPeerBandwidth(
+                    chunkStreamId = chunkStreamId,
                     timestamp = timestamp,
                     payload = payload
                 )
 
                 MessageType.COMMAND_AMF0, MessageType.COMMAND_AMF3 -> CommandMessage(
-                    chunkStreamId = firstChunk.basicHeader.chunkStreamId.toInt(),
+                    chunkStreamId = chunkStreamId,
                     messageStreamId = messageStreamId,
                     timestamp = timestamp,
                     messageType = messageType,
@@ -233,22 +268,28 @@ sealed class Message(
                 )
 
                 MessageType.DATA_AMF0, MessageType.DATA_AMF3 -> DataAmfMessage(
+                    chunkStreamId = chunkStreamId,
                     messageStreamId = messageStreamId,
                     timestamp = timestamp,
                     messageType = messageType,
-                    payload = payload
+                    payload = payload,
+                    payloadSize = payload.size.toInt()
                 )
 
                 MessageType.VIDEO -> Video(
+                    chunkStreamId = chunkStreamId,
                     messageStreamId = messageStreamId,
                     timestamp = timestamp,
-                    payload = payload
+                    payload = payload,
+                    payloadSize = payload.size.toInt()
                 )
 
                 MessageType.AUDIO -> Audio(
+                    chunkStreamId = chunkStreamId,
                     messageStreamId = messageStreamId,
                     timestamp = timestamp,
-                    payload = payload
+                    payload = payload,
+                    payloadSize = payload.size.toInt()
                 )
 
                 else -> {

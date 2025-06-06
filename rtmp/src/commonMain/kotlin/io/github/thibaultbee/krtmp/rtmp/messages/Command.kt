@@ -32,6 +32,7 @@ import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_CREAT
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_DELETE_STREAM_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_FCPUBLISH_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_FCUNPUBLISH_NAME
+import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_ONFCPUBLISH_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_PLAY_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_PUBLISH_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_RELEASE_STREAM_NAME
@@ -49,7 +50,7 @@ import kotlinx.io.Buffer
 import kotlinx.io.buffered
 import kotlinx.serialization.Serializable
 
-class CommandMessage(
+internal class CommandMessage(
     chunkStreamId: Int,
     messageStreamId: Int,
     timestamp: Int,
@@ -104,7 +105,7 @@ open class Command(
     }
 
     override fun toString(): String {
-        return "Command($name, $transactionId, $commandObject, ${arguments.contentToString()})"
+        return "Command(timestamp=$timestamp, messageStreamId=$messageStreamId, name=$name, transactionId=$transactionId, commandObject=$commandObject, arguments=${arguments.joinToString()})"
     }
 
     companion object {
@@ -123,10 +124,11 @@ open class Command(
         internal const val COMMAND_PLAY_NAME = "play"
 
         internal const val COMMAND_FCPUBLISH_NAME = "FCPublish"
+        internal const val COMMAND_ONFCPUBLISH_NAME = "onFCPublish"
         internal const val COMMAND_FCUNPUBLISH_NAME = "FCUnpublish"
         internal const val COMMAND_PUBLISH_NAME = "publish"
 
-        fun read(
+        internal fun read(
             commandMessage: CommandMessage
         ): Command {
             val amfElementReader = when (commandMessage.messageType) {
@@ -150,9 +152,6 @@ open class Command(
                 }
                 return when (name) {
                     COMMAND_RESULT_NAME -> {
-                        require(arguments.size == 1) {
-                            "result command must have exactly one argument"
-                        }
                         Result(
                             commandMessage.messageStreamId,
                             transactionId,
@@ -163,9 +162,6 @@ open class Command(
                     }
 
                     COMMAND_ERROR_NAME -> {
-                        require(arguments.size == 1) {
-                            "error command must have exactly one argument"
-                        }
                         Error(
                             commandMessage.messageStreamId,
                             transactionId,
@@ -176,9 +172,6 @@ open class Command(
                     }
 
                     COMMAND_ON_STATUS_NAME -> {
-                        require(arguments.size == 1) {
-                            "onStatus command must have exactly one argument"
-                        }
                         OnStatus(
                             commandMessage.messageStreamId,
                             transactionId,
@@ -211,10 +204,11 @@ open class Command(
         transactionId: Long,
         timestamp: Int,
         resultObject: AmfElement? = null,
-        informationObject: AmfElement? = null
+        informationObject: AmfElement? = null,
+        chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
     ) :
         Command(
-            ChunkStreamId.PROTOCOL_CONTROL.value,
+            chunkStreamId,
             messageStreamId,
             timestamp,
             COMMAND_RESULT_NAME,
@@ -228,10 +222,11 @@ open class Command(
         transactionId: Long,
         timestamp: Int,
         errorObject: AmfElement? = null,
-        informationObject: AmfElement? = null
+        informationObject: AmfElement? = null,
+        chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
     ) :
         Command(
-            ChunkStreamId.PROTOCOL_CONTROL.value,
+            chunkStreamId,
             messageStreamId,
             timestamp,
             COMMAND_ERROR_NAME,
@@ -244,10 +239,11 @@ open class Command(
         messageStreamId: Int,
         transactionId: Long,
         timestamp: Int,
-        information: NetStreamOnStatusInformation
+        information: NetStreamOnStatusInformation,
+        chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
     ) :
         Command(
-            ChunkStreamId.PROTOCOL_CONTROL.value,
+            chunkStreamId,
             messageStreamId,
             timestamp,
             COMMAND_ON_STATUS_NAME,
@@ -263,7 +259,6 @@ open class Command(
             override val level: NetStreamOnStatusLevel,
             override val code: NetStreamOnStatusCode,
             override val description: String,
-            val details: String
         ) : ResultInformation
 
         companion object {
@@ -363,7 +358,7 @@ fun CommandConnect(
     connectObject: ConnectObject
 ): Command {
     require(transactionId == 1L) {
-        "Transaction ID must be 1"
+        "Transaction ID must be 1 for connect command, got $transactionId"
     }
     return Command(
         ChunkStreamId.PROTOCOL_CONTROL.value,
@@ -580,7 +575,7 @@ fun CommandCloseStream(transactionId: Long, timestamp: Int) =
         null
     )
 
-fun CommandDeleteStream(transactionId: Long, timestamp: Int, streamKey: String) =
+fun CommandDeleteStream(transactionId: Long, timestamp: Int, streamId: Int) =
     Command(
         ChunkStreamId.PROTOCOL_CONTROL.value,
         MessageStreamId.PROTOCOL_CONTROL.value,
@@ -588,7 +583,7 @@ fun CommandDeleteStream(transactionId: Long, timestamp: Int, streamKey: String) 
         COMMAND_DELETE_STREAM_NAME,
         transactionId,
         null,
-        streamKey
+        streamId.toDouble()
     )
 
 fun CommandPlay(timestamp: Int, streamName: String) =
@@ -617,15 +612,28 @@ fun CommandFCPublish(
         streamKey
     )
 
+fun CommandOnFCPublish(
+    transactionId: Long,
+    timestamp: Int
+) =
+    Command(
+        ChunkStreamId.PROTOCOL_CONTROL.value,
+        MessageStreamId.PROTOCOL_CONTROL.value,
+        timestamp,
+        COMMAND_ONFCPUBLISH_NAME,
+        transactionId,
+        null,
+        null
+    )
+
 fun CommandFCUnpublish(
-    messageStreamId: Int,
     transactionId: Long,
     timestamp: Int,
     streamKey: String
 ) =
     Command(
         ChunkStreamId.PROTOCOL_CONTROL.value,
-        messageStreamId,
+        MessageStreamId.PROTOCOL_CONTROL.value,
         timestamp,
         COMMAND_FCUNPUBLISH_NAME,
         transactionId,

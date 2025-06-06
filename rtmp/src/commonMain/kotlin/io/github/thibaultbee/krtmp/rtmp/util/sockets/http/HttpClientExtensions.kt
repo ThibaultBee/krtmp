@@ -1,4 +1,4 @@
-package io.github.thibaultbee.krtmp.rtmp.util.connections.http
+package io.github.thibaultbee.krtmp.rtmp.util.sockets.http
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder

@@ -17,18 +17,30 @@ package io.github.thibaultbee.krtmp.rtmp.messages
 
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import kotlinx.io.Buffer
+import kotlin.math.max
 
-internal fun UserControl(timestamp: Int, payload: Buffer) = UserControl(
+internal fun UserControl(timestamp: Int, chunkStreamId: Int, payload: Buffer) = UserControl(
     timestamp,
     UserControl.EventType.from(payload.readShort()),
-    Buffer().apply { payload.readAtMostTo(this, payload.size - Short.SIZE_BYTES) })
+    Buffer().apply { payload.readAtMostTo(this, max(0, payload.size - Short.SIZE_BYTES)) },
+    chunkStreamId
+)
 
-internal fun UserControl(timestamp: Int, eventType: UserControl.EventType) =
-    UserControl(timestamp, eventType, Buffer())
+internal fun UserControl(
+    timestamp: Int,
+    eventType: UserControl.EventType,
+    chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value,
+) =
+    UserControl(timestamp, eventType, Buffer(), chunkStreamId)
 
-internal class UserControl(timestamp: Int, val eventType: EventType, val data: Buffer) :
+internal class UserControl(
+    timestamp: Int,
+    val eventType: EventType,
+    val data: Buffer,
+    chunkStreamId: Int = ChunkStreamId.PROTOCOL_CONTROL.value
+) :
     Message(
-        chunkStreamId = ChunkStreamId.PROTOCOL_CONTROL.value,
+        chunkStreamId = chunkStreamId,
         messageStreamId = MessageStreamId.PROTOCOL_CONTROL.value,
         timestamp = timestamp,
         messageType = MessageType.USER_CONTROL,

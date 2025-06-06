@@ -15,10 +15,14 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.server
 
+import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
+import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnection
+import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnectionCallback
 import io.github.thibaultbee.krtmp.rtmp.extensions.serverHandshake
 import io.github.thibaultbee.krtmp.rtmp.messages.Audio
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
+import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_CLOSE_STREAM_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_CONNECT_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_CREATE_STREAM_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_DELETE_STREAM_NAME
@@ -29,39 +33,52 @@ import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_PUBLI
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_RELEASE_STREAM_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Error
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Result
+import io.github.thibaultbee.krtmp.rtmp.messages.CommandOnFCPublish
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
+import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf.Companion.DATAAMF_SET_DATA_FRAME_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.SetPeerBandwidth
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
-import io.github.thibaultbee.krtmp.rtmp.streamer.RtmpSocket
-import io.github.thibaultbee.krtmp.rtmp.streamer.RtmpSocketCallback
-import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePlayStart
+import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublishFailed
+import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublishStart
+import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelError
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelStatus
-import io.github.thibaultbee.krtmp.rtmp.util.connections.tcp.TcpSocketConnection
-import io.github.thibaultbee.krtmp.rtmp.util.connections.tcp.TcpSocketFactory
-import io.ktor.http.URLBuilder
+import io.github.thibaultbee.krtmp.rtmp.util.extensions.startWithScheme
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp.TcpSocket
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp.TcpSocketFactory
+import io.ktor.http.Url
+import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.ServerSocket
+import io.ktor.network.sockets.SocketAddress
 import kotlinx.coroutines.job
 import kotlin.coroutines.cancellation.CancellationException
 
-//TODO: add a way to not use scheme
 suspend fun RtmpServer(
-    url: String,
+    urlString: String? = null,
     callback: RtmpServerCallback,
     settings: RtmpServerSettings = RtmpServerSettings,
-) =
-    RtmpServer(URLBuilder(url), callback, settings)
+): RtmpServer {
+    return if (urlString == null) {
+        return RtmpServer(localAddress = null, callback = callback, settings = settings)
+    } else {
+        val url = if (urlString.startWithScheme()) {
+            Url(urlString)
+        } else {
+            Url("tcp://$urlString")
+        }
+        RtmpServer(
+            InetSocketAddress(url.host, url.port), callback, settings
+        )
+    }
+}
 
 suspend fun RtmpServer(
-    urlBuilder: URLBuilder,
+    localAddress: SocketAddress? = null,
     callback: RtmpServerCallback,
     settings: RtmpServerSettings = RtmpServerSettings,
-): RtmpServer =
-    RtmpServer(
-        TcpSocketFactory.default.server(urlBuilder),
-        callback,
-        settings
-    )
+) = RtmpServer(
+    TcpSocketFactory.default.server(localAddress), callback, settings
+)
 
 /**
  * The RTMP server.
@@ -71,31 +88,36 @@ class RtmpServer internal constructor(
     private val callback: RtmpServerCallback,
     private val settings: RtmpServerSettings
 ) {
-    suspend fun listen() {
+    /**
+     * Starts the RTMP server and listens for incoming connections.
+     */
+    suspend fun start() {
         while (serverSocket.socketContext.isActive) {
             try {
-                val socket = serverSocket.accept()
-                val connection = TcpSocketConnection(socket)
+                val clientTcpSocket = serverSocket.accept()
+                KrtmpLogger.i(TAG, "New client connection: ${clientTcpSocket.remoteAddress}")
+                val connection = TcpSocket(clientTcpSocket)
                 connection.serverHandshake(settings.clock)
-                KrtmpLogger.i(TAG, "New connection: ${connection.urlBuilder}")
 
-                val streamer = RtmpSocket(
+                val rtmpConnection = RtmpConnection(
                     connection,
                     settings,
-                    RtmpServerCallbackImpl.Factory(callback)
+                    RtmpServerConnectionCallbackImpl.Factory(callback, settings)
                 )
-                streamer.coroutineContext.job.join()
+                rtmpConnection.coroutineContext.job.join()
             } catch (t: CancellationException) {
                 KrtmpLogger.e(TAG, "Cancelling server")
             } catch (t: Throwable) {
                 KrtmpLogger.e(TAG, "Error with connection", t)
-            } finally {
-                KrtmpLogger.i(TAG, "Connection closed: waiting for now connection")
+                KrtmpLogger.i(TAG, "Waiting for new connection")
             }
         }
     }
 
-    fun close() {
+    /**
+     * Stops the RTMP server.
+     */
+    fun stop() {
         serverSocket.close()
     }
 
@@ -104,14 +126,15 @@ class RtmpServer internal constructor(
     }
 }
 
-internal class RtmpServerCallbackImpl(
-    private val streamer: RtmpSocket,
-    private val callback: RtmpServerCallback
-) : RtmpSocketCallback {
+internal class RtmpServerConnectionCallbackImpl(
+    private val socket: RtmpConnection,
+    private val callback: RtmpServerCallback,
+    private val settings: RtmpServerSettings
+) : RtmpConnectionCallback {
     override suspend fun onCommand(command: Command) {
         when (command.name) {
             COMMAND_CONNECT_NAME -> {
-                val result = try {
+                try {
                     callback.onConnect(command)
 
                     val ackSize = 2_500_000 // TODO
@@ -119,15 +142,11 @@ internal class RtmpServerCallbackImpl(
                     val type = SetPeerBandwidth.LimitType.DYNAMIC // TODO
                     KrtmpLogger.i(TAG, "Set window acknowledgement size: $ackSize")
                     KrtmpLogger.i(TAG, "Set peer bandwidth: $bandwidth type: 2")
-                    streamer.replyConnect(ackSize, bandwidth, type)
+                    socket.replyConnect(ackSize, bandwidth, type)
                 } catch (t: Throwable) {
-                    streamer.writeAmfMessage(
+                    socket.writeAmfMessage(
                         Error(
-                            command.messageStreamId,
-                            1,
-                            streamer.settings.clock.nowInMs,
-                            null,
-                            null
+                            command.messageStreamId, 1, socket.settings.clock.nowInMs, null, null
                         )
                     )
                 }
@@ -136,21 +155,24 @@ internal class RtmpServerCallbackImpl(
             COMMAND_CREATE_STREAM_NAME -> {
                 try {
                     callback.onCreateStream(command)
-                    streamer.writeAmfMessage(
+                    val streamId = settings.streamIdProvider.create()
+                    require(streamId > 0) { "Stream ID must be greater than 0" }
+                    require((streamId != 2)) { "Stream ID must not be 2, reserved for control messages" }
+                    socket.writeAmfMessage(
                         Result(
                             command.messageStreamId,
                             command.transactionId,
-                            streamer.settings.clock.nowInMs,
+                            socket.settings.clock.nowInMs,
                             null,
-                            null
+                            AmfNumber(streamId.toDouble())
                         )
                     )
                 } catch (t: Throwable) {
-                    streamer.writeAmfMessage(
+                    socket.writeAmfMessage(
                         Error(
                             command.messageStreamId,
                             command.transactionId,
-                            streamer.settings.clock.nowInMs,
+                            socket.settings.clock.nowInMs,
                             null,
                             null
                         )
@@ -159,45 +181,123 @@ internal class RtmpServerCallbackImpl(
             }
 
             COMMAND_RELEASE_STREAM_NAME -> {
-                callback.onReleaseStream(command)
+                try {
+                    callback.onReleaseStream(command)
+                    socket.writeAmfMessage(
+                        Result(
+                            command.messageStreamId,
+                            command.transactionId,
+                            socket.settings.clock.nowInMs,
+                            null,
+                            AmfNumber(1.0)
+                        )
+                    )
+                } catch (t: Throwable) {
+                    socket.writeAmfMessage(
+                        Error(
+                            command.messageStreamId,
+                            command.transactionId,
+                            socket.settings.clock.nowInMs,
+                            null,
+                            null
+                        )
+                    )
+                }
             }
 
             COMMAND_DELETE_STREAM_NAME -> {
                 callback.onDeleteStream(command)
+                // Delete the stream ID from the provider
+                try {
+                    require(command.arguments.isNotEmpty()) {
+                        "deleteStream command must have at least one argument (stream ID)"
+                    }
+                    val streamId = (command.arguments[0] as AmfNumber).value.toInt()
+                    settings.streamIdProvider.delete(streamId)
+                } catch (t: Throwable) {
+                    KrtmpLogger.e(TAG, "Error deleting stream ID", t)
+                }
             }
 
             COMMAND_PUBLISH_NAME -> {
-                val streamKey = command.arguments[0].toString()
-                KrtmpLogger.i(
-                    TAG,
-                    "Publishing stream: $streamKey for ${command.arguments[1]}"
-                )
-                callback.onPublish(command)
-                streamer.writeAmfMessage(
-                    Command.OnStatus(
-                        command.messageStreamId,
-                        command.transactionId,
-                        streamer.settings.clock.nowInMs,
-                        Command.OnStatus.NetStreamOnStatusInformation(
-                            level = NetStreamOnStatusLevelStatus,
-                            code = NetStreamOnStatusCodePlayStart,
-                            description = "$streamKey is now published",
-                            details = "$streamKey"
+                try {
+                    require(command.arguments.size >= 2) {
+                        "publish command must have at least two arguments (stream key and type)"
+                    }
+                    val streamKey = command.arguments[0].toString()
+                    KrtmpLogger.i(
+                        TAG, "Publishing stream: $streamKey for ${command.arguments[1]}"
+                    )
+                    callback.onPublish(command)
+                    socket.writeAmfMessage(
+                        Command.OnStatus(
+                            command.messageStreamId,
+                            command.transactionId,
+                            socket.settings.clock.nowInMs,
+                            Command.OnStatus.NetStreamOnStatusInformation(
+                                level = NetStreamOnStatusLevelStatus,
+                                code = NetStreamOnStatusCodePublishStart,
+                                description = "$streamKey is now published"
+                            )
                         )
                     )
-                )
+                } catch (t: Throwable) {
+                    socket.writeAmfMessage(
+                        Command.OnStatus(
+                            command.messageStreamId,
+                            command.transactionId,
+                            socket.settings.clock.nowInMs,
+                            Command.OnStatus.NetStreamOnStatusInformation(
+                                level = NetStreamOnStatusLevelError,
+                                code = NetStreamOnStatusCodePublishFailed,
+                                description = "Publish failed"
+                            )
+                        )
+                    )
+                }
             }
 
             COMMAND_PLAY_NAME -> {
-                callback.onPlay(command)
+                try {
+                    callback.onPlay(command)
+                } catch (t: Throwable) {
+                    socket.writeAmfMessage(
+                        Error(
+                            command.messageStreamId,
+                            command.transactionId,
+                            socket.settings.clock.nowInMs,
+                            null,
+                            null
+                        )
+                    )
+                }
             }
 
             COMMAND_FCPUBLISH_NAME -> {
-                callback.onFCPublish(command)
+                try {
+                    callback.onFCPublish(command)
+                    socket.writeAmfMessage(
+                        CommandOnFCPublish(command.transactionId, socket.settings.clock.nowInMs)
+                    )
+                } catch (t: Throwable) {
+                    socket.writeAmfMessage(
+                        Error(
+                            command.messageStreamId,
+                            command.transactionId,
+                            socket.settings.clock.nowInMs,
+                            null,
+                            null
+                        )
+                    )
+                }
             }
 
             COMMAND_FCUNPUBLISH_NAME -> {
                 callback.onFCUnpublish(command)
+            }
+
+            COMMAND_CLOSE_STREAM_NAME -> {
+                callback.onCloseStream(command)
             }
 
             else -> {
@@ -207,8 +307,8 @@ internal class RtmpServerCallbackImpl(
     }
 
     override suspend fun onData(data: DataAmf) {
-        when (data) {
-            is DataAmf.SetDataFrame -> {
+        when (data.name) {
+            DATAAMF_SET_DATA_FRAME_NAME -> {
                 callback.onSetDataFrame(data)
             }
 
@@ -220,12 +320,17 @@ internal class RtmpServerCallbackImpl(
 
     override suspend fun onMessage(message: Message) {
         when (message) {
-
             is Audio -> {
+                require(settings.streamIdProvider.hasStreamId(message.messageStreamId)) {
+                    "Audio message must have a valid stream ID"
+                }
                 callback.onAudio(message)
             }
 
             is Video -> {
+                require(settings.streamIdProvider.hasStreamId(message.messageStreamId)) {
+                    "Video message must have a valid stream ID"
+                }
                 callback.onVideo(message)
             }
 
@@ -240,10 +345,10 @@ internal class RtmpServerCallbackImpl(
     }
 
     internal class Factory(
-        private val callback: RtmpServerCallback
-    ) : RtmpSocketCallback.Factory {
-        override fun create(streamer: RtmpSocket): RtmpSocketCallback =
-            RtmpServerCallbackImpl(streamer, callback)
+        private val callback: RtmpServerCallback, private val settings: RtmpServerSettings
+    ) : RtmpConnectionCallback.Factory {
+        override fun create(streamer: RtmpConnection): RtmpConnectionCallback =
+            RtmpServerConnectionCallbackImpl(streamer, callback, settings)
     }
 }
 
@@ -256,7 +361,8 @@ interface RtmpServerCallback {
     fun onPlay(play: Command) = Unit
     fun onFCPublish(fcPublish: Command) = Unit
     fun onFCUnpublish(fcUnpublish: Command) = Unit
-    fun onSetDataFrame(setDataFrame: DataAmf.SetDataFrame) = Unit
+    fun onCloseStream(closeStream: Command) = Unit
+    fun onSetDataFrame(setDataFrame: DataAmf) = Unit
     fun onAudio(audio: Audio) = Unit
     fun onVideo(video: Video) = Unit
     fun onUnknownMessage(message: Message) = Unit

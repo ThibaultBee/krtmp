@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.util.connections.tcp
+package io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp
 
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
 import io.ktor.http.URLBuilder
 import io.ktor.network.sockets.Connection
 import io.ktor.network.sockets.Socket
@@ -27,16 +27,16 @@ import io.ktor.utils.io.CountedByteReadChannel
 import io.ktor.utils.io.CountedByteWriteChannel
 import kotlin.coroutines.CoroutineContext
 
-internal fun TcpSocketConnection(
+internal fun TcpSocket(
     socket: Socket
-): TcpSocketConnection = TcpSocketConnection(socket.connection())
+): TcpSocket = TcpSocket(socket.connection())
 
 /**
- * TCP connection implementation of [IConnection].
+ * TCP connection implementation of [ISocket].
  */
-internal open class TcpSocketConnection(
+internal open class TcpSocket(
     private val connection: Connection
-) : IConnection {
+) : ISocket {
 
    override val urlBuilder = URLBuilder(connection.socket.remoteAddress.toString())
     private val input by lazy {

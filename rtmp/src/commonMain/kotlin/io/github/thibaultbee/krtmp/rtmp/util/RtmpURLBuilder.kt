@@ -16,8 +16,29 @@
 package io.github.thibaultbee.krtmp.rtmp.util
 
 import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import io.ktor.http.takeFrom
 
+/**
+ * Creates a [URLBuilder] from an RTMP URL.
+ *
+ * @param url the RTMP URL to build from
+ * @return a [URLBuilder] initialized with the RTMP URL
+ */
+fun RtmpUrlBuilder(url: Url): URLBuilder {
+    val urlBuilder = URLBuilder().takeFrom(url)
+    if (urlBuilder.port == 0) {
+        urlBuilder.port = RtmpURLProtocol.createOrDefault(urlBuilder.protocol.name).defaultPort
+    }
+    return urlBuilder
+}
+
+/**
+ * Creates a [URLBuilder] from a string representation of an RTMP URL.
+ *
+ * @param urlString the string representation of the RTMP URL
+ * @return a [URLBuilder] initialized with the RTMP URL
+ */
 fun RtmpURLBuilder(urlString: String): URLBuilder {
     val urlBuilder = URLBuilder().takeFrom(urlString)
     if (urlBuilder.port == 0) {

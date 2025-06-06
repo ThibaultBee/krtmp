@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.streamer
+package io.github.thibaultbee.krtmp.rtmp.connection
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
@@ -41,6 +41,7 @@ import io.github.thibaultbee.krtmp.rtmp.messages.CommandConnect
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandCreateStream
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandDeleteStream
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandFCPublish
+import io.github.thibaultbee.krtmp.rtmp.messages.CommandFCUnpublish
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandMessage
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandNetConnectionResult
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandPlay
@@ -53,15 +54,17 @@ import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.NetConnectionResultObject
 import io.github.thibaultbee.krtmp.rtmp.messages.ObjectEncoding
 import io.github.thibaultbee.krtmp.rtmp.messages.SetChunkSize
+import io.github.thibaultbee.krtmp.rtmp.messages.SetDataFrame
 import io.github.thibaultbee.krtmp.rtmp.messages.SetPeerBandwidth
 import io.github.thibaultbee.krtmp.rtmp.messages.StreamPublishType
 import io.github.thibaultbee.krtmp.rtmp.messages.UserControl
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
 import io.github.thibaultbee.krtmp.rtmp.messages.WindowAcknowledgementSize
 import io.github.thibaultbee.krtmp.rtmp.util.MessagesManager
-import io.github.thibaultbee.krtmp.rtmp.util.NetStreamCommand
+import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublish
+import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelError
 import io.github.thibaultbee.krtmp.rtmp.util.TransactionCommandCompletion
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,10 +89,10 @@ import kotlinx.io.readString
  *
  * - Close the connection with [close]
  */
-internal class RtmpSocket internal constructor(
-    private val connection: IConnection,
+internal class RtmpConnection internal constructor(
+    private val connection: ISocket,
     val settings: RtmpSettings,
-    callbackFactory: RtmpSocketCallback.Factory,
+    callbackFactory: RtmpConnectionCallback.Factory,
     private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : CoroutineScope by connection {
     private val callback by lazy { callbackFactory.create(this) }
@@ -117,7 +120,7 @@ internal class RtmpSocket internal constructor(
 
     private val commandChannels = TransactionCommandCompletion()
 
-    private var messageStreamId = 0
+    private var messageStreamId: Int? = null
 
     override val coroutineContext = connection.coroutineContext
 
@@ -129,7 +132,7 @@ internal class RtmpSocket internal constructor(
     }
 
     /**
-     * Returns true if the connection is closed.
+     * Whether the connection is closed.
      */
     val isClosed: Boolean
         get() = connection.isClosed
@@ -140,7 +143,6 @@ internal class RtmpSocket internal constructor(
      * The default value is [RtmpConfiguration.DEFAULT_CHUNK_SIZE].
      *
      * @param chunkSize the write chunk size
-     * @see [getWriteChunkSize]
      */
     suspend fun setWriteChunkSize(chunkSize: Int) {
         if (writeChunkSize != chunkSize) {
@@ -149,6 +151,11 @@ internal class RtmpSocket internal constructor(
         }
     }
 
+    /**
+     * Writes a window acknowledgement size message with the given size.
+     *
+     * @param size the size of the window acknowledgement
+     */
     suspend fun writeWindowAcknowledgementSize(size: Int) {
         val setWindowAcknowledgementSize = WindowAcknowledgementSize(
             settings.clock.nowInMs, size
@@ -156,6 +163,12 @@ internal class RtmpSocket internal constructor(
         writeMessage(setWindowAcknowledgementSize)
     }
 
+    /**
+     * Writes a SetPeerBandwidth message with the given size and type.
+     *
+     * @param size the size of the peer bandwidth
+     * @param type the type of the peer bandwidth limit
+     */
     suspend fun writeSetPeerBandwidth(size: Int, type: SetPeerBandwidth.LimitType) {
         val setPeerBandwidth = SetPeerBandwidth(
             settings.clock.nowInMs, size, type
@@ -163,6 +176,11 @@ internal class RtmpSocket internal constructor(
         writeMessage(setPeerBandwidth)
     }
 
+    /**
+     * Writes a user control message with the given event type.
+     *
+     * @param eventType the type of the user control event
+     */
     suspend fun writeUserControl(
         eventType: UserControl.EventType
     ) {
@@ -174,6 +192,12 @@ internal class RtmpSocket internal constructor(
     }
 
 
+    /**
+     * Writes a user control message with the given event type and data.
+     *
+     * @param eventType the type of the user control event
+     * @param data the data to send with the user control event
+     */
     suspend fun writeUserControl(
         eventType: UserControl.EventType,
         data: Buffer
@@ -186,6 +210,13 @@ internal class RtmpSocket internal constructor(
         writeMessage(userControl)
     }
 
+    /**
+     * Replies to the connect request with the necessary parameters.
+     *
+     * @param windowAcknowledgementSize the size of the window acknowledgement
+     * @param peerBandwidth the peer bandwidth to set
+     * @param peerBandwidthType the type of the peer bandwidth limit
+     */
     suspend fun replyConnect(
         windowAcknowledgementSize: Int,
         peerBandwidth: Int,
@@ -227,6 +258,7 @@ internal class RtmpSocket internal constructor(
     /**
      * Connects to the server.
      *
+     * @param connectInformation the information to send in the connect command
      * @return the [Command.Result] send by the server
      */
     suspend fun connect(connectInformation: ConnectInformation = ConnectInformation): Command.Result {
@@ -262,8 +294,8 @@ internal class RtmpSocket internal constructor(
             ) as Command.Result
         } catch (e: RemoteServerException) {
             throw RemoteServerException("Connect command failed: ${e.message}", e.command)
-        } catch (e: Exception) {
-            throw IOException("Connect command failed", e)
+        } catch (t: Throwable) {
+            throw IOException("Connect command failed", t)
         }
     }
 
@@ -297,8 +329,8 @@ internal class RtmpSocket internal constructor(
             )
         } catch (e: RemoteServerException) {
             throw RemoteServerException("Create stream command failed: ${e.message}", e.command)
-        } catch (e: Exception) {
-            throw IOException("Create stream command failed", e)
+        } catch (t: Throwable) {
+            throw IOException("Create stream command failed", t)
         }
         messageStreamId = (result.arguments[0] as AmfNumber).value.toInt()
         return result as Command.Result
@@ -311,6 +343,10 @@ internal class RtmpSocket internal constructor(
      * @return the [Command.OnStatus] send by the server
      */
     suspend fun publish(type: StreamPublishType = StreamPublishType.LIVE): Command.OnStatus {
+        val messageStreamId = requireNotNull(messageStreamId) {
+            "You must call createStream() before publish()"
+        }
+
         val publishTransactionId = transactionId
         val publishCommand = CommandPublish(
             messageStreamId,
@@ -323,12 +359,12 @@ internal class RtmpSocket internal constructor(
         return try {
             writeAmfMessageWithResponse(
                 publishCommand,
-                NetStreamCommand.PUBLISH
+                NetStreamOnStatusCodePublish
             ) as Command.OnStatus
         } catch (e: RemoteServerException) {
             throw RemoteServerException("Publish command failed: ${e.message}", e.command)
-        } catch (e: Exception) {
-            throw IOException("Publish command failed", e)
+        } catch (t: Throwable) {
+            throw IOException("Publish command failed", t)
         }
     }
 
@@ -347,8 +383,8 @@ internal class RtmpSocket internal constructor(
             writeAmfMessage(playCommand)
         } catch (e: RemoteServerException) {
             throw RemoteServerException("Play command failed: ${e.message}", e.command)
-        } catch (e: Exception) {
-            throw IOException("Play command failed", e)
+        } catch (t: Throwable) {
+            throw IOException("Play command failed", t)
         }
     }
 
@@ -358,10 +394,18 @@ internal class RtmpSocket internal constructor(
      * @see [createStream]
      */
     suspend fun deleteStream() {
-        val deleteStreamCommand = CommandDeleteStream(
-            transactionId, settings.clock.nowInMs, connection.urlBuilder.streamKey
+        val messages = mutableListOf(
+            CommandFCUnpublish(
+                transactionId, settings.clock.nowInMs, connection.urlBuilder.streamKey
+            )
         )
-        writeAmfMessage(deleteStreamCommand)
+        messageStreamId?.let {
+            messages += CommandDeleteStream(
+                transactionId, settings.clock.nowInMs, it
+            )
+        }
+
+        writeAmfMessages(messages)
     }
 
     /**
@@ -380,15 +424,19 @@ internal class RtmpSocket internal constructor(
     }
 
     /**
-     * Write SetDataFrame from [OnMetadata.Metadata].
-     * It must be called after [publish] and before [writeFrame], [writeAudio] or [writeVideo].
+     * Writes the SetDataFrame from [OnMetadata.Metadata].
+     * It must be called after [publish] and before sending audio or video frames.
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
      * @param metadata the on metadata to send
      */
     suspend fun writeSetDataFrame(metadata: OnMetadata.Metadata) {
-        val dataFrameDataAmf = DataAmf.SetDataFrame(
+        val messageStreamId = requireNotNull(messageStreamId) {
+            "You must call createStream() before publish()"
+        }
+
+        val dataFrameDataAmf = SetDataFrame(
             settings.clock.nowInMs,
             messageStreamId,
             metadata
@@ -397,37 +445,47 @@ internal class RtmpSocket internal constructor(
     }
 
     /**
-     * Write SetDataFrame from a [ByteArray].
-     * It must be called after [publish] and before [writeFrame], [writeAudio] or [writeVideo].
+     * Writes the SetDataFrame from a [ByteArray].
+     * It must be called after [publish] and before sending audio or video frames.
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
      * @param onMetadata the on metadata to send
      */
     suspend fun writeSetDataFrame(onMetadata: ByteArray) {
-        val dataFrameDataAmf = DataAmfMessage.SetDataFrame(
+        val messageStreamId = requireNotNull(messageStreamId) {
+            "You must call createStream() before publish()"
+        }
+
+        val dataFrameDataAmf = SetDataFrame(
             settings.amfVersion,
             messageStreamId,
             settings.clock.nowInMs,
-            ByteArrayRawSource(onMetadata)
+            ByteArrayRawSource(onMetadata),
+            onMetadata.size
         )
         return writeMessage(dataFrameDataAmf)
     }
 
     /**
-     * Write SetDataFrame from a [Buffer].
-     * It must be called after [publish] and before [writeFrame], [writeAudio] or [writeVideo].
+     * Writes the SetDataFrame from a [Buffer].
+     * It must be called after [publish] and before sending audio or video frames.
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
      * @param onMetadata the on metadata to send
      */
-    suspend fun writeSetDataFrame(onMetadata: RawSource) {
-        val dataFrameDataAmf = DataAmfMessage.SetDataFrame(
+    suspend fun writeSetDataFrame(onMetadata: RawSource, size: Int) {
+        val messageStreamId = requireNotNull(messageStreamId) {
+            "You must call createStream() before publish()"
+        }
+
+        val dataFrameDataAmf = SetDataFrame(
             settings.amfVersion,
             messageStreamId,
             settings.clock.nowInMs,
-            onMetadata
+            onMetadata,
+            size
         )
         return writeMessage(dataFrameDataAmf)
     }
@@ -441,7 +499,7 @@ internal class RtmpSocket internal constructor(
      * @param array the audio frame to write
      */
     suspend fun writeAudio(timestamp: Int, array: ByteArray) =
-        writeAudio(timestamp, ByteArrayRawSource(array))
+        writeAudio(timestamp, ByteArrayRawSource(array), array.size)
 
     /**
      * Writes a video frame.
@@ -452,7 +510,7 @@ internal class RtmpSocket internal constructor(
      * @param array the video frame to write
      */
     suspend fun writeVideo(timestamp: Int, array: ByteArray) =
-        writeVideo(timestamp, ByteArrayRawSource(array))
+        writeVideo(timestamp, ByteArrayRawSource(array), array.size)
 
     /**
      * Writes an audio frame.
@@ -462,8 +520,12 @@ internal class RtmpSocket internal constructor(
      * @param timestamp the timestamp of the frame
      * @param source the audio frame to write
      */
-    suspend fun writeAudio(timestamp: Int, source: RawSource) {
-        val audio = Audio(timestamp, messageStreamId, source)
+    suspend fun writeAudio(timestamp: Int, source: RawSource, sourceSize: Int) {
+        val messageStreamId = requireNotNull(messageStreamId) {
+            "You must call createStream() before publish()"
+        }
+
+        val audio = Audio(timestamp, messageStreamId, source, sourceSize)
         return withTimeoutWriteIfNeeded(audio)
     }
 
@@ -475,11 +537,14 @@ internal class RtmpSocket internal constructor(
      * @param timestamp the timestamp of the frame
      * @param source the video frame to write
      */
-    suspend fun writeVideo(timestamp: Int, source: RawSource) {
-        val video = Video(timestamp, messageStreamId, source)
+    suspend fun writeVideo(timestamp: Int, source: RawSource, sourceSize: Int) {
+        val messageStreamId = requireNotNull(messageStreamId) {
+            "You must call createStream() before publish()"
+        }
+
+        val video = Video(timestamp, messageStreamId, source, sourceSize)
         return withTimeoutWriteIfNeeded(video)
     }
-
 
     private suspend fun writeAmfMessagesWithResponse(
         amfMessages: List<AmfMessage>,
@@ -647,17 +712,18 @@ internal class RtmpSocket internal constructor(
 
             is Command.OnStatus -> {
                 val amfObject = command.arguments[0] as AmfObject
-                amfObject["code"]?.let {
-                    val code = (it as AmfString).value
-                    if (code.startsWith(NetStreamCommand.PUBLISH)) {
-                        if (code == NetStreamCommand.PUBLISH_START) {
-                            commandChannels.complete(NetStreamCommand.PUBLISH, command)
-                        } else {
-                            commandChannels.completeExceptionally(
-                                NetStreamCommand.PUBLISH, command
-                            )
-                        }
-                    }
+                
+                val code = (amfObject["code"]!! as AmfString).value
+                val commandType = code.substringBeforeLast('.')
+
+                val level = (amfObject["level"]!! as AmfString).value
+
+                if (level == NetStreamOnStatusLevelError) {
+                    commandChannels.completeExceptionally(
+                        commandType, command
+                    )
+                } else {
+                    commandChannels.complete(commandType, command)
                 }
             }
 
@@ -666,11 +732,10 @@ internal class RtmpSocket internal constructor(
         }
     }
 
-    private fun handleDataMessage(message: DataAmfMessage) {
-        //TODO: handle DataAmfMessage
-        /* withContext(callbackDispatcher) {
-             callback.onData(DataAmf.read(message))
-         }*/
+    private suspend fun handleDataMessage(message: DataAmfMessage) {
+        withContext(callbackDispatcher) {
+            callback.onData(DataAmf.read(message))
+        }
     }
 
     private suspend fun readMessage(): Message {
@@ -690,15 +755,15 @@ internal class RtmpSocket internal constructor(
 
 
 /**
- * Callback interface for the [RtmpSocket].
+ * Callback interface for the [RtmpConnection].
  */
-internal interface RtmpSocketCallback {
+internal interface RtmpConnectionCallback {
     suspend fun onCommand(command: Command) = Unit
     suspend fun onData(data: DataAmf) = Unit
     suspend fun onMessage(message: Message) = Unit
 
     interface Factory {
-        fun create(streamer: RtmpSocket): RtmpSocketCallback
+        fun create(streamer: RtmpConnection): RtmpConnectionCallback
     }
 }
 
@@ -712,8 +777,8 @@ internal interface RtmpSocketCallback {
  *
  * @param array the frame to write
  */
-internal suspend fun RtmpSocket.writeAmfMessage(array: ByteArray) {
-    writeAmfMessage(Buffer().apply { write(array) })
+internal suspend fun RtmpConnection.write(array: ByteArray) {
+    write(Buffer().apply { write(array) })
 }
 
 /**
@@ -723,7 +788,7 @@ internal suspend fun RtmpSocket.writeAmfMessage(array: ByteArray) {
  *
  * @param source the frame to write
  */
-internal suspend fun RtmpSocket.writeAmfMessage(source: Source) {
+internal suspend fun RtmpConnection.write(source: Source) {
     /**
      * Dropping FLV header that is not needed. It starts with 'F', 'L' and 'V'.
      * Just check the first byte to simplify.
@@ -731,7 +796,7 @@ internal suspend fun RtmpSocket.writeAmfMessage(source: Source) {
     val peek = source.peek()
     val isHeader = try {
         peek.readString(3) == "FLV"
-    } catch (e: Exception) {
+    } catch (t: Throwable) {
         false
     }
     if (isHeader) {
@@ -743,9 +808,9 @@ internal suspend fun RtmpSocket.writeAmfMessage(source: Source) {
 
     val tag = RawFLVTag.decode(source)
     when (tag.type) {
-        FLVTag.Type.AUDIO -> writeAudio(tag.timestampMs, tag.body)
-        FLVTag.Type.VIDEO -> writeVideo(tag.timestampMs, tag.body)
-        FLVTag.Type.SCRIPT -> writeSetDataFrame(tag.body)
+        FLVTag.Type.AUDIO -> writeAudio(tag.timestampMs, tag.body, tag.bodySize)
+        FLVTag.Type.VIDEO -> writeVideo(tag.timestampMs, tag.body, tag.bodySize)
+        FLVTag.Type.SCRIPT -> writeSetDataFrame(tag.body, tag.bodySize)
         else -> throw IllegalArgumentException("Frame type ${tag.type} not supported")
     }
 }
@@ -756,20 +821,22 @@ internal suspend fun RtmpSocket.writeAmfMessage(source: Source) {
  * @param timestampMs the timestamp of the frame in milliseconds
  * @param data the frame to write
  */
-internal suspend fun RtmpSocket.writeAmfMessage(timestampMs: Int, data: FLVData) {
+internal suspend fun RtmpConnection.write(timestampMs: Int, data: FLVData) {
     when (data) {
         is AudioData -> writeAudio(
             timestampMs,
-            data.readBuffer()
+            data.readBuffer(),
+            data.getSize(settings.amfVersion)
         )
 
         is VideoData -> writeVideo(
             timestampMs,
-            data.readBuffer()
+            data.readBuffer(),
+            data.getSize(settings.amfVersion)
         )
 
         is OnMetadata -> {
-            writeSetDataFrame(data.readBuffer())
+            writeSetDataFrame(data.readBuffer(), data.getSize(settings.amfVersion))
         }
 
         else -> throw IllegalArgumentException("Packet type ${data::class.simpleName} not supported")
@@ -781,7 +848,30 @@ internal suspend fun RtmpSocket.writeAmfMessage(timestampMs: Int, data: FLVData)
  *
  * @param tag the FLV tag to write
  */
-internal suspend fun RtmpSocket.writeAmfMessage(tag: FLVTag) {
-    writeAmfMessage(tag.timestampMs, tag.data)
+internal suspend fun RtmpConnection.write(tag: FLVTag) {
+    write(tag.timestampMs, tag.data)
+}
+
+/**
+ * Writes a [RawFLVTag].
+ *
+ * @param tag the FLV tag to write
+ */
+internal suspend fun RtmpConnection.write(tag: RawFLVTag) {
+    when (tag.type) {
+        FLVTag.Type.AUDIO -> {
+            writeAudio(tag.timestampMs, tag.body, tag.bodySize)
+        }
+
+        FLVTag.Type.VIDEO -> {
+            writeVideo(tag.timestampMs, tag.body, tag.bodySize)
+        }
+
+        FLVTag.Type.SCRIPT -> {
+            writeSetDataFrame(tag.body, tag.bodySize)
+        }
+
+        else -> throw IllegalArgumentException("Packet type ${tag.type} not supported")
+    }
 }
 

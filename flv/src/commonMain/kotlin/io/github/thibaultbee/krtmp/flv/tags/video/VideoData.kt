@@ -251,8 +251,10 @@ class ExtendedVideoData internal constructor(
             require(packetType != VideoPacketType.MOD_EX) {
                 "Invalid packet type for single video: $packetType. MOD_EX is not a valid packet type."
             }
-            require(frameType != VideoFrameType.COMMAND) {
-                "Invalid frame type for single video: $frameType. Use CommandVideoPacketDescriptor instead."
+            if (frameType == VideoFrameType.COMMAND) {
+                require(packetType == VideoPacketType.META_DATA) {
+                    "Invalid frame type for single video: $frameType. Use CommandVideoPacketDescriptor instead."
+                }
             }
         }
 

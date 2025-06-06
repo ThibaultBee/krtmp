@@ -15,8 +15,8 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.util
 
-import io.github.thibaultbee.krtmp.rtmp.util.connections.IConnection
-import io.github.thibaultbee.krtmp.rtmp.util.connections.tcp.TcpSocketConnection
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
+import io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp.TcpSocket
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.readByte
@@ -31,7 +31,7 @@ import kotlin.random.Random
  * Implementation of RTMP handshake.
  */
 internal class Handshake(
-    private val connection: IConnection,
+    private val connection: ISocket,
     private val clock: RtmpClock,
     private val version: Byte = 0x3,
 ) {
@@ -61,7 +61,7 @@ internal class Handshake(
             Two.read(it)
         }
 
-        if (connection is TcpSocketConnection) {
+        if (connection is TcpSocket) {
             require(s2.timestamp == c1.timestamp) { "Handshake failed: S2 and C1 must have the same timestamp" }
             require(s2.random.contentEquals(c1.random)) { "Handshake failed: S2 and C1 must have the same random sequence" }
         }
@@ -92,7 +92,7 @@ internal class Handshake(
             Two.read(it)
         }
 
-        if (connection is TcpSocketConnection) {
+        if (connection is TcpSocket) {
             require(c2.timestamp == c1.timestamp) { "Handshake failed: C2 and S1 must have the same timestamp" }
             require(c2.random.contentEquals(s1.random)) { "Handshake failed: C2 and S1 must have the same random sequence" }
         }

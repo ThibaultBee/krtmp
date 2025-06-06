@@ -4,19 +4,28 @@ import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.command.main
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.arguments.argument
+import io.github.thibaultbee.krtmp.amf.elements.containers.AmfContainer
+import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.common.logger.IKrtmpLogger
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
+import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.rtmp.messages.Audio
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
 import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
+import io.github.thibaultbee.krtmp.rtmp.messages.decode
 import io.github.thibaultbee.krtmp.rtmp.server.RtmpServer
 import io.github.thibaultbee.krtmp.rtmp.server.RtmpServerCallback
 import io.github.thibaultbee.krtmp.rtmp.util.AmfUtil.amf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class RTMPServerCli : SuspendingCliktCommand() {
+    private val decoderScope = CoroutineScope(Dispatchers.Default)
+
     init {
         KrtmpLogger.logger = EchoLogger()
     }
@@ -31,10 +40,10 @@ class RTMPServerCli : SuspendingCliktCommand() {
     )
 
     override suspend fun run() {
-        echo("RTMP server started on $address")
+        echo("RTMP server listening on $address")
 
         // Create the RTMP server
-        val server = RtmpServer("tcp://$address", object : RtmpServerCallback {
+        val server = RtmpServer(address, object : RtmpServerCallback {
             override fun onConnect(connect: Command) {
                 echo("Client connected: ${connect.commandObject}")
 
@@ -74,16 +83,33 @@ class RTMPServerCli : SuspendingCliktCommand() {
                 echo("Stream FCUnpublished: $fcUnpublish")
             }
 
-            override fun onSetDataFrame(setDataFrame: DataAmf.SetDataFrame) {
+            override fun onCloseStream(closeStream: Command) {
+                echo("Stream close: $closeStream")
+            }
+
+            override fun onSetDataFrame(setDataFrame: DataAmf) {
                 echo("Set data frame: $setDataFrame")
+
+                val parameters = setDataFrame.parameters
+                // Deserialize the onMetadata object
+                if ((parameters is AmfContainer) && (parameters.size >= 2)) {
+                    val onMetadata = OnMetadata.Metadata.decode(parameters[1] as AmfEcmaArray)
+                    echo("onMetadata: $onMetadata")
+                }
             }
 
             override fun onAudio(audio: Audio) {
-                echo("Audio data received: $audio")
+                // Dispatch the audio data to a coroutine for decoding to avoid blocking the server thread
+                decoderScope.launch {
+                    echo("Audio data received: ${audio.decode()}")
+                }
             }
 
             override fun onVideo(video: Video) {
-                echo("Video data received: $video")
+                // Dispatch the video data to a coroutine for decoding to avoid blocking the server thread
+                decoderScope.launch {
+                    echo("Video data received: ${video.decode()}")
+                }
             }
 
             override fun onUnknownMessage(message: Message) {
@@ -100,7 +126,7 @@ class RTMPServerCli : SuspendingCliktCommand() {
         })
 
         // Start the RTMP server
-        server.listen()
+        server.start()
     }
 
 

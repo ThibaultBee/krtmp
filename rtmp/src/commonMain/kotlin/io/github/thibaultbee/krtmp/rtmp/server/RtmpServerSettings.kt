@@ -16,7 +16,9 @@
 package io.github.thibaultbee.krtmp.rtmp.server
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.rtmp.streamer.RtmpSettings
+import io.github.thibaultbee.krtmp.rtmp.server.util.DefaultStreamIdProvider
+import io.github.thibaultbee.krtmp.rtmp.server.util.IStreamIdProvider
+import io.github.thibaultbee.krtmp.rtmp.connection.RtmpSettings
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
@@ -26,7 +28,8 @@ open class RtmpServerSettings(
     writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
     writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
     amfVersion: AmfVersion = AmfVersion.AMF0,
-    clock: RtmpClock = RtmpClock.Default()
+    clock: RtmpClock = RtmpClock.Default(),
+    val streamIdProvider: IStreamIdProvider = DefaultStreamIdProvider()
 ) : RtmpSettings(writeChunkSize, writeWindowAcknowledgementSize, amfVersion, clock, false, 0L) {
     /**
      * The default instance of [RtmpServerSettings]

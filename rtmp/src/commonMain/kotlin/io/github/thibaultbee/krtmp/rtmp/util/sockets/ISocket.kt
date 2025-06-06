@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.util.connections
+package io.github.thibaultbee.krtmp.rtmp.util.sockets
 
 import io.ktor.http.URLBuilder
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.coroutines.CoroutineScope
 
-internal interface IConnection : CoroutineScope {
+internal interface ISocket : CoroutineScope {
     val urlBuilder: URLBuilder
 
     val isClosed: Boolean

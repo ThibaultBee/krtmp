@@ -15,6 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.chunk
 
+import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.extensions.shl
 import io.github.thibaultbee.krtmp.rtmp.extensions.shr
 import io.ktor.utils.io.ByteReadChannel
@@ -68,12 +69,11 @@ internal data class BasicHeader(
             val basicHeader = channel.readByte()
             val headerType =
                 MessageHeader.HeaderType.entryOf(((basicHeader shr 6) and 0x3).toByte())
-            val chunkStreamId = when (val firstByte = basicHeader and 0x3F) {
+            val chunkStreamId = when (val firstByte = (basicHeader and 0x3F)) {
                 0.toByte() -> channel.readByte() + 64
                 1.toByte() -> channel.readShort() + 64
                 else -> firstByte
             }
-
             return BasicHeader(headerType, chunkStreamId)
         }
     }

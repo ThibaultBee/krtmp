@@ -135,7 +135,7 @@ class FLVDemuxer(private val source: Source, private val amfVersion: AmfVersion 
  *
  * @param block the block to execute for each FLV tag
  */
-suspend fun FLVDemuxer.decodeAll(block: (FLVTag) -> Unit) {
+suspend fun FLVDemuxer.decodeAll(block: suspend (FLVTag) -> Unit) {
     coroutineScope {
         while (!isEmpty) {
             block(decode())
@@ -148,7 +148,7 @@ suspend fun FLVDemuxer.decodeAll(block: (FLVTag) -> Unit) {
  *
  * @param block the block to execute for each raw FLV tag
  */
-suspend fun FLVDemuxer.decodeAllRaw(block: (RawFLVTag) -> Unit) {
+suspend fun FLVDemuxer.decodeAllRaw(block: suspend (RawFLVTag) -> Unit) {
     coroutineScope {
         while (!isEmpty) {
             block(decodeRaw())

@@ -20,6 +20,7 @@ internal const val NetStreamOnStatusCodePlayFailed: NetStreamOnStatusCode =
     "NetStream.Play.Failed"
 internal const val NetStreamOnStatusCodePlayComplete: NetStreamOnStatusCode =
     "NetStream.Play.Complete"
+internal const val NetStreamOnStatusCodePublish = "NetStream.Publish"
 internal const val NetStreamOnStatusCodePublishBadName: NetStreamOnStatusCode =
     "NetStream.Publish.BadName"
 internal const val NetStreamOnStatusCodePublishFailed: NetStreamOnStatusCode =

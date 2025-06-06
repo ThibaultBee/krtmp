@@ -33,7 +33,7 @@ import kotlinx.serialization.Serializable
  * @return The onMetaData data
  */
 fun OnMetadata(value: AmfEcmaArray) =
-    OnMetadata(Metadata.fromArray(value))
+    OnMetadata(Metadata.decode(value))
 
 /**
  * Creates a [OnMetadata] from multiple audio and video configurations
@@ -91,8 +91,15 @@ class OnMetadata(
             )
         }
 
+        override fun toString(): String {
+            return "Metadata(duration=$duration, audiocodecid=$audiocodecid, audiodatarate=$audiodatarate, " +
+                    "audiosamplerate=$audiosamplerate, audiosamplesize=$audiosamplesize, stereo=$stereo, " +
+                    "videocodecid=$videocodecid, videodatarate=$videodatarate, width=$width, height=$height, " +
+                    "framerate=$framerate, audioTrackIdInfoMap=$audioTrackIdInfoMap, videoTrackIdInfoMap=$videoTrackIdInfoMap)"
+        }
+
         companion object {
-            fun fromArray(array: AmfEcmaArray): Metadata {
+            fun decode(array: AmfEcmaArray): Metadata {
                 return amf.decodeFromAmfElement(serializer(), amfObjectOf(array))
             }
 

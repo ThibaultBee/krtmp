@@ -97,6 +97,10 @@ internal class MessageHeader0(
         channel.writeIntLittleEndian(messageStreamId)
     }
 
+    override fun toString(): String {
+        return "MessageHeader0(timestamp=$timestamp, messageLength=$messageLength, messageType=$messageType, messageStreamId=$messageStreamId, hasExtendedTimestamp=$hasExtendedTimestamp, extendedTimestamp=$extendedTimestamp)"
+    }
+
     companion object {
         /**
          * Read message header from input stream
@@ -136,6 +140,10 @@ internal class MessageHeader1(
         channel.writeByte(messageType.value)
     }
 
+    override fun toString(): String {
+        return "MessageHeader1(timestampDelta=$timestampDelta, messageLength=$messageLength, messageType=$messageType, hasExtendedTimestamp=$hasExtendedTimestamp, extendedTimestamp=$extendedTimestamp)"
+    }
+
     companion object {
         /**
          * Read message header from input stream
@@ -169,6 +177,10 @@ internal class MessageHeader2(
         channel.writeInt24(min(timestampDelta, TIMESTAMP_EXTENDED))
     }
 
+    override fun toString(): String {
+        return "MessageHeader2(timestampDelta=$timestampDelta, hasExtendedTimestamp=$hasExtendedTimestamp, extendedTimestamp=$extendedTimestamp)"
+    }
+
     companion object {
         /**
          * Read message header from input stream
@@ -195,5 +207,9 @@ internal class MessageHeader3 : MessageHeader(HeaderType.TYPE_3) {
 
     override suspend fun write(channel: ByteWriteChannel) {
         // Do nothing
+    }
+
+    override fun toString(): String {
+        return "MessageHeader3()"
     }
 }

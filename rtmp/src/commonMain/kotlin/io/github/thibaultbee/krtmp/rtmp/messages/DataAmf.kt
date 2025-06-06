@@ -15,43 +15,50 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.AmfVersion
+import io.github.thibaultbee.krtmp.amf.elements.Amf0ElementReader
+import io.github.thibaultbee.krtmp.amf.elements.Amf3ElementReader
 import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory
-import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
+import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
 import io.github.thibaultbee.krtmp.amf.elements.containers.amfContainerOf
-import io.github.thibaultbee.krtmp.amf.elements.containers.amfEcmaArrayOf
 import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf.Companion.DATAAMF_SET_DATA_FRAME_NAME
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.io.RawSource
+import kotlinx.io.buffered
 
 internal open class DataAmfMessage(
     messageStreamId: Int,
     timestamp: Int,
     messageType: MessageType,
-    payload: RawSource
+    payload: RawSource,
+    payloadSize: Int,
+    chunkStreamId: Int = ChunkStreamId.COMMAND_CHANNEL.value
 ) : Message(
-    chunkStreamId = ChunkStreamId.COMMAND_CHANNEL.value,
+    chunkStreamId = chunkStreamId,
     messageStreamId = messageStreamId,
     timestamp = timestamp,
     messageType = messageType,
-    payload = payload
-) {
-    class SetDataFrame(
-        amfVersion: AmfVersion,
-        messageStreamId: Int,
-        timestamp: Int,
-        payload: RawSource
-    ) :
-        DataAmfMessage(
-            messageStreamId,
-            timestamp,
-            if (amfVersion == AmfVersion.AMF0) MessageType.DATA_AMF0 else MessageType.DATA_AMF3,
-            payload
-        )
-}
+    payload = payload,
+    payloadSize = payloadSize
+)
+
+internal fun SetDataFrame(
+    amfVersion: AmfVersion,
+    messageStreamId: Int,
+    timestamp: Int,
+    payload: RawSource,
+    payloadSize: Int
+) =
+    DataAmfMessage(
+        messageStreamId,
+        timestamp,
+        if (amfVersion == AmfVersion.AMF0) MessageType.DATA_AMF0 else MessageType.DATA_AMF3,
+        payload,
+        payloadSize
+    )
 
 open class DataAmf(
     val messageStreamId: Int,
@@ -75,7 +82,8 @@ open class DataAmf(
             messageStreamId = messageStreamId,
             timestamp = timestamp,
             messageType = messageType,
-            payload = payload.write(amfVersion)
+            payload = payload.write(amfVersion),
+            payloadSize = payload.getSize(amfVersion),
         )
     }
 
@@ -92,26 +100,58 @@ open class DataAmf(
         return "DataAmf(name=$name, timestamp=$timestamp, messageStreamId=$messageStreamId, parameters=$parameters)"
     }
 
-    class SetDataFrame(
-        messageStreamId: Int,
-        timestamp: Int,
-        metadata: OnMetadata.Metadata,
-    ) :
-        DataAmf(
-            messageStreamId,
-            timestamp,
-            "@setDataFrame",
-            amfContainerOf(
-                listOf(
-                    "onMetaData",
-                    // Swapping elements to ECMA array
-                    amfEcmaArrayOf(
-                        (Amf.encodeToAmfElement(
-                            OnMetadata.Metadata.serializer(),
-                            metadata
-                        ) as AmfObject)
+    companion object {
+        const val DATAAMF_SET_DATA_FRAME_NAME = "@setDataFrame"
+
+        internal fun read(
+            dataAmfMessage: DataAmfMessage
+        ): DataAmf {
+            val amfElementReader = when (dataAmfMessage.messageType) {
+                MessageType.DATA_AMF0 -> Amf0ElementReader
+                MessageType.DATA_AMF3 -> Amf3ElementReader
+                else -> throw IllegalArgumentException("Unknown message type: ${dataAmfMessage.messageType}")
+            }
+            val payload = dataAmfMessage.payload.buffered()
+
+            @Suppress("UNCHECKED_CAST")
+            val name = (amfElementReader.read(payload) as AmfPrimitive<String>).value
+            val parameter =
+                if (!payload.exhausted()) amfElementReader.read(payload) else null
+            val parameterContent =
+                if (!payload.exhausted()) amfElementReader.read(payload) else null
+            val parameters = if (parameterContent != null) {
+                amfContainerOf(
+                    listOf(
+                        parameter!!,
+                        parameterContent
                     )
                 )
+            } else {
+                parameter
+            }
+            return DataAmf(
+                dataAmfMessage.messageStreamId,
+                dataAmfMessage.timestamp,
+                name,
+                parameters
+            )
+        }
+    }
+}
+
+fun SetDataFrame(
+    messageStreamId: Int,
+    timestamp: Int,
+    metadata: OnMetadata.Metadata,
+) =
+    DataAmf(
+        messageStreamId,
+        timestamp,
+        DATAAMF_SET_DATA_FRAME_NAME,
+        amfContainerOf(
+            listOf(
+                "onMetaData",
+                metadata.encode()
             )
         )
-}
+    )
