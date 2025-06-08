@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.util
 
-import io.github.thibaultbee.krtmp.rtmp.connection.RemoteServerException
+import io.github.thibaultbee.krtmp.rtmp.connection.RemoteCommandException
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
 import kotlinx.coroutines.CompletableDeferred
 
@@ -39,7 +39,7 @@ internal class TransactionCommandCompletion {
     fun completeExceptionally(key: Any, error: Command) {
         val deferred = deferreds[key]
         deferred?.completeExceptionally(
-            RemoteServerException(
+            RemoteCommandException(
                 "Command failed with error: $error",
                 error
             )

@@ -292,8 +292,8 @@ internal class RtmpConnection internal constructor(
                 connectCommand,
                 connectTransactionId
             ) as Command.Result
-        } catch (e: RemoteServerException) {
-            throw RemoteServerException("Connect command failed: ${e.message}", e.command)
+        } catch (e: RemoteCommandException) {
+            throw RemoteCommandException("Connect command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Connect command failed", t)
         }
@@ -327,8 +327,8 @@ internal class RtmpConnection internal constructor(
                     createStreamCommand
                 ), createStreamTransactionId
             )
-        } catch (e: RemoteServerException) {
-            throw RemoteServerException("Create stream command failed: ${e.message}", e.command)
+        } catch (e: RemoteCommandException) {
+            throw RemoteCommandException("Create stream command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Create stream command failed", t)
         }
@@ -361,8 +361,8 @@ internal class RtmpConnection internal constructor(
                 publishCommand,
                 NetStreamOnStatusCodePublish
             ) as Command.OnStatus
-        } catch (e: RemoteServerException) {
-            throw RemoteServerException("Publish command failed: ${e.message}", e.command)
+        } catch (e: RemoteCommandException) {
+            throw RemoteCommandException("Publish command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Publish command failed", t)
         }
@@ -381,8 +381,8 @@ internal class RtmpConnection internal constructor(
 
         return try {
             writeAmfMessage(playCommand)
-        } catch (e: RemoteServerException) {
-            throw RemoteServerException("Play command failed: ${e.message}", e.command)
+        } catch (e: RemoteCommandException) {
+            throw RemoteCommandException("Play command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Play command failed", t)
         }
@@ -712,7 +712,7 @@ internal class RtmpConnection internal constructor(
 
             is Command.OnStatus -> {
                 val amfObject = command.arguments[0] as AmfObject
-                
+
                 val code = (amfObject["code"]!! as AmfString).value
                 val commandType = code.substringBeforeLast('.')
 

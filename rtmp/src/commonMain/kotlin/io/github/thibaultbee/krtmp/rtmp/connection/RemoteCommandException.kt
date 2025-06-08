@@ -18,9 +18,9 @@ package io.github.thibaultbee.krtmp.rtmp.connection
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
 
 /**
- * This exception is thrown when server returns an error.
+ * This exception is thrown when the remote device returns an error.
  *
  * @param message the detail message.
  * @param command the command send by the server.
  */
-class RemoteServerException(message: String, val command: Command) : Exception(message)
+class RemoteCommandException(message: String, val command: Command) : Exception(message)
