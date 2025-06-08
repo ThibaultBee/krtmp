@@ -15,11 +15,11 @@ class VideoTest {
         val expected = Resource("frames/video/avc/key/expected").toByteArray()
 
         val raw = Resource("frames/video/avc/key/raw").toByteArray()
-        val video = Video(0, 10, Buffer().apply { write(raw) })
+        val video = Video(0, 10, Buffer().apply { write(raw) }, raw.size)
 
         val writeChannel = ByteChannel(false)
 
-        video.write(writeChannel, 128, Video(0, 10, Buffer())) // Empty previous audio
+        video.write(writeChannel, 128, Video(0, 10, Buffer(), 0)) // Empty previous audio
         writeChannel.flush()
 
         val actual = ByteArray(writeChannel.availableForRead)

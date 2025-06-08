@@ -811,7 +811,6 @@ internal suspend fun RtmpConnection.write(source: Source) {
         FLVTag.Type.AUDIO -> writeAudio(tag.timestampMs, tag.body, tag.bodySize)
         FLVTag.Type.VIDEO -> writeVideo(tag.timestampMs, tag.body, tag.bodySize)
         FLVTag.Type.SCRIPT -> writeSetDataFrame(tag.body, tag.bodySize)
-        else -> throw IllegalArgumentException("Frame type ${tag.type} not supported")
     }
 }
 
@@ -870,8 +869,6 @@ internal suspend fun RtmpConnection.write(tag: RawFLVTag) {
         FLVTag.Type.SCRIPT -> {
             writeSetDataFrame(tag.body, tag.bodySize)
         }
-
-        else -> throw IllegalArgumentException("Packet type ${tag.type} not supported")
     }
 }
 
