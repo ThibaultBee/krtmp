@@ -35,6 +35,7 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.SocketFactory
 import io.ktor.http.URLBuilder
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
 import kotlinx.io.Source
@@ -43,11 +44,16 @@ import kotlinx.io.Source
  * Creates a new [RtmpClient] with the given URL string and settings.
  *
  * @param urlString the RTMP URL to connect to
+ * @param callback the callback to handle RTMP client events
  * @param settings the settings for the RTMP client
  * @return a new [RtmpClient] instance
  */
-suspend fun RtmpClient(urlString: String, settings: RtmpSettings = RtmpSettings) =
-    RtmpClient(RtmpURLBuilder(urlString), settings)
+suspend fun RtmpClient(
+    urlString: String,
+    callback: DefaultRtmpClientCallback = DefaultRtmpClientCallback(),
+    settings: RtmpSettings = RtmpSettings
+) =
+    RtmpClient(RtmpURLBuilder(urlString), callback, settings)
 
 /**
  * Creates a new [RtmpClient] with the given [URLBuilder] and settings.
@@ -55,11 +61,13 @@ suspend fun RtmpClient(urlString: String, settings: RtmpSettings = RtmpSettings)
  * Use [RtmpURLBuilder] to create the [URLBuilder].
  *
  * @param urlBuilder the [URLBuilder] to connect to
+ * @param callback the callback to handle RTMP client events
  * @param settings the settings for the RTMP client
  * @return a new [RtmpClient] instance
  */
 suspend fun RtmpClient(
     urlBuilder: URLBuilder,
+    callback: RtmpClientCallback = DefaultRtmpClientCallback(),
     settings: RtmpSettings = RtmpSettings,
 ): RtmpClient {
     val connection = SocketFactory().connect(urlBuilder)
@@ -69,26 +77,26 @@ suspend fun RtmpClient(
         connection.close()
         throw t
     }
-    return RtmpClient(connection, settings)
+    return RtmpClient(connection, callback, settings)
 }
 
 internal fun RtmpClient(
-    connection: ISocket,
-    settings: RtmpSettings
+    connection: ISocket, callback: RtmpClientCallback, settings: RtmpSettings
 ): RtmpClient {
     return RtmpClient(
         RtmpConnection(
             connection,
             settings,
-            RtmpClientCallback.Factory(),
+            RtmpClientConnectionCallback.Factory(callback),
         )
     )
 }
 
 /**
- * RTMP client for publishing streams.
+ * The RTMP client.
  */
-class RtmpClient internal constructor(private val connection: RtmpConnection) {
+class RtmpClient internal constructor(private val connection: RtmpConnection) :
+    CoroutineScope by connection {
     /**
      * Whether the connection is closed.
      */
@@ -111,8 +119,7 @@ class RtmpClient internal constructor(private val connection: RtmpConnection) {
      *
      * @see [deleteStream]
      */
-    suspend fun createStream() =
-        connection.createStream()
+    suspend fun createStream() = connection.createStream()
 
     /**
      * Publishes the stream.
@@ -129,14 +136,12 @@ class RtmpClient internal constructor(private val connection: RtmpConnection) {
      *
      * @return the [Command.Result] send by the server
      */
-    suspend fun deleteStream() =
-        connection.deleteStream()
+    suspend fun deleteStream() = connection.deleteStream()
 
     /**
      * Closes the connection and cleans up resources.
      */
-    suspend fun close() =
-        connection.close()
+    suspend fun close() = connection.close()
 
     /**
      * Writes the SetDataFrame from [OnMetadata.Metadata].
@@ -157,11 +162,9 @@ class RtmpClient internal constructor(private val connection: RtmpConnection) {
      *
      * @param onMetadata the on metadata to send
      */
-    suspend fun writeSetDataFrame(onMetadata: ByteArray) =
-        connection.writeSetDataFrame(
-            ByteArrayRawSource(onMetadata),
-            onMetadata.size
-        )
+    suspend fun writeSetDataFrame(onMetadata: ByteArray) = connection.writeSetDataFrame(
+        ByteArrayRawSource(onMetadata), onMetadata.size
+    )
 
     /**
      * Writes the SetDataFrame from a [Buffer].
@@ -225,8 +228,7 @@ class RtmpClient internal constructor(private val connection: RtmpConnection) {
      *
      * @param source the frame to write
      */
-    suspend fun write(source: Source) =
-        connection.write(source)
+    suspend fun write(source: Source) = connection.write(source)
 
     /**
      * Writes a [FLVData].
@@ -234,8 +236,7 @@ class RtmpClient internal constructor(private val connection: RtmpConnection) {
      * @param timestampMs the timestamp of the frame in milliseconds
      * @param data the frame to write
      */
-    suspend fun write(timestampMs: Int, data: FLVData) =
-        connection.write(timestampMs, data)
+    suspend fun write(timestampMs: Int, data: FLVData) = connection.write(timestampMs, data)
 
     /**
      * Writes a [FLVTag].
@@ -250,30 +251,81 @@ class RtmpClient internal constructor(private val connection: RtmpConnection) {
      * @param rawTag the FLV tag to write
      */
     suspend fun write(rawTag: RawFLVTag) = connection.write(rawTag)
+
+    /**
+     * Writes a custom [Command].
+     *
+     * @param command the command to write
+     */
+    suspend fun write(command: Command) = connection.writeAmfMessage(command)
 }
 
-internal class RtmpClientCallback(
-    private val socket: RtmpConnection
+internal class RtmpClientConnectionCallback(
+    private val socket: RtmpConnection,
+    private val callback: RtmpClientCallback
 ) : RtmpConnectionCallback {
     override suspend fun onMessage(message: Message) {
-        KrtmpLogger.i(TAG, "onMessage: $message")
+        callback.onMessage(message)
     }
 
     override suspend fun onCommand(command: Command) {
-        KrtmpLogger.i(TAG, "onCommand: $command")
+        callback.onCommand(command)
     }
 
     override suspend fun onData(data: DataAmf) {
-        KrtmpLogger.i(TAG, "onData: $data")
+        callback.onData(data)
     }
 
-    class Factory : RtmpConnectionCallback.Factory {
+    class Factory(private val callback: RtmpClientCallback) : RtmpConnectionCallback.Factory {
         override fun create(streamer: RtmpConnection): RtmpConnectionCallback {
-            return RtmpClientCallback(streamer)
+            return RtmpClientConnectionCallback(streamer, callback)
         }
+    }
+}
+
+class DefaultRtmpClientCallback : RtmpClientCallback {
+    override suspend fun onMessage(message: Message) {
+        KrtmpLogger.i(TAG, "Received message: $message")
+    }
+
+    override suspend fun onCommand(command: Command) {
+        KrtmpLogger.i(TAG, "Received command: $command")
+    }
+
+    override suspend fun onData(data: DataAmf) {
+        KrtmpLogger.i(TAG, "Received data: $data")
     }
 
     companion object {
-        private const val TAG = "RtmpClientCallback"
+        /**
+         * Default instance of [DefaultRtmpClientCallback].
+         */
+        private const val TAG = "DefaultRtmpClientCallback"
     }
+}
+
+/**
+ * Callback interface for RTMP client events.
+ */
+interface RtmpClientCallback {
+    /**
+     * Called when a message is received.
+     *
+     * @param message the received message
+     */
+    suspend fun onMessage(message: Message)
+
+    /**
+     * Called when a command is received.
+     *
+     * @param command the received command
+     */
+    suspend fun onCommand(command: Command)
+
+    /**
+     * Called when data is received.
+     *
+     * @param data the received data
+     */
+    suspend fun onData(data: DataAmf)
 }

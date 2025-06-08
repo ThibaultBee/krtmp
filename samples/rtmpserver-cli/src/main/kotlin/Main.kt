@@ -126,7 +126,7 @@ class RTMPServerCli : SuspendingCliktCommand() {
         })
 
         // Start the RTMP server
-        server.start()
+        server.listen()
     }
 
 
