@@ -30,7 +30,9 @@ import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
 import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
+import io.github.thibaultbee.krtmp.rtmp.extensions.app
 import io.github.thibaultbee.krtmp.rtmp.extensions.streamKey
+import io.github.thibaultbee.krtmp.rtmp.extensions.tcUrl
 import io.github.thibaultbee.krtmp.rtmp.extensions.write
 import io.github.thibaultbee.krtmp.rtmp.messages.Acknowledgement
 import io.github.thibaultbee.krtmp.rtmp.messages.AmfMessage
@@ -269,11 +271,10 @@ internal class RtmpConnection internal constructor(
             ObjectEncoding.AMF3
         }
         val connectObject = ConnectObject(
-            app = connection.urlBuilder.pathSegments[1],
+            app = connection.urlBuilder.app ?: "",
             flashVer = connectInformation.flashVer,
             swfUrl = null,
-            tcUrl = connection.urlBuilder.buildString()
-                .removeSuffix(connection.urlBuilder.streamKey),
+            tcUrl = connection.urlBuilder.tcUrl,
             audioCodecs = connectInformation.audioCodecs,
             videoCodecs = connectInformation.videoCodecs,
             pageUrl = null,

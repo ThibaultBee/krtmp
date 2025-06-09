@@ -81,7 +81,9 @@ suspend fun RtmpClient(
 }
 
 internal fun RtmpClient(
-    connection: ISocket, callback: RtmpClientCallback, settings: RtmpSettings
+    connection: ISocket,
+    callback: RtmpClientCallback,
+    settings: RtmpSettings
 ): RtmpClient {
     return RtmpClient(
         RtmpConnection(
@@ -95,7 +97,9 @@ internal fun RtmpClient(
 /**
  * The RTMP client.
  */
-class RtmpClient internal constructor(private val connection: RtmpConnection) :
+class RtmpClient internal constructor(
+    private val connection: RtmpConnection
+) :
     CoroutineScope by connection {
     /**
      * Whether the connection is closed.

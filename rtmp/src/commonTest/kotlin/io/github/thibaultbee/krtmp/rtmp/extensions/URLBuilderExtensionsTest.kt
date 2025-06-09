@@ -13,6 +13,7 @@ class URLBuilderExtensionsTest {
             URLBuilder("rtmp://192.168.1.12:1234/app/stream").validateRtmp()
             URLBuilder("rtmp://192.168.1.12/app/stream").validateRtmp()
             URLBuilder("rtmp://192.168.1.12/app/app2/stream").validateRtmp()
+            URLBuilder("rtmp://192.168.1.12/stream").validateRtmp()
         } catch (e: Exception) {
             fail("Exception thrown: ${e.message}", e)
         }

@@ -28,17 +28,17 @@ import io.ktor.utils.io.CountedByteWriteChannel
 import kotlin.coroutines.CoroutineContext
 
 internal fun TcpSocket(
-    socket: Socket
-): TcpSocket = TcpSocket(socket.connection())
+    socket: Socket,
+    urlBuilder: URLBuilder
+): TcpSocket = TcpSocket(socket.connection(), urlBuilder)
 
 /**
  * TCP connection implementation of [ISocket].
  */
 internal open class TcpSocket(
-    private val connection: Connection
+    private val connection: Connection,
+    override val urlBuilder: URLBuilder
 ) : ISocket {
-
-   override val urlBuilder = URLBuilder(connection.socket.remoteAddress.toString())
     private val input by lazy {
         CountedByteReadChannel(connection.input)
     }

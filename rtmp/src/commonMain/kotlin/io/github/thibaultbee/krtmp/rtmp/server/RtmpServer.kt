@@ -47,6 +47,7 @@ import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelStatus
 import io.github.thibaultbee.krtmp.rtmp.util.extensions.startWithScheme
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp.TcpSocket
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp.TcpSocketFactory
+import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.ServerSocket
@@ -127,7 +128,7 @@ class RtmpServer internal constructor(
         KrtmpLogger.i(TAG, "New client connection: ${clientSocket.remoteAddress}")
         onAccept(clientSocket)
 
-        val connection = TcpSocket(clientSocket)
+        val connection = TcpSocket(clientSocket, URLBuilder(clientSocket.remoteAddress.toString()))
         connection.serverHandshake(settings.clock)
 
         val rtmpConnection = RtmpConnection(

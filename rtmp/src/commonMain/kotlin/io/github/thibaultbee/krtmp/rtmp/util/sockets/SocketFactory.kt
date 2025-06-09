@@ -26,7 +26,7 @@ internal class SocketFactory(private val tcpSocketFactory: TcpSocketFactory = Tc
         val connection = if (urlBuilder.protocol.isTunneledRtmp) {
             HttpSocket(urlBuilder)
         } else {
-            TcpSocket(tcpSocketFactory.client(urlBuilder, socketOptions))
+            TcpSocket(tcpSocketFactory.client(urlBuilder, socketOptions), urlBuilder)
         }
         return connection
     }
