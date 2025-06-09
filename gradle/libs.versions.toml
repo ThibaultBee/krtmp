@@ -1,5 +1,5 @@
 [versions]
-agp = "8.9.3"
+agp = "8.10.1"
 clikt = "5.0.3"
 kotlin = "2.1.20"
 dokka = "2.0.0"
