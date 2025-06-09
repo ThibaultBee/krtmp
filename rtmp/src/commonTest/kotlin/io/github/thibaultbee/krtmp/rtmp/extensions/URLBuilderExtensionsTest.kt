@@ -23,7 +23,7 @@ class URLBuilderExtensionsTest {
     @Test
     fun `test invalid RTMP URL`() {
         try {
-            URLBuilder("rtmp://host:1234/app").validateRtmp()
+            URLBuilder("rtmp://host:1234/app/").validateRtmp()
             fail("Exception must be thrown for missing stream key")
         } catch (_: Exception) {
         }
