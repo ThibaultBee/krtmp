@@ -55,6 +55,7 @@ kotlin {
         }
         jvmTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.flex.messaging.core)
         }
     }
 
