@@ -28,7 +28,7 @@ fun URLBuilder.validateRtmp() {
     require(port in 0..65535) { "Port must be in range 0..65535" }
     require(pathSegments.size >= 2) { "Invalid number of elements in path at least 2 but found ${pathSegments.size}" }
     val streamKey = pathSegments.last()
-    require(streamKey.isNotBlank()) { "Invalid stream key $streamKey" }
+    require(streamKey.isNotBlank()) { "Invalid stream key: $streamKey" }
 }
 
 /**
@@ -51,7 +51,7 @@ val URLBuilder.isValidRtmp: Boolean
  *
  * @throws IllegalArgumentException if the URLBuilder is not valid for RTMP.
  */
-val URLBuilder.streamKey: String
+val URLBuilder.rtmpStreamKey: String
     get() {
         validateRtmp()
         return pathSegments.last()
@@ -63,7 +63,7 @@ val URLBuilder.streamKey: String
  *
  * @throws IllegalArgumentException if the URLBuilder is not valid for RTMP.
  */
-val URLBuilder.app: String?
+val URLBuilder.rtmpAppOrNull: String?
     get() {
         validateRtmp()
         return if (pathSegments.size > 1) {
@@ -76,9 +76,9 @@ val URLBuilder.app: String?
 /**
  * The RTMP URL without the stream key.
  */
-val URLBuilder.tcUrl: String
+val URLBuilder.rtmpTcUrl: String
     get() {
         validateRtmp()
-        return buildString().removeSuffix(streamKey)
+        return buildString().removeSuffix(rtmpStreamKey)
     }
 

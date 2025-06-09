@@ -30,9 +30,9 @@ import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
 import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
-import io.github.thibaultbee.krtmp.rtmp.extensions.app
-import io.github.thibaultbee.krtmp.rtmp.extensions.streamKey
-import io.github.thibaultbee.krtmp.rtmp.extensions.tcUrl
+import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpAppOrNull
+import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpStreamKey
+import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpTcUrl
 import io.github.thibaultbee.krtmp.rtmp.extensions.write
 import io.github.thibaultbee.krtmp.rtmp.messages.Acknowledgement
 import io.github.thibaultbee.krtmp.rtmp.messages.AmfMessage
@@ -271,10 +271,10 @@ internal class RtmpConnection internal constructor(
             ObjectEncoding.AMF3
         }
         val connectObject = ConnectObject(
-            app = connection.urlBuilder.app ?: "",
+            app = connection.urlBuilder.rtmpAppOrNull ?: "",
             flashVer = connectInformation.flashVer,
             swfUrl = null,
-            tcUrl = connection.urlBuilder.tcUrl,
+            tcUrl = connection.urlBuilder.rtmpTcUrl,
             audioCodecs = connectInformation.audioCodecs,
             videoCodecs = connectInformation.videoCodecs,
             pageUrl = null,
@@ -309,11 +309,11 @@ internal class RtmpConnection internal constructor(
      */
     suspend fun createStream(): Command.Result {
         val releaseStreamCommand = CommandReleaseStream(
-            transactionId, settings.clock.nowInMs, connection.urlBuilder.streamKey
+            transactionId, settings.clock.nowInMs, connection.urlBuilder.rtmpStreamKey
         )
 
         val fcPublishCommand = CommandFCPublish(
-            transactionId, settings.clock.nowInMs, connection.urlBuilder.streamKey
+            transactionId, settings.clock.nowInMs, connection.urlBuilder.rtmpStreamKey
         )
 
         val createStreamTransactionId = transactionId
@@ -353,7 +353,7 @@ internal class RtmpConnection internal constructor(
             messageStreamId,
             publishTransactionId,
             settings.clock.nowInMs,
-            connection.urlBuilder.streamKey,
+            connection.urlBuilder.rtmpStreamKey,
             type
         )
 
@@ -397,7 +397,7 @@ internal class RtmpConnection internal constructor(
     suspend fun deleteStream() {
         val messages = mutableListOf(
             CommandFCUnpublish(
-                transactionId, settings.clock.nowInMs, connection.urlBuilder.streamKey
+                transactionId, settings.clock.nowInMs, connection.urlBuilder.rtmpStreamKey
             )
         )
         messageStreamId?.let {
