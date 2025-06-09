@@ -25,7 +25,7 @@ import io.ktor.http.takeFrom
  * @param url the RTMP URL to build from
  * @return a [URLBuilder] initialized with the RTMP URL
  */
-fun RtmpUrlBuilder(url: Url): URLBuilder {
+fun RtmpURLBuilder(url: Url): URLBuilder {
     val urlBuilder = URLBuilder().takeFrom(url)
     if (urlBuilder.port == 0) {
         urlBuilder.port = RtmpURLProtocol.createOrDefault(urlBuilder.protocol.name).defaultPort

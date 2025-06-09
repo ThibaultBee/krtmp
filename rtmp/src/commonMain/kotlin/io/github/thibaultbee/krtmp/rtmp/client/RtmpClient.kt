@@ -35,6 +35,7 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.SocketFactory
 import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
@@ -54,6 +55,21 @@ suspend fun RtmpClient(
     settings: RtmpSettings = RtmpSettings
 ) =
     RtmpClient(RtmpURLBuilder(urlString), callback, settings)
+
+/**
+ * Creates a new [RtmpClient] with the given URL and settings.
+ *
+ * @param url the RTMP URL to connect to
+ * @param callback the callback to handle RTMP client events
+ * @param settings the settings for the RTMP client
+ * @return a new [RtmpClient] instance
+ */
+suspend fun RtmpClient(
+    url: Url,
+    callback: DefaultRtmpClientCallback = DefaultRtmpClientCallback(),
+    settings: RtmpSettings = RtmpSettings
+) =
+    RtmpClient(RtmpURLBuilder(url), callback, settings)
 
 /**
  * Creates a new [RtmpClient] with the given [URLBuilder] and settings.
