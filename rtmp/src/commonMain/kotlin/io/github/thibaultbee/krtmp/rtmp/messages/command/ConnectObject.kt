@@ -19,7 +19,6 @@ import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
 import io.github.thibaultbee.krtmp.rtmp.extensions.orNull
-import io.github.thibaultbee.krtmp.rtmp.messages.ObjectEncoding
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject.Companion.DEFAULT_AUDIO_CODECS
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject.Companion.DEFAULT_CAPABILITIES
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject.Companion.DEFAULT_FLASH_VER
@@ -27,9 +26,29 @@ import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject.Companion
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject.Companion.DEFAULT_VIDEO_FUNCTION
 import kotlinx.serialization.Serializable
 
+/**
+ * The AMF encoding version used in the connect object.
+ *
+ * @param value The AMF encoding version value.
+ */
+enum class ObjectEncoding(val value: Int) {
+    AMF0(0),
+    AMF3(3)
+}
 
 /**
  * A builder for creating a [ConnectObject].
+ *
+ * @param app The server application name the client is connected to
+ * @param flashVer The flash Player version
+ * @param tcUrl The server IP address the client is connected to (format: rtmp://ip:port/app/instance)
+ * @param swfUrl The URL of the source SWF file
+ * @param fpad True if proxy is used
+ * @param audioCodecs The supported (by the client) audio codecs
+ * @param videoCodecs The supported (by the client) video codecs
+ * @param videoFunction The supported (by the client) video functions
+ * @param pageUrl  The URL of the web page in which the media was embedded
+ * @param objectEncoding The AMF encoding version
  */
 class ConnectObjectBuilder(
     var app: String,
@@ -75,7 +94,7 @@ class ConnectObjectBuilder(
 /**
  * The object sent by the client to the connect command.
  *
- *  @param app The server application name the client is connected to
+ * @param app The server application name the client is connected to
  * @param flashVer The flash Player version
  * @param tcUrl The server IP address the client is connected to (format: rtmp://ip:port/app/instance)
  * @param swfUrl The URL of the source SWF file

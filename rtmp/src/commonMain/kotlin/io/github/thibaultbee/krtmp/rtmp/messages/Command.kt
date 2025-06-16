@@ -33,9 +33,11 @@ import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_PLAY_
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_PUBLISH_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.Command.Companion.COMMAND_RELEASE_STREAM_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject
-import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject.Companion.DEFAULT_CAPABILITIES
+import io.github.thibaultbee.krtmp.rtmp.messages.command.NetConnectionResultInformation
+import io.github.thibaultbee.krtmp.rtmp.messages.command.NetConnectionResultObject
+import io.github.thibaultbee.krtmp.rtmp.messages.command.ObjectEncoding
+import io.github.thibaultbee.krtmp.rtmp.messages.command.StreamPublishType
 import io.github.thibaultbee.krtmp.rtmp.util.AmfUtil.amf
-import io.github.thibaultbee.krtmp.rtmp.util.NetConnectionConnectCode
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCode
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevel
 import io.ktor.utils.io.ByteWriteChannel
@@ -283,31 +285,6 @@ fun OnStatus(
     information: AmfElement
 ) = Command.OnStatus.from(messageStreamId, transactionId, timestamp, information)
 
-enum class ObjectEncoding(val value: Int) {
-    AMF0(0),
-    AMF3(3)
-}
-
-fun CommandConnectResultErrorInformation(
-    level: String,
-    code: NetConnectionConnectCode,
-    description: String,
-    objectEncoding: ObjectEncoding
-) = NetConnectionResultInformation(
-    level = level,
-    code = code,
-    description = description,
-    objectEncoding = objectEncoding.value.toDouble()
-)
-
-@Serializable
-class NetConnectionResultInformation(
-    override val level: String,
-    override val code: NetConnectionConnectCode,
-    override val description: String,
-    val objectEncoding: Double,
-) : ResultInformation
-
 fun CommandNetConnectionResult(
     timestamp: Int,
     connectReplyObject: NetConnectionResultObject = NetConnectionResultObject.default,
@@ -323,7 +300,7 @@ fun CommandNetConnectionResult(
         ),
         amf.encodeToAmfElement(
             NetConnectionResultInformation.serializer(),
-            CommandConnectResultErrorInformation(
+            NetConnectionResultInformation(
                 level = "status",
                 code = "NetConnection.Connect.Success",
                 description = "Connection succeeded.",
@@ -331,18 +308,6 @@ fun CommandNetConnectionResult(
             )
         ),
     )
-}
-
-@Serializable
-class NetConnectionResultObject(
-    val fmsVer: String = DEFAULT_FMS_VER,
-    val capabilities: Double = DEFAULT_CAPABILITIES.toDouble(),
-) {
-    companion object {
-        internal const val DEFAULT_FMS_VER = "FMS/3,0,1,123"
-
-        internal val default = NetConnectionResultObject()
-    }
 }
 
 fun CommandConnect(
@@ -485,14 +450,3 @@ fun CommandPublish(
     streamKey,
     streamType.value
 )
-
-enum class StreamPublishType(val value: String) {
-    LIVE("live"), RECORD("record"), APPEND("append");
-
-    companion object {
-        fun valueOf(value: String): StreamPublishType {
-            return entries.firstOrNull { it.value == value }
-                ?: throw IllegalArgumentException("Unknown stream type: $value")
-        }
-    }
-}

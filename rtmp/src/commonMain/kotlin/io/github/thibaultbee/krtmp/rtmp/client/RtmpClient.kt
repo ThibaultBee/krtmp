@@ -29,8 +29,8 @@ import io.github.thibaultbee.krtmp.rtmp.extensions.clientHandshake
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
-import io.github.thibaultbee.krtmp.rtmp.messages.StreamPublishType
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
+import io.github.thibaultbee.krtmp.rtmp.messages.command.StreamPublishType
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.SocketFactory
