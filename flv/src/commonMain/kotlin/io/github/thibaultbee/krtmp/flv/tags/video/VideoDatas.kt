@@ -37,23 +37,23 @@ import kotlinx.io.RawSource
  * @param codecID the codec ID
  * @param command the video command
  */
-fun CommandLegacyVideoData(
+fun CommandVideoData(
     codecID: CodecID, command: VideoCommand
 ) = LegacyVideoData(
     frameType = VideoFrameType.COMMAND, codecID = codecID, body = CommandLegacyVideoTagBody(command)
 )
 
 /**
- * Creates a legacy [LegacyVideoData] from a [RawSource] and its size.
+ * Creates a legacy [VideoData] from a [RawSource] and its size.
  *
- * For AVC/H.264, use [avcLegacyVideoData], [avcHeaderLegacyVideoData] or [avcEndOfSequenceLegacyVideoData] instead.
+ * For AVC/H.264, use [avcVideoData], [avcHeaderVideoData] or [avcEndOfSequenceVideoData] instead.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param body the coded [RawSource]
  * @param bodySize the size of the coded [RawSource]
- * @return the [LegacyVideoData] with the frame
+ * @return the [VideoData] with the frame
  */
-fun LegacyVideoData(
+fun VideoData(
     frameType: VideoFrameType,
     codecID: CodecID,
     body: RawSource,
@@ -67,16 +67,16 @@ fun LegacyVideoData(
 )
 
 /**
- * Creates a legacy AVC/H.264 [LegacyVideoData] from a [RawSource] and its size.
+ * Creates a legacy AVC/H.264 [VideoData] from a [RawSource] and its size.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param packetType the packet type
  * @param body the coded AVC [RawSource] without AVCC or AnnexB header
  * @param bodySize the size of the coded AVC [RawSource]
  * @param compositionTime the composition time (24 bits). Default is 0.
- * @return the [LegacyVideoData] with the AVC frame
+ * @return the [VideoData] with the AVC frame
  */
-fun avcLegacyVideoData(
+fun avcVideoData(
     frameType: VideoFrameType,
     packetType: AVCPacketType,
     body: RawSource,
@@ -93,7 +93,7 @@ fun avcLegacyVideoData(
 )
 
 /**
- * Creates a legacy AVC/H.264 [LegacyVideoData] from a [NaluRawSource].
+ * Creates a legacy AVC/H.264 [VideoData] from a [NaluRawSource].
  *
  * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
  *
@@ -101,14 +101,14 @@ fun avcLegacyVideoData(
  * @param packetType the packet type
  * @param body the NAL unit [RawSource].
  * @param compositionTime the composition time (24 bits). Default is 0.
- * @return the [LegacyVideoData] with the AVC frame
+ * @return the [VideoData] with the AVC frame
  */
-fun avcLegacyVideoData(
+fun avcVideoData(
     frameType: VideoFrameType,
     packetType: AVCPacketType,
     body: NaluRawSource,
     compositionTime: Int = 0
-) = avcLegacyVideoData(
+) = avcVideoData(
     frameType = frameType,
     packetType = packetType,
     compositionTime = compositionTime,
@@ -117,16 +117,16 @@ fun avcLegacyVideoData(
 )
 
 /**
- * Creates a legacy AVC/H.264 [LegacyVideoData] for SPS and PPS.
+ * Creates a legacy AVC/H.264 [VideoData] for SPS and PPS.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
- * If you want to directly pass [AVCDecoderConfigurationRecord], use [avcLegacyVideoData] instead.
+ * If you want to directly pass [AVCDecoderConfigurationRecord], use [avcVideoData] instead.
  *
  * @param sps the SPS NAL units
  * @param pps the PPS NAL units
- * @return the [LegacyVideoData] with the SPS and PPS
+ * @return the [VideoData] with the SPS and PPS
  */
-fun avcHeaderLegacyVideoData(
+fun avcHeaderVideoData(
     sps: List<NaluRawSource>,
     pps: List<NaluRawSource>,
 ) {
@@ -134,7 +134,7 @@ fun avcHeaderLegacyVideoData(
         sps = sps, pps = pps
     ).readBuffer()
 
-    avcLegacyVideoData(
+    avcVideoData(
         frameType = VideoFrameType.KEY,
         packetType = AVCPacketType.SEQUENCE_HEADER,
         compositionTime = 0,
@@ -145,9 +145,9 @@ fun avcHeaderLegacyVideoData(
 
 
 /**
- * Creates a legacy AVC/H.264 [LegacyVideoData] for the end of sequence.
+ * Creates a legacy AVC/H.264 [VideoData] for the end of sequence.
  */
-fun avcEndOfSequenceLegacyVideoData() = LegacyVideoData(
+fun avcEndOfSequenceVideoData() = LegacyVideoData(
     frameType = VideoFrameType.KEY,
     codecID = CodecID.AVC,
     packetType = AVCPacketType.END_OF_SEQUENCE,

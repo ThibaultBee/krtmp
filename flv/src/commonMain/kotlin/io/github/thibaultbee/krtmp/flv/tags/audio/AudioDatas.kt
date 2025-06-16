@@ -33,7 +33,7 @@ import kotlinx.io.RawSource
  * @param adts the [ADTS] header
  * @return the [LegacyAudioData] with the [ADTS] header
  */
-fun aacHeaderLegacyAudioData(adts: ADTS): LegacyAudioData {
+fun aacHeaderAudioData(adts: ADTS): LegacyAudioData {
     val audioSpecificConfig = AudioSpecificConfig(adts).readBuffer()
 
     return LegacyAudioData(
@@ -60,7 +60,7 @@ fun aacHeaderLegacyAudioData(adts: ADTS): LegacyAudioData {
  * @param dataSize the size of the coded AAC [RawSource]
  * @return the [LegacyAudioData] with the AAC frame
  */
-fun aacLegacyAudioData(
+fun aacAudioData(
     soundRate: SoundRate,
     soundSize: SoundSize,
     soundType: SoundType,
@@ -83,9 +83,9 @@ fun aacLegacyAudioData(
  *
  * @param packetType the packet type
  * @param fourCC the FourCCs
- * @param channelOrder the channel order
+ * @param channelCount the number of channels
  */
-fun unspecifiedMultiChannelConfigAudioData(
+fun unspecifiedMultiChannelConfigExtendedAudioData(
     packetType: AudioPacketType,
     fourCC: AudioFourCC,
     channelCount: Byte
