@@ -11,7 +11,7 @@ import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.rtmp.messages.Audio
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
-import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject
+import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
