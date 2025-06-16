@@ -16,12 +16,7 @@
 package io.github.thibaultbee.krtmp.rtmp.connection
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.flv.config.AudioMediaType
-import io.github.thibaultbee.krtmp.flv.config.VideoMediaType
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
-import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject.Companion.DEFAULT_AUDIO_CODECS
-import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject.Companion.DEFAULT_FLASH_VER
-import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject.Companion.DEFAULT_VIDEO_CODECS
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
@@ -49,22 +44,4 @@ open class RtmpSettings(
         const val DEFAULT_CHUNK_SIZE = RtmpConfiguration.DEFAULT_CHUNK_SIZE // bytes
         const val DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS = 2000L // ms
     }
-}
-
-/**
- * Connect information used by the connect command to RTMP server.
- *
- * @param flashVer Flash version
- * @param audioCodecs List of supported audio codecs
- * @param videoCodecs List of supported video codecs (including extended RTMP codecs)
- */
-open class ConnectInformation(
-    val flashVer: String = DEFAULT_FLASH_VER,
-    val audioCodecs: List<AudioMediaType>? = DEFAULT_AUDIO_CODECS,
-    val videoCodecs: List<VideoMediaType>? = DEFAULT_VIDEO_CODECS,
-) {
-    /**
-     * The default instance of [ConnectInformation]
-     */
-    companion object Default : ConnectInformation()
 }

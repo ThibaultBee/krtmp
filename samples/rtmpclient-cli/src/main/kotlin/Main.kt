@@ -38,7 +38,10 @@ class RTMPServerCli : SuspendingCliktCommand() {
         // Create the RTMP client
         val client = RtmpClient(rtmpUrlPath)
         try {
-            val result = client.connect()
+            val result = client.connect {
+                // Configure the connect object
+                // videoCodecs = listOf(VideoMediaType.AVC)
+            }
             echo("Connected to RTMP server: $result")
 
             client.createStream()

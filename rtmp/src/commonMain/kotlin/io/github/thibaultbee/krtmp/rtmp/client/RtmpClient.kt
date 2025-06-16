@@ -21,7 +21,6 @@ import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
 import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
-import io.github.thibaultbee.krtmp.rtmp.connection.ConnectInformation
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnection
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnectionCallback
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpSettings
@@ -31,6 +30,7 @@ import io.github.thibaultbee.krtmp.rtmp.messages.Command
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.StreamPublishType
+import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.SocketFactory
@@ -126,11 +126,11 @@ class RtmpClient internal constructor(
     /**
      * Connects to the server.
      *
-     * @param connectInformation the information to send in the connect command
+     * @param block a block to configure the [ConnectObjectBuilder]
      * @return the [Command.Result] send by the server
      */
-    suspend fun connect(connectInformation: ConnectInformation = ConnectInformation) =
-        connection.connect(connectInformation)
+    suspend fun connect(block: ConnectObjectBuilder.() -> Unit = {}) =
+        connection.connect(block)
 
     /**
      * Creates a stream.

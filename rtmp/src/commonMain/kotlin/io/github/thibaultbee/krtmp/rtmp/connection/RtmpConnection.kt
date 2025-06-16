@@ -49,7 +49,6 @@ import io.github.thibaultbee.krtmp.rtmp.messages.CommandNetConnectionResult
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandPlay
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandPublish
 import io.github.thibaultbee.krtmp.rtmp.messages.CommandReleaseStream
-import io.github.thibaultbee.krtmp.rtmp.messages.ConnectObject
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmfMessage
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
@@ -62,6 +61,7 @@ import io.github.thibaultbee.krtmp.rtmp.messages.StreamPublishType
 import io.github.thibaultbee.krtmp.rtmp.messages.UserControl
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
 import io.github.thibaultbee.krtmp.rtmp.messages.WindowAcknowledgementSize
+import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.MessagesManager
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublish
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelError
@@ -260,32 +260,28 @@ internal class RtmpConnection internal constructor(
     /**
      * Connects to the server.
      *
-     * @param connectInformation the information to send in the connect command
+     * @param block a block to configure the [ConnectObjectBuilder]
      * @return the [Command.Result] send by the server
      */
-    suspend fun connect(connectInformation: ConnectInformation = ConnectInformation): Command.Result {
+    suspend fun connect(block: ConnectObjectBuilder.() -> Unit = {}): Command.Result {
         // Prepare connect object
         val objectEncoding = if (settings.amfVersion == AmfVersion.AMF0) {
             ObjectEncoding.AMF0
         } else {
             ObjectEncoding.AMF3
         }
-        val connectObject = ConnectObject(
+        val connectObjectBuilder = ConnectObjectBuilder(
             app = connection.urlBuilder.rtmpAppOrNull ?: "",
-            flashVer = connectInformation.flashVer,
-            swfUrl = null,
             tcUrl = connection.urlBuilder.rtmpTcUrl,
-            audioCodecs = connectInformation.audioCodecs,
-            videoCodecs = connectInformation.videoCodecs,
-            pageUrl = null,
             objectEncoding = objectEncoding
         )
+        connectObjectBuilder.block()
 
         settings.clock.reset()
 
         val connectTransactionId = transactionId
         val connectCommand = CommandConnect(
-            connectTransactionId, settings.clock.nowInMs, connectObject
+            connectTransactionId, settings.clock.nowInMs, connectObjectBuilder.build()
         )
 
         try {
@@ -293,8 +289,6 @@ internal class RtmpConnection internal constructor(
                 connectCommand,
                 connectTransactionId
             ) as Command.Result
-        } catch (e: RemoteCommandException) {
-            throw RemoteCommandException("Connect command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Connect command failed", t)
         }
@@ -328,8 +322,6 @@ internal class RtmpConnection internal constructor(
                     createStreamCommand
                 ), createStreamTransactionId
             )
-        } catch (e: RemoteCommandException) {
-            throw RemoteCommandException("Create stream command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Create stream command failed", t)
         }
@@ -362,8 +354,6 @@ internal class RtmpConnection internal constructor(
                 publishCommand,
                 NetStreamOnStatusCodePublish
             ) as Command.OnStatus
-        } catch (e: RemoteCommandException) {
-            throw RemoteCommandException("Publish command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Publish command failed", t)
         }
@@ -382,8 +372,6 @@ internal class RtmpConnection internal constructor(
 
         return try {
             writeAmfMessage(playCommand)
-        } catch (e: RemoteCommandException) {
-            throw RemoteCommandException("Play command failed: ${e.message}", e.command)
         } catch (t: Throwable) {
             throw IOException("Play command failed", t)
         }
