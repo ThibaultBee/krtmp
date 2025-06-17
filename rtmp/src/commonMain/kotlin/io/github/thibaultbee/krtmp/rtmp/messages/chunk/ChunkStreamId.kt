@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.chunk
+package io.github.thibaultbee.krtmp.rtmp.messages.chunk
 
 internal enum class ChunkStreamId(val value: Int) {
     PROTOCOL_CONTROL(0x02), // Mandatory value the following could be dynamic
