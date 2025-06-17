@@ -26,7 +26,7 @@ kotlin {
         compilations.all {
             compileTaskProvider.configure {
                 compilerOptions {
-                    jvmTarget.set(JvmTarget.JVM_1_8)
+                    jvmTarget.set(JvmTarget.JVM_18)
                 }
             }
         }
@@ -68,7 +68,7 @@ kotlin {
 
 android {
     namespace = "io.github.thibaultbee.krtmp.flv"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         minSdk = 21
     }
