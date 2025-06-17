@@ -88,11 +88,11 @@ fun NaluRawSource(source: RawSource, byteCount: Int, headerSize: Int): NaluRawSo
 }
 
 /**
- * A [RawSourceWithSize] that represents a NAL unit.
+ * A [ReducedRawSource] that represents a NAL unit.
  *
  * The purpose of this class is to simplify the handling of frame data for AVC/H.264, HEVC/H.265.
  *
- * The [RawSourceWithSize] will be in the NAL unit in AVCC format.
+ * The [ReducedRawSource] will be in the NAL unit in AVCC format.
  *
  * To convert from other format such as AnnexB format (NAL unit with a start code 0x00000001) or no header, use other [NaluRawSource] builder.
  * methods.
@@ -103,7 +103,7 @@ fun NaluRawSource(source: RawSource, byteCount: Int, headerSize: Int): NaluRawSo
 class NaluRawSource
 internal constructor(
     val nalu: RawSource, val naluSize: Int
-) : RawSourceWithSize(
+) : ReducedRawSource(
     MultiRawSource(listOf(Buffer().apply { writeInt(naluSize) }, nalu)),
     naluSize + AVCC_HEADER_SIZE.toLong()
 )

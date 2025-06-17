@@ -136,8 +136,7 @@ internal constructor(
             VideoMediaType.SORENSON_H263, VideoMediaType.AVC
         )
     }
-
-
+    
     enum class AudioCodec(val value: Int, val mediaType: AudioMediaType?) {
         NONE(0x0001, null),
         ADPCM(0x0002, AudioMediaType.ADPCM),

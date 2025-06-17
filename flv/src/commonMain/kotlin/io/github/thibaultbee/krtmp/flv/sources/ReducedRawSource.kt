@@ -20,23 +20,23 @@ import kotlinx.io.RawSource
 import kotlin.math.min
 
 /**
- * A [RawSourceWithSize] from a [Buffer].
+ * A [ReducedRawSource] from a [Buffer].
  *
  * @param buffer the [Buffer] to wrap
  */
 fun RawSourceWithSize(buffer: Buffer) =
-    RawSourceWithSize(buffer, buffer.size)
+    ReducedRawSource(buffer, buffer.size)
 
 /**
- * A [RawSourceWithSize] from a [ByteArray].
+ * A [ReducedRawSource] from a [ByteArray].
  *
  * @param array the [ByteArray] to wrap
  */
 fun RawSourceWithSize(array: ByteArray) =
-    RawSourceWithSize(ByteArrayRawSource(array), array.size.toLong())
+    ReducedRawSource(ByteArrayRawSource(array), array.size.toLong())
 
 fun RawSourceWithSize(source: RawSource, byteCount: Int) =
-    RawSourceWithSize(source, byteCount.toLong())
+    ReducedRawSource(source, byteCount.toLong())
 
 /**
  * A [RawSource] with a [byteCount].
@@ -44,7 +44,7 @@ fun RawSourceWithSize(source: RawSource, byteCount: Int) =
  * @param source the [RawSource] to wrap.
  * @param byteCount the number of bytes to read in the [source]
  */
-open class RawSourceWithSize(internal val source: RawSource, internal val byteCount: Long) :
+open class ReducedRawSource(internal val source: RawSource, val byteCount: Long) :
     RawSource {
     private var bytesRead = 0L
 

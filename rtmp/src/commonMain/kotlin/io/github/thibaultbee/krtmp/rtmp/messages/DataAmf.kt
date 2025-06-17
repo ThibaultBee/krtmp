@@ -23,11 +23,11 @@ import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory
 import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
 import io.github.thibaultbee.krtmp.amf.elements.containers.amfContainerOf
 import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf.Companion.DATAAMF_SET_DATA_FRAME_NAME
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.util.RawSourcePayloadProvider
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.io.RawSource
-import kotlinx.io.buffered
 
 internal open class DataAmfMessage(
     messageStreamId: Int,
@@ -41,8 +41,7 @@ internal open class DataAmfMessage(
     messageStreamId = messageStreamId,
     timestamp = timestamp,
     messageType = messageType,
-    payload = payload,
-    payloadSize = payloadSize
+    payload = RawSourcePayloadProvider(payload, payloadSize)
 )
 
 internal fun SetDataFrame(

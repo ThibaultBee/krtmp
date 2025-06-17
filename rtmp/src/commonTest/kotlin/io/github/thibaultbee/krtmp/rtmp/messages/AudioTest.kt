@@ -15,7 +15,7 @@ class AudioTest {
         val expected = Resource("frames/audio/aac/raw/expected").toByteArray()
 
         val raw = Resource("frames/audio/aac/raw/raw").toByteArray()
-        val audio = Audio(0, 10, Buffer().apply { write(raw) }, raw.size)
+        val audio = Audio(0, 10, Buffer().apply { write(raw) })
 
         val writeChannel = ByteChannel(false)
 

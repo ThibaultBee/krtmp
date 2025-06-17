@@ -16,15 +16,80 @@
 package io.github.thibaultbee.krtmp.rtmp.messages
 
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.util.ByteArrayPayloadProvider
+import io.github.thibaultbee.krtmp.rtmp.util.PayloadProvider
+import io.github.thibaultbee.krtmp.rtmp.util.RawSourcePayloadProvider
+import io.github.thibaultbee.krtmp.rtmp.util.bufferPayloadProviderOf
+import kotlinx.io.Buffer
 import kotlinx.io.RawSource
-import kotlinx.io.buffered
 
-class Video internal constructor(
+/**
+ * Creates a video message with a [ByteArray] payload.
+ *
+ * @param timestamp The timestamp of the message.
+ * @param messageStreamId The stream ID of the message.
+ * @param payload The byte array containing the video data.
+ * @param chunkStreamId The chunk stream ID for this message, defaulting to the video channel.
+ */
+fun Video(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: ByteArray,
+    chunkStreamId: Int = ChunkStreamId.VIDEO_CHANNEL.value
+) = Video(
+    timestamp = timestamp,
+    messageStreamId = messageStreamId,
+    payload = ByteArrayPayloadProvider(payload),
+    chunkStreamId = chunkStreamId
+)
+
+/**
+ * Creates a video message with a [RawSource] payload.
+ *
+ * @param timestamp The timestamp of the message.
+ * @param messageStreamId The stream ID of the message.
+ * @param payload The raw source containing the video data.
+ * @param payloadSize The size of the payload in bytes.
+ * @param chunkStreamId The chunk stream ID for this message, defaulting to the video channel.
+ */
+fun Video(
     timestamp: Int,
     messageStreamId: Int,
     payload: RawSource,
     payloadSize: Int,
+    chunkStreamId: Int = ChunkStreamId.VIDEO_CHANNEL.value
+) = Video(
+    timestamp = timestamp,
+    messageStreamId = messageStreamId,
+    payload = RawSourcePayloadProvider(payload, payloadSize),
+    chunkStreamId = chunkStreamId
+)
+
+/**
+ * Creates a video message with a [Buffer] payload.
+ *
+ * @param timestamp The timestamp of the message.
+ * @param messageStreamId The stream ID of the message.
+ * @param payload The buffer containing the video data.
+ * @param chunkStreamId The chunk stream ID for this message, defaulting to the video channel.
+ */
+fun Video(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: Buffer,
+    chunkStreamId: Int = ChunkStreamId.VIDEO_CHANNEL.value
+) = Video(
+    timestamp = timestamp,
+    messageStreamId = messageStreamId,
+    payload = bufferPayloadProviderOf(payload),
+    chunkStreamId = chunkStreamId
+)
+
+class Video internal constructor(
+    timestamp: Int,
+    messageStreamId: Int,
+    payload: PayloadProvider,
     chunkStreamId: Int = ChunkStreamId.VIDEO_CHANNEL.value
 ) :
     Message(
@@ -32,8 +97,7 @@ class Video internal constructor(
         messageStreamId = messageStreamId,
         timestamp = timestamp,
         messageType = MessageType.VIDEO,
-        payload = payload,
-        payloadSize = payloadSize
+        payload = payload
     ) {
     override fun toString(): String {
         return "Video(timestamp=$timestamp, messageStreamId=$messageStreamId, payload=$payload)"
@@ -41,4 +105,4 @@ class Video internal constructor(
 }
 
 fun Video.decode() =
-    VideoData.decode(payload.buffered(), payloadSize, false)
+    VideoData.decode(payload.buffered(), payload.size, false)

@@ -6,7 +6,7 @@ import kotlinx.io.readByteArray
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 
-class RawSourceWithSizeTest {
+class ReducedRawSourceTest {
     @Test
     fun `test readAtMostTo with size is equal to buffer size`() {
         val expected = byteArrayOf(0x01, 0x02, 0x03, 0x04)

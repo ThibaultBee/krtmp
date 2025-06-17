@@ -29,7 +29,7 @@ import io.github.thibaultbee.krtmp.flv.tags.readBuffer
 import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
-import io.github.thibaultbee.krtmp.rtmp.chunk.Chunk
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpAppOrNull
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpStreamKey
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpTcUrl
@@ -62,6 +62,7 @@ import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
 import io.github.thibaultbee.krtmp.rtmp.messages.command.NetConnectionResultObject
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ObjectEncoding
 import io.github.thibaultbee.krtmp.rtmp.messages.command.StreamPublishType
+import io.github.thibaultbee.krtmp.rtmp.messages.extensions.createChunks
 import io.github.thibaultbee.krtmp.rtmp.util.MessagesManager
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublish
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelError
@@ -580,7 +581,7 @@ internal class RtmpConnection internal constructor(
                 chunks += message.createChunks(writeChunkSize, previousMessage)
             }
         }
-        val length = chunks.sumOf { it.size }
+        val length = chunks.sumOf { it.size.toLong() }
         connection.write(length) { writeChannel ->
             chunks.write(writeChannel)
         }
@@ -606,7 +607,7 @@ internal class RtmpConnection internal constructor(
     suspend fun writeMessage(message: Message) {
         messagesManager.getPreviousWrittenMessage(message) { previousMessage ->
             val chunks = message.createChunks(writeChunkSize, previousMessage)
-            val length = chunks.sumOf { it.size }
+            val length = chunks.sumOf { it.size.toLong() }
             connection.write(length) { writeChannel ->
                 chunks.write(writeChannel)
             }

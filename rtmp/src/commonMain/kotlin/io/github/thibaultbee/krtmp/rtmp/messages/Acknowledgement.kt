@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.rtmp.chunk.ChunkStreamId
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import kotlinx.io.Buffer
 
 internal fun Acknowledgement(timestamp: Int, chunkStreamId: Int, payload: Buffer) =

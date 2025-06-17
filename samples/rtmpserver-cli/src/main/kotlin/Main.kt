@@ -19,13 +19,8 @@ import io.github.thibaultbee.krtmp.rtmp.messages.decode
 import io.github.thibaultbee.krtmp.rtmp.server.RtmpServer
 import io.github.thibaultbee.krtmp.rtmp.server.RtmpServerCallback
 import io.github.thibaultbee.krtmp.rtmp.util.AmfUtil.amf
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class RTMPServerCli : SuspendingCliktCommand() {
-    private val decoderScope = CoroutineScope(Dispatchers.Default)
-
     init {
         KrtmpLogger.logger = EchoLogger()
     }
@@ -99,17 +94,11 @@ class RTMPServerCli : SuspendingCliktCommand() {
             }
 
             override fun onAudio(audio: Audio) {
-                // Dispatch the audio data to a coroutine for decoding to avoid blocking the server thread
-                decoderScope.launch {
-                    echo("Audio data received: ${audio.decode()}")
-                }
+                echo("Audio data received: ${audio.decode()}")
             }
 
             override fun onVideo(video: Video) {
-                // Dispatch the video data to a coroutine for decoding to avoid blocking the server thread
-                decoderScope.launch {
-                    echo("Video data received: ${video.decode()}")
-                }
+                echo("Video data received: ${video.decode()}")
             }
 
             override fun onUnknownMessage(message: Message) {
