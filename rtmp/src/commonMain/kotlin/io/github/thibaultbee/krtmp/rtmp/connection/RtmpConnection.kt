@@ -20,7 +20,7 @@ import io.github.thibaultbee.krtmp.amf.elements.containers.AmfObject
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
-import io.github.thibaultbee.krtmp.flv.sources.ByteArrayRawSource
+import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
@@ -29,7 +29,6 @@ import io.github.thibaultbee.krtmp.flv.tags.readBuffer
 import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
-import io.github.thibaultbee.krtmp.rtmp.messages.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpAppOrNull
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpStreamKey
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpTcUrl
@@ -58,11 +57,12 @@ import io.github.thibaultbee.krtmp.rtmp.messages.SetPeerBandwidth
 import io.github.thibaultbee.krtmp.rtmp.messages.UserControl
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
 import io.github.thibaultbee.krtmp.rtmp.messages.WindowAcknowledgementSize
+import io.github.thibaultbee.krtmp.rtmp.messages.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
 import io.github.thibaultbee.krtmp.rtmp.messages.command.NetConnectionResultObject
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ObjectEncoding
 import io.github.thibaultbee.krtmp.rtmp.messages.command.StreamPublishType
-import io.github.thibaultbee.krtmp.rtmp.messages.extensions.createChunks
+import io.github.thibaultbee.krtmp.rtmp.messages.createChunks
 import io.github.thibaultbee.krtmp.rtmp.util.MessagesManager
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublish
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelError
@@ -451,7 +451,7 @@ internal class RtmpConnection internal constructor(
             settings.amfVersion,
             messageStreamId,
             settings.clock.nowInMs,
-            ByteArrayRawSource(onMetadata),
+            ByteArrayBackedRawSource(onMetadata),
             onMetadata.size
         )
         return writeMessage(dataFrameDataAmf)
@@ -489,7 +489,7 @@ internal class RtmpConnection internal constructor(
      * @param array the audio frame to write
      */
     suspend fun writeAudio(timestamp: Int, array: ByteArray) =
-        writeAudio(timestamp, ByteArrayRawSource(array), array.size)
+        writeAudio(timestamp, ByteArrayBackedRawSource(array), array.size)
 
     /**
      * Writes a video frame.
@@ -500,7 +500,7 @@ internal class RtmpConnection internal constructor(
      * @param array the video frame to write
      */
     suspend fun writeVideo(timestamp: Int, array: ByteArray) =
-        writeVideo(timestamp, ByteArrayRawSource(array), array.size)
+        writeVideo(timestamp, ByteArrayBackedRawSource(array), array.size)
 
     /**
      * Writes an audio frame.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Thibault B.
+ * Copyright (C) 2025 Thibault B.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,41 +17,36 @@ package io.github.thibaultbee.krtmp.flv.sources
 
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
-import kotlin.math.min
+import kotlinx.io.write
+import java.nio.ByteBuffer
 
 /**
- * A [RawSource] that reads from a [ByteArray].
+ * A [RawSource] that reads from a [ByteBuffer].
+ *
+ * @param buffer the [ByteBuffer] to wrap
  */
-class ByteArrayRawSource(private val array: ByteArray, startIndex: Long = 0) : RawSource {
-    private var position = startIndex
-    private val size = array.size.toLong()
-
-    val isExhausted: Boolean
-        get() = position >= (size - 1)
-
-    private fun checkBounds(index: Long, byteCount: Long) {
+class ByteBufferBackedRawSource(private val buffer: ByteBuffer) : RawSource {
+    override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         if (byteCount < 0) {
             throw IllegalArgumentException("byteCount < 0: $byteCount")
         }
-        if (index < 0) {
-            throw IndexOutOfBoundsException()
-        }
-    }
 
-    override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
-        checkBounds(position, byteCount)
-
-        if (isExhausted) {
+        if (!buffer.hasRemaining()) {
             return -1
         }
 
-        val clampedByteCount = min(size - position, position + byteCount)
-        sink.write(array, position.toInt(), (position + clampedByteCount).toInt())
-        position += clampedByteCount.toInt()
-        return clampedByteCount
+        val bytesToRead = minOf(byteCount, buffer.remaining().toLong())
+        val previousLimit = buffer.limit()
+        buffer.limit(buffer.position() + bytesToRead.toInt())
+
+        sink.write(buffer)
+
+        buffer.limit(previousLimit)
+        return bytesToRead
     }
 
     override fun close() {
         // Nothing to do
     }
+
 }

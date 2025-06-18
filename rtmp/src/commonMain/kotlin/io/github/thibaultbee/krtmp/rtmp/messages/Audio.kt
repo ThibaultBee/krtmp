@@ -15,14 +15,12 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
+import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
-import io.github.thibaultbee.krtmp.rtmp.util.ByteArrayPayloadProvider
-import io.github.thibaultbee.krtmp.rtmp.util.PayloadProvider
-import io.github.thibaultbee.krtmp.rtmp.util.RawSourcePayloadProvider
-import io.github.thibaultbee.krtmp.rtmp.util.bufferPayloadProviderOf
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
+import kotlinx.io.buffered
 
 /**
  * Creates an audio message with a [ByteArray] payload.
@@ -40,29 +38,8 @@ fun Audio(
 ) = Audio(
     timestamp = timestamp,
     messageStreamId = messageStreamId,
-    payload = ByteArrayPayloadProvider(payload),
-    chunkStreamId = chunkStreamId
-)
-
-/**
- * Creates an audio message with a [RawSource] payload.
- *
- * @param timestamp The timestamp of the message.
- * @param messageStreamId The stream ID of the message.
- * @param payload The raw source containing the audio data.
- * @param payloadSize The size of the payload in bytes.
- * @param chunkStreamId The chunk stream ID for this message, defaulting to the audio channel.
- */
-fun Audio(
-    timestamp: Int,
-    messageStreamId: Int,
-    payload: RawSource,
-    payloadSize: Int,
-    chunkStreamId: Int = ChunkStreamId.AUDIO_CHANNEL.value
-) = Audio(
-    timestamp = timestamp,
-    messageStreamId = messageStreamId,
-    payload = RawSourcePayloadProvider(payload, payloadSize),
+    payload = ByteArrayBackedRawSource(payload),
+    payloadSize = payload.size,
     chunkStreamId = chunkStreamId
 )
 
@@ -72,6 +49,7 @@ fun Audio(
  * @param timestamp The timestamp of the message.
  * @param messageStreamId The stream ID of the message.
  * @param payload The buffer containing the audio data.
+ * @param payloadSize The size of the payload in bytes.
  * @param chunkStreamId The chunk stream ID for this message, defaulting to the audio channel.
  */
 fun Audio(
@@ -82,7 +60,8 @@ fun Audio(
 ) = Audio(
     timestamp = timestamp,
     messageStreamId = messageStreamId,
-    payload = bufferPayloadProviderOf(payload),
+    payload = payload,
+    payloadSize = payload.size.toInt(),
     chunkStreamId = chunkStreamId
 )
 
@@ -97,7 +76,8 @@ fun Audio(
 class Audio internal constructor(
     timestamp: Int,
     messageStreamId: Int,
-    payload: PayloadProvider,
+    payload: RawSource,
+    payloadSize: Int,
     chunkStreamId: Int = ChunkStreamId.AUDIO_CHANNEL.value
 ) :
     Message(
@@ -105,7 +85,8 @@ class Audio internal constructor(
         messageStreamId = messageStreamId,
         timestamp = timestamp,
         messageType = MessageType.AUDIO,
-        payload = payload
+        payload = payload,
+        payloadSize = payloadSize,
     ) {
     override fun toString(): String {
         return "Audio(timestamp=$timestamp, messageStreamId=$messageStreamId, payload=$payload)"
@@ -114,4 +95,4 @@ class Audio internal constructor(
 
 
 fun Audio.decode() =
-    AudioData.decode(payload.buffered(), payload.size, false)
+    AudioData.decode(payload.buffered(), payloadSize, false)

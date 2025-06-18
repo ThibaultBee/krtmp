@@ -32,14 +32,14 @@ private const val AVCC_HEADER_SIZE = 4
 fun NaluRawSource(array: ByteArray): NaluRawSource {
     if (array.isAvcc) {
         return NaluRawSource(
-            ByteArrayRawSource(array, AVCC_HEADER_SIZE.toLong()), array.size - AVCC_HEADER_SIZE
+            ByteArrayBackedRawSource(array, AVCC_HEADER_SIZE.toLong()), array.size - AVCC_HEADER_SIZE
         )
     }
 
     // Convert AnnexB start code to AVCC format
     val startCodeSize = array.startCodeSize
     return NaluRawSource(
-        ByteArrayRawSource(array, startCodeSize.toLong()), array.size - startCodeSize
+        ByteArrayBackedRawSource(array, startCodeSize.toLong()), array.size - startCodeSize
     )
 }
 

@@ -33,7 +33,7 @@ fun RawSourceWithSize(buffer: Buffer) =
  * @param array the [ByteArray] to wrap
  */
 fun RawSourceWithSize(array: ByteArray) =
-    ReducedRawSource(ByteArrayRawSource(array), array.size.toLong())
+    ReducedRawSource(ByteArrayBackedRawSource(array), array.size.toLong())
 
 fun RawSourceWithSize(source: RawSource, byteCount: Int) =
     ReducedRawSource(source, byteCount.toLong())

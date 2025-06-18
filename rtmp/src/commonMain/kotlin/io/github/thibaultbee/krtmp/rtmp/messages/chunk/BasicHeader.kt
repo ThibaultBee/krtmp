@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.chunk
+package io.github.thibaultbee.krtmp.rtmp.messages.chunk
 
-import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.extensions.shl
 import io.github.thibaultbee.krtmp.rtmp.extensions.shr
 import io.ktor.utils.io.ByteReadChannel

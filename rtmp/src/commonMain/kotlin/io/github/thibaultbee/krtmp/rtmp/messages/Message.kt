@@ -15,6 +15,8 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
+import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
+import io.github.thibaultbee.krtmp.flv.sources.ReducedRawSource
 import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
 import io.github.thibaultbee.krtmp.rtmp.extensions.readFully
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.BasicHeader
@@ -24,14 +26,10 @@ import io.github.thibaultbee.krtmp.rtmp.messages.chunk.MessageHeader0
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.MessageHeader1
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.MessageHeader2
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.MessageHeader3
-import io.github.thibaultbee.krtmp.rtmp.messages.chunk.chunkDataOf
-import io.github.thibaultbee.krtmp.rtmp.messages.extensions.createChunks
-import io.github.thibaultbee.krtmp.rtmp.util.ByteArrayPayloadProvider
-import io.github.thibaultbee.krtmp.rtmp.util.PayloadProvider
-import io.github.thibaultbee.krtmp.rtmp.util.bufferPayloadProviderOf
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.io.Buffer
+import kotlinx.io.RawSource
 import kotlin.math.min
 
 sealed class Message(
@@ -39,8 +37,11 @@ sealed class Message(
     val messageStreamId: Int,
     val timestamp: Int,
     val messageType: MessageType,
-    val payload: PayloadProvider,
+    val payload: RawSource,
+    val payloadSize: Int
 ) {
+    private var readPayloadSize: Int = 0
+
     init {
         require(timestamp >= 0) { "Timestamp must be positive but $timestamp" }
     }
@@ -56,27 +57,12 @@ sealed class Message(
         messageStreamId = messageStreamId,
         timestamp = timestamp,
         messageType = messageType,
-        payload = bufferPayloadProviderOf(payload)
-    )
-
-    constructor(
-        chunkStreamId: Int,
-        messageStreamId: Int,
-        timestamp: Int,
-        messageType: MessageType,
-        payload: ByteArray,
-        offset: Int = 0,
-        length: Int = payload.size - offset
-    ) : this(
-        chunkStreamId = chunkStreamId,
-        messageStreamId = messageStreamId,
-        timestamp = timestamp,
-        messageType = messageType,
-        payload = ByteArrayPayloadProvider(payload, offset, length)
+        payload = payload,
+        payloadSize = payload.size.toInt()
     )
 
     override fun toString(): String {
-        return "Message(chunkStreamId=$chunkStreamId, messageStreamId=$messageStreamId, timestamp=$timestamp, messageType=$messageType, payloadSize=${payload.size})"
+        return "Message(chunkStreamId=$chunkStreamId, messageStreamId=$messageStreamId, timestamp=$timestamp, messageType=$messageType, payloadSize=$payloadSize)"
     }
 
     internal suspend fun write(
@@ -86,12 +72,10 @@ sealed class Message(
     ): Int {
         val chunks = createChunks(chunkSize, previousMessage)
         chunks.forEach { it.write(writeChannel) }
-        return payload.size
+        return payloadSize
     }
 
     companion object {
-        private const val TAG = "Message"
-
         /**
          * Reads a message from input stream.
          * For test purpose only.
@@ -122,16 +106,16 @@ sealed class Message(
             val messageLength = when (messageHeader) {
                 is MessageHeader0 -> messageHeader.messageLength
                 is MessageHeader1 -> messageHeader.messageLength
-                is MessageHeader2 -> previousMessage?.payload?.size
+                is MessageHeader2 -> previousMessage?.payloadSize
                     ?: throw IllegalArgumentException("Header2: Previous message with $chunkStreamId must not be null")
 
-                is MessageHeader3 -> previousMessage?.payload?.size
+                is MessageHeader3 -> previousMessage?.payloadSize
                     ?: throw IllegalArgumentException("Header3: Previous message with $chunkStreamId must not be null")
             }
             require(messageLength > 0) { "Message length must be greater than 0 but is $messageLength" }
 
             channel.readFully(payload, min(messageLength, chunkSize))
-            val firstChunk = Chunk(basicHeader, messageHeader, chunkDataOf(payload))
+            val firstChunk = Chunk(basicHeader, messageHeader, payload)
 
             val messageType = when (firstChunk.messageHeader) {
                 is MessageHeader0 -> firstChunk.messageHeader.messageType
@@ -233,7 +217,8 @@ sealed class Message(
                     chunkStreamId = chunkStreamId,
                     messageStreamId = messageStreamId,
                     timestamp = timestamp,
-                    payload = payload
+                    payload = payload,
+                    payloadSize = payload.size.toInt()
                 )
 
                 MessageType.AUDIO -> Audio(
@@ -251,3 +236,76 @@ sealed class Message(
         }
     }
 }
+
+
+private fun Message.buildHeader0(): MessageHeader0 {
+    return MessageHeader0(
+        timestamp = timestamp,
+        messageLength = payloadSize,
+        messageType = messageType,
+        messageStreamId = messageStreamId
+    )
+}
+
+private fun Message.buildFirstHeader(previousMessage: Message?): MessageHeader {
+    return if (previousMessage == null) {
+        buildHeader0()
+    } else {
+        if (previousMessage.timestamp > timestamp) {
+            KrtmpLogger.w(
+                TAG,
+                "Timestamps are not in order. Previous: ${previousMessage.timestamp}, current: $timestamp"
+            )
+            buildHeader0() // Force header 0 when timestamp are not in order
+        } else
+            if (previousMessage.messageStreamId == messageStreamId) {
+                if ((previousMessage.messageType == messageType) && (previousMessage.payloadSize == payloadSize)) {
+                    MessageHeader2(timestampDelta = timestamp - previousMessage.timestamp)
+                } else {
+                    MessageHeader1(
+                        timestampDelta = timestamp - previousMessage.timestamp,
+                        messageLength = payloadSize,
+                        messageType = messageType
+                    )
+                }
+            } else {
+                buildHeader0()
+            }
+    }
+}
+
+/**
+ * Creates chunks from message payload.
+ */
+internal fun Message.createChunks(chunkSize: Int, previousMessage: Message?): List<Chunk> {
+    val chunks = mutableListOf<Chunk>()
+
+    val header = buildFirstHeader(previousMessage)
+    val firstChunkPayloadSize = minOf(chunkSize, payloadSize)
+    chunks.add(
+        Chunk(
+            chunkStreamId,
+            header,
+            ReducedRawSource(payload, firstChunkPayloadSize.toLong()),
+            firstChunkPayloadSize
+        )
+    )
+
+    var remainingSize = payloadSize - firstChunkPayloadSize
+    while (remainingSize > 0) {
+        val chunkPayloadSize = minOf(chunkSize, remainingSize)
+        chunks.add(
+            Chunk(
+                chunkStreamId,
+                MessageHeader3(),
+                ReducedRawSource(payload, chunkPayloadSize.toLong()),
+                chunkPayloadSize
+            )
+        )
+        remainingSize -= chunkPayloadSize
+    }
+
+    return chunks
+}
+
+private const val TAG = "Message"

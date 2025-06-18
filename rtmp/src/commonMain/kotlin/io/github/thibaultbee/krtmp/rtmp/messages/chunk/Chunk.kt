@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.chunk
+package io.github.thibaultbee.krtmp.rtmp.messages.chunk
 
 import io.github.thibaultbee.krtmp.rtmp.extensions.readFully
 import io.ktor.utils.io.ByteReadChannel
@@ -21,7 +21,37 @@ import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.writeBuffer
 import io.ktor.utils.io.writeInt
 import kotlinx.io.Buffer
+import kotlinx.io.RawSource
 import kotlin.math.min
+
+/**
+ * Creates a chunk with a [Buffer] payload.
+ */
+internal fun Chunk(
+    basicHeader: BasicHeader,
+    messageHeader: MessageHeader,
+    data: Buffer
+) = Chunk(
+    basicHeader,
+    messageHeader,
+    data,
+    data.size.toInt()
+)
+
+/**
+ * Creates a chunk with a [RawSource] payload.
+ */
+internal fun Chunk(
+    chunkStreamId: Number,
+    messageHeader: MessageHeader,
+    data: RawSource,
+    dataSize: Int
+) = Chunk(
+    BasicHeader(messageHeader.type, chunkStreamId),
+    messageHeader,
+    data,
+    dataSize
+)
 
 /**
  * RTMP chunk
@@ -29,29 +59,20 @@ import kotlin.math.min
 internal class Chunk(
     val basicHeader: BasicHeader,
     val messageHeader: MessageHeader,
-    val data: Buffer
+    val data: RawSource,
+    val dataSize: Int
 ) {
     private val extendedTimestamp = messageHeader.extendedTimestamp
 
     val size =
         basicHeader.size + messageHeader.size + (extendedTimestamp?.let { 4 }
-            ?: 0) + data.size
+            ?: 0) + dataSize
 
     init {
         if (extendedTimestamp != null) {
             require(extendedTimestamp >= MessageHeader.TIMESTAMP_EXTENDED) { "Extended timestamp must be greater than ${MessageHeader.TIMESTAMP_EXTENDED}" }
         }
     }
-
-    constructor(
-        chunkStreamId: Number,
-        messageHeader: MessageHeader,
-        data: Buffer
-    ) : this(
-        BasicHeader(messageHeader.type, chunkStreamId),
-        messageHeader,
-        data
-    )
 
     suspend fun write(channel: ByteWriteChannel) {
         basicHeader.write(channel)

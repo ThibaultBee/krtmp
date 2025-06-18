@@ -13,7 +13,7 @@ import io.github.thibaultbee.krtmp.flv.decodeAllRaw
 import io.github.thibaultbee.krtmp.rtmp.client.RtmpClient
 import kotlinx.io.files.Path
 
-class RTMPServerCli : SuspendingCliktCommand() {
+class RTMPClientCli : SuspendingCliktCommand() {
     init {
         KrtmpLogger.logger = EchoLogger()
     }
@@ -105,4 +105,4 @@ class RTMPServerCli : SuspendingCliktCommand() {
     }
 }
 
-suspend fun main(args: Array<String>) = RTMPServerCli().main(args)
+suspend fun main(args: Array<String>) = RTMPClientCli().main(args)

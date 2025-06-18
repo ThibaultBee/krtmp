@@ -9,11 +9,11 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-class ByteArrayRawSourceTest {
+class ByteArrayBackedRawSourceTest {
     @Test
     fun `read from empty source`() {
         val byteArray = byteArrayOf()
-        val byteArrayRawSource = ByteArrayRawSource(byteArray)
+        val byteArrayRawSource = ByteArrayBackedRawSource(byteArray)
         val buffer = Buffer()
 
         val size = byteArrayRawSource.readAtMostTo(buffer, 4)
@@ -25,7 +25,7 @@ class ByteArrayRawSourceTest {
     @Test
     fun `read from source`() {
         val byteArray = byteArrayOf(0x01, 0x02, 0x03, 0x04)
-        val byteArrayRawSource = ByteArrayRawSource(byteArray)
+        val byteArrayRawSource = ByteArrayBackedRawSource(byteArray)
 
         var buffer = Buffer()
         var size = byteArrayRawSource.readAtMostTo(buffer, 2)
@@ -43,7 +43,7 @@ class ByteArrayRawSourceTest {
     @Test
     fun `read from exhausted source`() {
         val byteArray = byteArrayOf(0x01, 0x02, 0x03, 0x04)
-        val byteArrayRawSource = ByteArrayRawSource(byteArray)
+        val byteArrayRawSource = ByteArrayBackedRawSource(byteArray)
         val buffer = Buffer()
 
         byteArrayRawSource.readAtMostTo(buffer, 4)
@@ -54,7 +54,7 @@ class ByteArrayRawSourceTest {
     @Test
     fun `read above source size`() {
         val byteArray = byteArrayOf(0x01, 0x02, 0x03, 0x04)
-        val byteArrayRawSource = ByteArrayRawSource(byteArray)
+        val byteArrayRawSource = ByteArrayBackedRawSource(byteArray)
         val buffer = Buffer()
 
         val size = byteArrayRawSource.readAtMostTo(buffer, 5)
@@ -66,7 +66,7 @@ class ByteArrayRawSourceTest {
     @Test
     fun `byte count out of range test`() {
         val byteArray = byteArrayOf(0x01, 0x02, 0x03, 0x04)
-        val byteArrayRawSource = ByteArrayRawSource(byteArray)
+        val byteArrayRawSource = ByteArrayBackedRawSource(byteArray)
         val buffer = Buffer()
         try {
             byteArrayRawSource.readAtMostTo(buffer, -1)

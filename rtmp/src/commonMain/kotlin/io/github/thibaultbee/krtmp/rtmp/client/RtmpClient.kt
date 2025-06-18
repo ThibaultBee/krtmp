@@ -16,7 +16,7 @@
 package io.github.thibaultbee.krtmp.rtmp.client
 
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
-import io.github.thibaultbee.krtmp.flv.sources.ByteArrayRawSource
+import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
@@ -183,7 +183,7 @@ class RtmpClient internal constructor(
      * @param onMetadata the on metadata to send
      */
     suspend fun writeSetDataFrame(onMetadata: ByteArray) = connection.writeSetDataFrame(
-        ByteArrayRawSource(onMetadata), onMetadata.size
+        ByteArrayBackedRawSource(onMetadata), onMetadata.size
     )
 
     /**
