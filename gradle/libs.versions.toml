@@ -1,5 +1,5 @@
 [versions]
-agp = "8.10.1"
+agp = "8.11.0"
 clikt = "5.0.3"
 flexMessagingCore = "4.8.0"
 kotlin = "2.1.21"
