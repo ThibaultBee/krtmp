@@ -2,7 +2,7 @@
 agp = "8.10.1"
 clikt = "5.0.3"
 flexMessagingCore = "4.8.0"
-kotlin = "2.1.21"
+kotlin = "2.2.0"
 dokka = "2.0.0"
 kotlinxCoroutines = "1.10.2"
 kotlinxDatetime = "0.6.2"
