@@ -26,7 +26,9 @@ import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
 import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
+import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
 import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
+import io.github.thibaultbee.krtmp.flv.tags.script.ScriptDataObject
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpAppOrNull
@@ -468,7 +470,7 @@ internal class RtmpConnection internal constructor(
      *
      * @param metadata the on metadata to send
      */
-    suspend fun writeSetDataFrame(metadata: OnMetadata.Metadata) {
+    suspend fun writeSetDataFrame(metadata: Metadata) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -894,7 +896,7 @@ internal suspend fun RtmpConnection.write(timestampMs: Int, data: FLVData) {
             timestampMs, rawSource, size
         )
 
-        is OnMetadata -> {
+        is ScriptDataObject -> {
             writeSetDataFrame(
                 rawSource, size
             )

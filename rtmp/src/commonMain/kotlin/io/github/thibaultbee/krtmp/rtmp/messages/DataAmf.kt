@@ -22,7 +22,7 @@ import io.github.thibaultbee.krtmp.amf.elements.AmfElement
 import io.github.thibaultbee.krtmp.amf.elements.AmfElementFactory
 import io.github.thibaultbee.krtmp.amf.elements.AmfPrimitive
 import io.github.thibaultbee.krtmp.amf.elements.containers.amfContainerOf
-import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
+import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf.Companion.DATAAMF_SET_DATA_FRAME_NAME
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import io.ktor.utils.io.ByteWriteChannel
@@ -142,7 +142,7 @@ open class DataAmf(
 fun SetDataFrame(
     messageStreamId: Int,
     timestamp: Int,
-    metadata: OnMetadata.Metadata,
+    metadata: Metadata,
 ) =
     DataAmf(
         messageStreamId,

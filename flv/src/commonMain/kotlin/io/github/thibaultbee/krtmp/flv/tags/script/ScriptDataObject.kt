@@ -28,6 +28,24 @@ import kotlinx.io.Sink
 import kotlinx.io.Source
 
 /**
+ * Create a script tag for metadata.
+ *
+ * @param metadata metadata to encode.
+ */
+fun OnMetadata(metadata: Metadata) = OnMetadata(
+    value = metadata.encode()
+)
+
+/**
+ * Script tag for metadata.
+ *
+ * @param value AMF ECMA array containing metadata.
+ */
+fun OnMetadata(
+    value: AmfEcmaArray
+) = ScriptDataObject(ScriptDataObject.ON_METADATA, value)
+
+/**
  * Script tag
  *
  * @param name method or object name
@@ -61,10 +79,7 @@ open class ScriptDataObject(
             val name = container[0] as AmfString
             val value = container[1]
 
-            return when (name.value) {
-                ON_METADATA -> OnMetadata(value as AmfEcmaArray)
-                else -> ScriptDataObject(name.value, value)
-            }
+            return ScriptDataObject(name.value, value)
         }
 
         internal const val ON_METADATA = "onMetaData"

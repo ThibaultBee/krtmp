@@ -6,16 +6,15 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.arguments.argument
 import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfContainer
-import io.github.thibaultbee.krtmp.amf.elements.containers.AmfEcmaArray
 import io.github.thibaultbee.krtmp.common.logger.IKrtmpLogger
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
-import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
+import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
 import io.github.thibaultbee.krtmp.rtmp.messages.Audio
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
-import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
+import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject
 import io.github.thibaultbee.krtmp.rtmp.messages.decode
 import io.github.thibaultbee.krtmp.rtmp.server.RtmpServer
 import io.github.thibaultbee.krtmp.rtmp.server.RtmpServerCallback
@@ -88,7 +87,7 @@ class RTMPServerCli : SuspendingCliktCommand() {
                 val parameters = setDataFrame.parameters
                 // Deserialize the onMetadata object
                 if ((parameters is AmfContainer) && (parameters.size >= 2)) {
-                    val onMetadata = OnMetadata.Metadata.decode(parameters[1] as AmfEcmaArray)
+                    val onMetadata = Metadata(parameters[1])
                     echo("onMetadata: $onMetadata")
                 }
             }
