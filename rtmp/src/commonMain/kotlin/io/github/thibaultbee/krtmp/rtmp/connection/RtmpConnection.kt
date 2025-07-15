@@ -27,7 +27,6 @@ import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
 import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
 import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
-import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.flv.tags.script.ScriptDataObject
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
@@ -153,7 +152,7 @@ internal class RtmpConnection internal constructor(
     /**
      * Sets the write chunk size.
      *
-     * The default value is [RtmpConfiguration.DEFAULT_CHUNK_SIZE].
+     * The default value is [RtmpSettings.DEFAULT_CHUNK_SIZE].
      *
      * @param chunkSize the write chunk size
      */
@@ -404,7 +403,7 @@ internal class RtmpConnection internal constructor(
      *
      * It is a server command.
      *
-     * @param tcUrlString the URL to reconnect to
+     * @param tcUrl the URL to reconnect to
      * @param description a description of the reconnect request
      */
     suspend fun reconnectRequest(
@@ -463,7 +462,7 @@ internal class RtmpConnection internal constructor(
     }
 
     /**
-     * Writes the SetDataFrame from [OnMetadata.Metadata].
+     * Writes the SetDataFrame from [Metadata].
      * It must be called after [publish] and before sending audio or video frames.
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].

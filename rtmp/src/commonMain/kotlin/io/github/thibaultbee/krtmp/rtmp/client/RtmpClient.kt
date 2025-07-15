@@ -167,7 +167,7 @@ class RtmpClient internal constructor(
     override fun close() = connection.close()
 
     /**
-     * Writes the SetDataFrame from [OnMetadata.Metadata].
+     * Writes the SetDataFrame from [Metadata].
      * It must be called after [publish] and before sending audio or video frames.
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
