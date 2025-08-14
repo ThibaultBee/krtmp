@@ -16,7 +16,7 @@
 package io.github.thibaultbee.krtmp.rtmp.messages
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
+import io.github.thibaultbee.krtmp.rtmp.RtmpConstants
 import io.ktor.utils.io.ByteWriteChannel
 
 interface AmfMessage {
@@ -25,7 +25,7 @@ interface AmfMessage {
     suspend fun write(
         writeChannel: ByteWriteChannel,
         amfVersion: AmfVersion,
-        chunkSize: Int = RtmpConfiguration.DEFAULT_CHUNK_SIZE,
+        chunkSize: Int = RtmpConstants.MIN_CHUNK_SIZE,
         previousMessage: Message? = null
     ): Int
 }

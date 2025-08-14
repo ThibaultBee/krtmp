@@ -30,6 +30,7 @@ import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
 import io.github.thibaultbee.krtmp.flv.tags.script.ScriptDataObject
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
+import io.github.thibaultbee.krtmp.rtmp.RtmpConstants
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpAppOrNull
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpStreamKey
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpTcUrl
@@ -157,6 +158,9 @@ internal class RtmpConnection internal constructor(
      * @param chunkSize the write chunk size
      */
     suspend fun setWriteChunkSize(chunkSize: Int) {
+        require(chunkSize in RtmpConstants.chunkSizeRange) {
+            "Chunk size must be in range ${RtmpConstants.chunkSizeRange}, but was $chunkSize"
+        }
         if (writeChunkSize != chunkSize) {
             val setChunkSize = SetChunkSize(settings.clock.nowInMs, chunkSize)
             writeMessage(setChunkSize)
@@ -712,7 +716,11 @@ internal class RtmpConnection internal constructor(
             }
 
             is SetChunkSize -> {
-                readChunkSize = message.chunkSize
+                if (message.chunkSize in RtmpConstants.chunkSizeRange) {
+                    readChunkSize = message.chunkSize
+                } else {
+                    KrtmpLogger.e(TAG, "Invalid chunk size: ${message.chunkSize}")
+                }
             }
 
             is SetPeerBandwidth -> {

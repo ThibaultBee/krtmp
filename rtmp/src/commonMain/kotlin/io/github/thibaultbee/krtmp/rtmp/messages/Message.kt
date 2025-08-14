@@ -17,7 +17,7 @@ package io.github.thibaultbee.krtmp.rtmp.messages
 
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.sources.RawSourceWithSize
-import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
+import io.github.thibaultbee.krtmp.rtmp.RtmpConstants
 import io.github.thibaultbee.krtmp.rtmp.extensions.readFully
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.BasicHeader
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.Chunk
@@ -65,7 +65,7 @@ sealed class Message(
 
     internal suspend fun write(
         writeChannel: ByteWriteChannel,
-        chunkSize: Int = RtmpConfiguration.DEFAULT_CHUNK_SIZE,
+        chunkSize: Int = RtmpConstants.MIN_CHUNK_SIZE,
         previousMessage: Message? = null
     ): Int {
         val chunks = createChunks(chunkSize, previousMessage)

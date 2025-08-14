@@ -15,11 +15,19 @@
  */
 package io.github.thibaultbee.krtmp.rtmp
 
-object RtmpConfiguration {
+object RtmpConstants {
     /**
-     * The default chunk size used for RTMP connections.
-     * This value is used when the client does not specify a chunk size during the handshake.
-     * The default value is 128 bytes, which is the minimum chunk size allowed by the RTMP protocol.
+     * The minimum chunk size used for RTMP connections.
      */
-    const val DEFAULT_CHUNK_SIZE = 128 // bytes
+    const val MIN_CHUNK_SIZE = 128 // bytes
+
+    /**
+     * The maximum chunk size used for RTMP connections.
+     */
+    const val MAX_CHUNK_SIZE = 65536 // bytes
+
+    /**
+     * The range of valid chunk sizes for RTMP connections.
+     */
+    internal val chunkSizeRange = MIN_CHUNK_SIZE..MAX_CHUNK_SIZE
 }

@@ -16,7 +16,7 @@
 package io.github.thibaultbee.krtmp.rtmp.connection
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.rtmp.RtmpConfiguration
+import io.github.thibaultbee.krtmp.rtmp.RtmpConstants
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
@@ -41,7 +41,12 @@ open class RtmpSettings(
      * The default instance of [RtmpSettings]
      */
     companion object Default : RtmpSettings() {
-        const val DEFAULT_CHUNK_SIZE = RtmpConfiguration.DEFAULT_CHUNK_SIZE // bytes
+        /**
+         * The default chunk size used for RTMP connections.
+         * This value is used when the client does not specify a chunk size during the handshake.
+         * The default value is 128 bytes, which is the minimum chunk size allowed by the RTMP protocol.
+         */
+        const val DEFAULT_CHUNK_SIZE = RtmpConstants.MIN_CHUNK_SIZE // bytes
         const val DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS = 2000L // ms
     }
 }
