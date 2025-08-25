@@ -9,8 +9,7 @@ import com.github.ajalt.clikt.parameters.options.required
 import io.github.thibaultbee.krtmp.common.logger.IKrtmpLogger
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.FLVDemuxer
-import io.github.thibaultbee.krtmp.flv.decodeAll
-import io.github.thibaultbee.krtmp.flv.decodeAllRaw
+import io.github.thibaultbee.krtmp.flv.decodeAllTagOnly
 import io.github.thibaultbee.krtmp.rtmp.client.RtmpClient
 import kotlinx.io.files.Path
 
@@ -60,7 +59,7 @@ class RTMPClientCli : SuspendingCliktCommand() {
             val header = parser.decodeFlvHeader()
             echo("Parsed FLV header: $header")
             
-            parser.decodeAllRaw { tag ->
+            parser.decodeAllTagOnly { tag ->
                 echo("Sending: $tag")
                 client.write(tag)
             }

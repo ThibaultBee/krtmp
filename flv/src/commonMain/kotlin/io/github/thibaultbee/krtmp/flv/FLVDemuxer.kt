@@ -16,7 +16,7 @@
 package io.github.thibaultbee.krtmp.flv
 
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
-import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
+import io.github.thibaultbee.krtmp.flv.tags.FLVTagRawBody
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
 import kotlinx.coroutines.coroutineScope
 import kotlinx.io.Source
@@ -29,7 +29,6 @@ import kotlinx.io.readString
  * Creates a [FLVDemuxer] dedicated to read from a file.
  *
  * @param path the path to the file
- * @param amfVersion the AMF version to use
  * @return a [FLVDemuxer]
  */
 fun FLVDemuxer(
@@ -43,7 +42,6 @@ fun FLVDemuxer(
  * Demuxer for FLV format.
  *
  * @param source the source to read from
- * @param amfVersion the AMF version to use
  */
 class FLVDemuxer(private val source: Source) {
     private var hasDecoded = false
@@ -70,13 +68,13 @@ class FLVDemuxer(private val source: Source) {
     }
 
     /**
-     * Decodes only the raw FLV tag of the next frame.
+     * Decodes only the FLV tag of the next frame.
      * The data is not parsed.
      *
-     * @return the decoded [RawFLVTag]
+     * @return the decoded [FLVTagRawBody]
      */
-    fun decodeRaw(): RawFLVTag {
-        return decode { RawFLVTag.decode(source) }
+    fun decodeTagOnly(): FLVTagRawBody {
+        return decode { FLVTagRawBody.decode(source) }
     }
 
     private fun <T> decode(block: (Source) -> T): T {
@@ -142,14 +140,15 @@ suspend fun FLVDemuxer.decodeAll(block: suspend (FLVTag) -> Unit) {
 }
 
 /**
- * Decodes all the raw FLV tags from the source.
+ * Decodes all the FLV tags from the source.
+ * The data is not parsed.
  *
  * @param block the block to execute for each raw FLV tag
  */
-suspend fun FLVDemuxer.decodeAllRaw(block: suspend (RawFLVTag) -> Unit) {
+suspend fun FLVDemuxer.decodeAllTagOnly(block: suspend (FLVTagRawBody) -> Unit) {
     coroutineScope {
         while (!isEmpty) {
-            block(decodeRaw())
+            block(decodeTagOnly())
         }
     }
 }

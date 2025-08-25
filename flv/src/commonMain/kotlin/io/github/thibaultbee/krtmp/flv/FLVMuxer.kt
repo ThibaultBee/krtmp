@@ -18,7 +18,7 @@ package io.github.thibaultbee.krtmp.flv
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
-import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
+import io.github.thibaultbee.krtmp.flv.tags.FLVTagRawBody
 import io.github.thibaultbee.krtmp.flv.tags.audio.aacAudioData
 import io.github.thibaultbee.krtmp.flv.tags.video.avcHeaderVideoData
 import io.github.thibaultbee.krtmp.flv.tags.video.avcVideoData
@@ -79,11 +79,11 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
     }
 
     /**
-     * Encodes a [RawFLVTag] to the muxer.
+     * Encodes a [FLVTagRawBody] to the muxer.
      *
-     * @param tag the [RawFLVTag] to encode
+     * @param tag the [FLVTagRawBody] to encode
      */
-    fun encode(tag: RawFLVTag) {
+    fun encode(tag: FLVTagRawBody) {
         encode(tag.bodySize + FLVTag.HEADER_SIZE) { output ->
             tag.encode(output)
         }

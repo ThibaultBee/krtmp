@@ -19,9 +19,8 @@ import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
-import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
+import io.github.thibaultbee.krtmp.flv.tags.FLVTagRawBody
 import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
-import io.github.thibaultbee.krtmp.flv.tags.script.OnMetadata
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnection
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnectionCallback
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpSettings
@@ -269,11 +268,11 @@ class RtmpClient internal constructor(
     suspend fun write(tag: FLVTag) = connection.write(tag)
 
     /**
-     * Writes a [RawFLVTag].
+     * Writes a [FLVTagRawBody].
      *
      * @param rawTag the FLV tag to write
      */
-    suspend fun write(rawTag: RawFLVTag) = connection.write(rawTag)
+    suspend fun write(rawTag: FLVTagRawBody) = connection.write(rawTag)
 
     /**
      * Writes a custom [Command].

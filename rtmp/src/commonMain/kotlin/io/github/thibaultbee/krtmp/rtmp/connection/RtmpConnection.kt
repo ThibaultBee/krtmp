@@ -24,7 +24,7 @@ import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
-import io.github.thibaultbee.krtmp.flv.tags.RawFLVTag
+import io.github.thibaultbee.krtmp.flv.tags.FLVTagRawBody
 import io.github.thibaultbee.krtmp.flv.tags.audio.AudioData
 import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
 import io.github.thibaultbee.krtmp.flv.tags.script.ScriptDataObject
@@ -870,7 +870,7 @@ internal suspend fun RtmpConnection.write(source: Source) {
 
     source.readInt() // skip previous tag size
 
-    val tag = RawFLVTag.decode(source)
+    val tag = FLVTagRawBody.decode(source)
     when (tag.type) {
         FLVTag.Type.AUDIO -> writeAudio(tag.timestampMs, tag.body, tag.bodySize)
         FLVTag.Type.VIDEO -> writeVideo(tag.timestampMs, tag.body, tag.bodySize)
@@ -921,11 +921,11 @@ internal suspend fun RtmpConnection.write(timestampMs: Int, data: FLVData) {
 internal suspend fun RtmpConnection.write(tag: FLVTag) = write(tag.timestampMs, tag.data)
 
 /**
- * Writes a [RawFLVTag].
+ * Writes a [FLVTagRawBody].
  *
  * @param tag the FLV tag to write
  */
-internal suspend fun RtmpConnection.write(tag: RawFLVTag) {
+internal suspend fun RtmpConnection.write(tag: FLVTagRawBody) {
     when (tag.type) {
         FLVTag.Type.AUDIO -> {
             writeAudio(tag.timestampMs, tag.body, tag.bodySize)

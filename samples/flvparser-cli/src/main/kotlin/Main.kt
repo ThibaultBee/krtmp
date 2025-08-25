@@ -6,7 +6,7 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import io.github.thibaultbee.krtmp.flv.FLVDemuxer
-import io.github.thibaultbee.krtmp.flv.decodeAllRaw
+import io.github.thibaultbee.krtmp.flv.decodeAllTagOnly
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.audio.ExtendedAudioData
@@ -79,7 +79,7 @@ class FLVParserCli : SuspendingCliktCommand() {
         echo("Parsed FLV header: $header")
         var i = 0
 
-        parser.decodeAllRaw { tag ->
+        parser.decodeAllTagOnly { tag ->
             try {
                 val decodedTag = tag.decodeTag()
                 echo(prettyTag(i++, decodedTag))

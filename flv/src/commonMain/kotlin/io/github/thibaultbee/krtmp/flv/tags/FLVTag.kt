@@ -133,7 +133,7 @@ fun FLVTag.readByteArray(amfVersion: AmfVersion = AmfVersion.AMF0): ByteArray {
 /**
  * Represents a raw FLV tag. Raw means that the body is not decoded.
  */
-data class RawFLVTag internal constructor(
+data class FLVTagRawBody internal constructor(
     val isEncrypted: Boolean,
     val type: Type,
     val bodySize: Int,
@@ -141,13 +141,27 @@ data class RawFLVTag internal constructor(
     val body: Source,
     val streamId: Int = 0
 ) {
-    fun decodeTag(): FLVTag {
-        val data = when (type) {
+    /**
+     * Decodes the body of the FLV tag.
+     *
+     * @return The decoded [FLVData].
+     */
+    fun decodeData(): FLVData {
+        return when (type) {
             Type.AUDIO -> AudioData.decode(body, bodySize, isEncrypted)
             Type.VIDEO -> VideoData.decode(body, bodySize, isEncrypted)
             Type.SCRIPT_AMF0 -> ScriptDataObject.decode(body, AmfVersion.AMF0)
             Type.SCRIPT_AMF3 -> ScriptDataObject.decode(body, AmfVersion.AMF3)
         }
+    }
+
+    /**
+     * Decodes the FLV tag including its body.
+     *
+     * @return The decoded [FLVTag].
+     */
+    fun decodeTag(): FLVTag {
+        val data = decodeData()
         return FLVTag(timestampMs, data, streamId)
     }
 
@@ -161,17 +175,17 @@ data class RawFLVTag internal constructor(
     }
 
     override fun toString(): String {
-        return "RawFLVTag(type=$type, timestampMs=$timestampMs, streamId=$streamId, bodySize=$bodySize)"
+        return "FLVTagRawBody(type=$type, timestampMs=$timestampMs, streamId=$streamId, bodySize=$bodySize)"
     }
 
-    companion object {
+    companion object Companion {
         /**
          * Decodes a RAW FLV tag from the given input stream.
          * It does not decode the body of the tag.
          *
          * @param source The input stream to read the FLV tag from.
          */
-        fun decode(source: Source): RawFLVTag {
+        fun decode(source: Source): FLVTagRawBody {
             val flags = source.readByte().toInt()
             val isEncrypted = (flags and 0x20) != 0
             val type = Type.entryOf(flags and 0x1F)
@@ -180,17 +194,17 @@ data class RawFLVTag internal constructor(
             val streamId = source.readInt24() // Stream ID
             val body = source.readSource(bodySize.toLong())
 
-            return RawFLVTag(isEncrypted, type, bodySize, timestampMs, body, streamId)
+            return FLVTagRawBody(isEncrypted, type, bodySize, timestampMs, body, streamId)
         }
     }
 }
 
 /**
- * Peeks the [body] of the [RawFLVTag] without decoding it.
+ * Peeks the [FLVTagRawBody.body] of the [FLVTagRawBody] without decoding it.
  *
  * Use it when you want to read multiple times the same tag.
  */
-fun RawFLVTag.peek() = copy(body = body.peek())
+fun FLVTagRawBody.peek() = copy(body = body.peek())
 
 
 
