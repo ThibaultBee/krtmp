@@ -73,8 +73,8 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
      * @param tag the [FLVTag] to encode
      */
     fun encode(tag: FLVTag) {
-        encode(tag.data.getSize(amfVersion) + FLVTag.HEADER_SIZE) { output ->
-            tag.encode(output, amfVersion)
+        encode(tag.data.getSize(amfVersion) + FLVTag.HEADER_SIZE) {
+            tag.encode(this, amfVersion)
         }
     }
 
@@ -84,17 +84,17 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
      * @param tag the [FLVTagRawBody] to encode
      */
     fun encode(tag: FLVTagRawBody) {
-        encode(tag.bodySize + FLVTag.HEADER_SIZE) { output ->
-            tag.encode(output)
+        encode(tag.bodySize + FLVTag.HEADER_SIZE) {
+            tag.encode(this)
         }
     }
 
-    private fun encode(tagSize: Int, block: (Sink) -> Unit) {
+    private fun encode(tagSize: Int, block: Sink.() -> Unit) {
         if (!hasEncoded) {
             hasEncoded = true
             output.writeInt(0) // PreviousTagSize0
         }
-        block(output)
+        output.block()
         output.writeInt(tagSize) // PreviousTagSize
     }
 

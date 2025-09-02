@@ -62,16 +62,16 @@ internal open class TcpSocket(
 
     override suspend fun write(
         length: Long,
-        block: suspend (ByteWriteChannel) -> Unit
+        block: suspend ByteWriteChannel.() -> Unit
     ) {
         require(!isClosed) { "Connection is closed" }
-        block(output)
+        output.block()
         output.flush()
     }
 
-    override suspend fun <T> read(block: suspend (ByteReadChannel) -> T): T {
+    override suspend fun <T> read(block: suspend ByteReadChannel.() -> T): T {
         require(!isClosed) { "Connection is closed" }
-        return block(input)
+        return input.block()
     }
 
     override fun close() {

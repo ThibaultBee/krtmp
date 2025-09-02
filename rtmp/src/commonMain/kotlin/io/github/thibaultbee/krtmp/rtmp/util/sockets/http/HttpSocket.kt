@@ -77,7 +77,7 @@ internal class HttpSocket internal constructor(
 
     override suspend fun write(
         length: Long,
-        block: suspend (ByteWriteChannel) -> Unit
+        block: suspend ByteWriteChannel.() -> Unit
     ) {
         require(!isClosed) { "Connection is closed" }
 
@@ -88,7 +88,7 @@ internal class HttpSocket internal constructor(
                     override val contentLength = length
 
                     override suspend fun writeTo(channel: ByteWriteChannel) {
-                        block(channel)
+                        channel.block()
                     }
                 })
         if (response.status != HttpStatusCode.OK) {
@@ -105,7 +105,7 @@ internal class HttpSocket internal constructor(
         }
     }
 
-    override suspend fun <T> read(block: suspend (ByteReadChannel) -> T): T {
+    override suspend fun <T> read(block: suspend ByteReadChannel.() -> T): T {
         require(!isClosed) { "Connection is closed" }
 
         val result = readMemory(block)
@@ -128,10 +128,10 @@ internal class HttpSocket internal constructor(
         return coroutine.await()
     }
 
-    private suspend fun <T> readMemory(block: suspend (ByteReadChannel) -> T): T? {
+    private suspend fun <T> readMemory(block: suspend ByteReadChannel.() -> T): T? {
         return if (postByteReadChannels.isNotEmpty()) {
             val body = postByteReadChannels.first()
-            val result = block(body)
+            val result = body.block()
             if (body.availableForRead == 0) {
                 postByteReadChannels.removeFirst()
             }

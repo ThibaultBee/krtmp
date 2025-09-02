@@ -30,10 +30,10 @@ internal interface ISocket : CoroutineScope, ASocket {
 
     suspend fun write(
         length: Long,
-        block: suspend (ByteWriteChannel) -> Unit
+        block: suspend ByteWriteChannel.() -> Unit
     )
 
-    suspend fun <T> read(block: suspend (ByteReadChannel) -> T): T
+    suspend fun <T> read(block: suspend ByteReadChannel.() -> T): T
 
     override fun close()
 }

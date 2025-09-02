@@ -79,9 +79,9 @@ class FLVParserCli : SuspendingCliktCommand() {
         echo("Parsed FLV header: $header")
         var i = 0
 
-        parser.decodeAllTagOnly { tag ->
+        parser.decodeAllTagOnly {
             try {
-                val decodedTag = tag.decodeTag()
+                val decodedTag = decodeTag()
                 echo(prettyTag(i++, decodedTag))
             } catch (t: Throwable) {
                 echo("${i++}: failed to decode: ${t.message}")

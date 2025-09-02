@@ -64,7 +64,7 @@ class FLVDemuxer(private val source: Source) {
      * @return the decoded [FLVTag]
      */
     fun decode(): FLVTag {
-        return decode { FLVTag.decode(source) }
+        return decode { FLVTag.decode(this) }
     }
 
     /**
@@ -74,14 +74,14 @@ class FLVDemuxer(private val source: Source) {
      * @return the decoded [FLVTagRawBody]
      */
     fun decodeTagOnly(): FLVTagRawBody {
-        return decode { FLVTagRawBody.decode(source) }
+        return decode { FLVTagRawBody.decode(this) }
     }
 
-    private fun <T> decode(block: (Source) -> T): T {
+    private fun <T> decode(block: Source.() -> T): T {
         val peek = source.peek()
         val isHeader = try {
             peek.readString(3) == "FLV"
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
 
@@ -96,7 +96,7 @@ class FLVDemuxer(private val source: Source) {
             require(previousTagSize == 0) { "Invalid FlvHeader. Expected PreviousTagSize0 to be 0." }
         }
 
-        return block(source)
+        return source.block()
     }
 
     /**
@@ -108,7 +108,7 @@ class FLVDemuxer(private val source: Source) {
         val peek = source.peek()
         val isHeader = try {
             peek.readString(3) == "FLV"
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
         if (isHeader) {
@@ -131,10 +131,10 @@ class FLVDemuxer(private val source: Source) {
  *
  * @param block the block to execute for each FLV tag
  */
-suspend fun FLVDemuxer.decodeAll(block: suspend (FLVTag) -> Unit) {
+suspend fun FLVDemuxer.decodeAll(block: suspend FLVTag.() -> Unit) {
     coroutineScope {
         while (!isEmpty) {
-            block(decode())
+            decode().block()
         }
     }
 }
@@ -145,10 +145,10 @@ suspend fun FLVDemuxer.decodeAll(block: suspend (FLVTag) -> Unit) {
  *
  * @param block the block to execute for each raw FLV tag
  */
-suspend fun FLVDemuxer.decodeAllTagOnly(block: suspend (FLVTagRawBody) -> Unit) {
+suspend fun FLVDemuxer.decodeAllTagOnly(block: suspend FLVTagRawBody.() -> Unit) {
     coroutineScope {
         while (!isEmpty) {
-            block(decodeTagOnly())
+            decodeTagOnly().block()
         }
     }
 }

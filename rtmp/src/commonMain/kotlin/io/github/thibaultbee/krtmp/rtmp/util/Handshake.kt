@@ -39,26 +39,26 @@ internal class Handshake(
         val c0 = Zero(version)
         val c1 = One(0, Random.nextBytes(RANDOM_DATA_SIZE))
         connection.write(Zero.LENGTH + One.LENGTH.toLong()) {
-            c0.write(it)
-            c1.write(it)
+            c0.write(this)
+            c1.write(this)
         }
 
         val s0 = connection.read {
-            Zero.read(it)
+            Zero.read(this)
         }
         require(s0.version == version) { "Handshake failed: S0 and C0 must have the same version: ${s0.version} instead of $version" }
 
         val s1 = connection.read {
-            One.read(it)
+            One.read(this)
         }
 
         val c2 = Two(s1.timestamp, clock.nowInMs, s1.random)
         connection.write(Two.LENGTH.toLong()) {
-            c2.write(it)
+            c2.write(this)
         }
 
         val s2 = connection.read {
-            Two.read(it)
+            Two.read(this)
         }
 
         if (connection is TcpSocket) {
@@ -69,27 +69,27 @@ internal class Handshake(
 
     internal suspend fun starServer() {
         val c0 = connection.read {
-            Zero.read(it)
+            Zero.read(this)
         }
         require(c0.version == version) { "Handshake failed: S0 and C0 must have the same version: ${c0.version} instead of $version" }
 
         val s0 = Zero(version)
         val s1 = One(0, Random.nextBytes(RANDOM_DATA_SIZE))
         connection.write(Zero.LENGTH + One.LENGTH.toLong()) {
-            s0.write(it)
-            s1.write(it)
+            s0.write(this)
+            s1.write(this)
         }
 
         val c1 = connection.read {
-            One.read(it)
+            One.read(this)
         }
         val s2 = Two(c1.timestamp, clock.nowInMs, c1.random)
         connection.write(Two.LENGTH.toLong()) {
-            s2.write(it)
+            s2.write(this)
         }
 
         val c2 = connection.read {
-            Two.read(it)
+            Two.read(this)
         }
 
         if (connection is TcpSocket) {

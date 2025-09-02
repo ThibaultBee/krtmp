@@ -642,8 +642,8 @@ internal class RtmpConnection internal constructor(
             }
         }
         val length = chunks.sumOf { it.size.toLong() }
-        connection.write(length) { writeChannel ->
-            chunks.write(writeChannel)
+        connection.write(length) {
+            chunks.write(this)
         }
     }
 
@@ -668,8 +668,8 @@ internal class RtmpConnection internal constructor(
         messagesManager.getPreviousWrittenMessage(message) { previousMessage ->
             val chunks = message.createChunks(writeChunkSize, previousMessage)
             val length = chunks.sumOf { it.size.toLong() }
-            connection.write(length) { writeChannel ->
-                chunks.write(writeChannel)
+            connection.write(length) {
+                chunks.write(this)
             }
         }
     }
@@ -796,9 +796,9 @@ internal class RtmpConnection internal constructor(
     }
 
     private suspend fun readMessage(): Message {
-        return connection.read { readChannel ->
+        return connection.read {
             messagesManager.getPreviousReadMessage { previousMessages ->
-                Message.read(readChannel, readChunkSize) { chunkStreamId ->
+                Message.read(this, readChunkSize) { chunkStreamId ->
                     previousMessages[chunkStreamId]
                 }
             }
@@ -812,7 +812,7 @@ internal class RtmpConnection internal constructor(
     override fun dispose() {
         try {
             close()
-        } catch (ignore: Throwable) {
+        } catch (_: Throwable) {
         }
     }
 }

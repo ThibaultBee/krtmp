@@ -58,10 +58,10 @@ class RTMPClientCli : SuspendingCliktCommand() {
 
             val header = parser.decodeFlvHeader()
             echo("Parsed FLV header: $header")
-            
-            parser.decodeAllTagOnly { tag ->
-                echo("Sending: $tag")
-                client.write(tag)
+
+            parser.decodeAllTagOnly {
+                echo("Sending: $this")
+                client.write(this)
             }
         } catch (t: Throwable) {
             echo("Error reading FLV file: ${t.message}")
