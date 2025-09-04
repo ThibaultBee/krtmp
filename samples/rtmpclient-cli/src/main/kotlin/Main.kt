@@ -10,10 +10,16 @@ import io.github.thibaultbee.krtmp.common.logger.IKrtmpLogger
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.FLVDemuxer
 import io.github.thibaultbee.krtmp.flv.decodeAllTagOnly
-import io.github.thibaultbee.krtmp.rtmp.client.RtmpClient
+import io.github.thibaultbee.krtmp.rtmp.RtmpConnectionBuilder
+import io.github.thibaultbee.krtmp.rtmp.connect
+import io.ktor.network.selector.SelectorManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.io.files.Path
 
 class RTMPClientCli : SuspendingCliktCommand() {
+    private val selectorManager = SelectorManager(Dispatchers.IO)
+    private val builder = RtmpConnectionBuilder(selectorManager)
+
     init {
         KrtmpLogger.logger = EchoLogger()
     }
@@ -36,7 +42,7 @@ class RTMPClientCli : SuspendingCliktCommand() {
 
         echo("Trying to connect to $rtmpUrlPath")
         // Create the RTMP client
-        val client = RtmpClient(rtmpUrlPath)
+        val client = builder.connect(rtmpUrlPath)
         try {
             val result = client.connect {
                 // Configure the connect object
@@ -80,7 +86,6 @@ class RTMPClientCli : SuspendingCliktCommand() {
             throw t
         }
     }
-
 
     private inner class EchoLogger : IKrtmpLogger {
         override fun e(tag: String, message: String, tr: Throwable?) {

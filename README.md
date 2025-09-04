@@ -46,10 +46,10 @@ implementation("io.github.thibaultbee.krtmp:rtmp:0.9.0")
 
 ### Client
 
-Creates a RTMP client with the Factory `RtmpClient`:
+Use `RtmpConnectionBuilder` to create a RTMP client:
 
 ```kotlin
-val client = RtmpClient(
+val client = RtmpConnectionBuilder.connect(
     "rtmp://my.server.com/app/streamkey" // Your RTMP server URL (incl app name and stream key)
 )
 ```
@@ -57,9 +57,9 @@ val client = RtmpClient(
 Then prepare your live by sending these messages to the server:
 
 ```kotlin
-client.connect()
-client.createStream()
-client.publish(StreamPublishType.LIVE)
+client.connect(...) // Send connect message
+client.createStream() // Send createStream message
+client.publish(StreamPublishType.LIVE) // Send publish message
 ```
 
 If you already have FLV data, write your video/audio data:
@@ -85,10 +85,10 @@ See [FLV](#flv) for more details to write audio and video frames..
 
 ### Server
 
-Use the `RtmpServer` to create a RTMP server:
+Use `RtmpConnectionBuilder` to create a RTMP server:
 
 ```kotlin
-val server = RtmpServer("0.0.0.0:1935") // Listening on port 1935
+val server = RtmpConnectionBuilder.bind("0.0.0.0:1935") // Listening on port 1935
 ```
 
 Then start the server:

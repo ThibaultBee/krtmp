@@ -15,7 +15,6 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.client
 
-import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
@@ -25,18 +24,13 @@ import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnection
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnectionCallback
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpSettings
 import io.github.thibaultbee.krtmp.rtmp.connection.write
-import io.github.thibaultbee.krtmp.rtmp.extensions.clientHandshake
 import io.github.thibaultbee.krtmp.rtmp.messages.Command
 import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
 import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
 import io.github.thibaultbee.krtmp.rtmp.messages.command.StreamPublishType
 import io.github.thibaultbee.krtmp.rtmp.util.NetConnectionConnectCodeReconnect
-import io.github.thibaultbee.krtmp.rtmp.util.RtmpURLBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
-import io.github.thibaultbee.krtmp.rtmp.util.sockets.SocketFactory
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
 import io.ktor.network.sockets.ASocket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.io.Buffer
@@ -44,64 +38,17 @@ import kotlinx.io.RawSource
 import kotlinx.io.Source
 
 /**
- * Creates a new [RtmpClient] with the given URL string and settings.
+ * Creates an RTMP client.
  *
- * @param urlString the RTMP URL to connect to
- * @param callback the callback to handle RTMP client events
- * @param settings the settings for the RTMP client
- * @return a new [RtmpClient] instance
+ * @param connection the socket connection to use
+ * @param settings the RTMP settings to use
+ * @param callback the callback to handle RTMP events
+ * @return the created [RtmpClient]
  */
-suspend fun RtmpClient(
-    urlString: String,
-    callback: DefaultRtmpClientCallback = DefaultRtmpClientCallback(),
-    settings: RtmpSettings = RtmpSettings
-) =
-    RtmpClient(RtmpURLBuilder(urlString), callback, settings)
-
-/**
- * Creates a new [RtmpClient] with the given URL and settings.
- *
- * @param url the RTMP URL to connect to
- * @param callback the callback to handle RTMP client events
- * @param settings the settings for the RTMP client
- * @return a new [RtmpClient] instance
- */
-suspend fun RtmpClient(
-    url: Url,
-    callback: DefaultRtmpClientCallback = DefaultRtmpClientCallback(),
-    settings: RtmpSettings = RtmpSettings
-) =
-    RtmpClient(RtmpURLBuilder(url), callback, settings)
-
-/**
- * Creates a new [RtmpClient] with the given [URLBuilder] and settings.
- *
- * Use [RtmpURLBuilder] to create the [URLBuilder].
- *
- * @param urlBuilder the [URLBuilder] to connect to
- * @param callback the callback to handle RTMP client events
- * @param settings the settings for the RTMP client
- * @return a new [RtmpClient] instance
- */
-suspend fun RtmpClient(
-    urlBuilder: URLBuilder,
-    callback: RtmpClientCallback = DefaultRtmpClientCallback(),
-    settings: RtmpSettings = RtmpSettings,
-): RtmpClient {
-    val connection = SocketFactory().connect(urlBuilder)
-    try {
-        connection.clientHandshake(settings.clock)
-    } catch (t: Throwable) {
-        connection.close()
-        throw t
-    }
-    return RtmpClient(connection, callback, settings)
-}
-
 internal fun RtmpClient(
     connection: ISocket,
-    callback: RtmpClientCallback,
-    settings: RtmpSettings
+    settings: RtmpSettings,
+    callback: RtmpClientCallback
 ): RtmpClient {
     return RtmpClient(
         RtmpConnection(
@@ -318,64 +265,8 @@ internal class RtmpClientConnectionCallback(
     }
 
     class Factory(private val callback: RtmpClientCallback) : RtmpConnectionCallback.Factory {
-        override fun create(streamer: RtmpConnection): RtmpConnectionCallback {
-            return RtmpClientConnectionCallback(streamer, callback)
+        override fun create(connection: RtmpConnection): RtmpConnectionCallback {
+            return RtmpClientConnectionCallback(connection, callback)
         }
     }
-}
-
-class DefaultRtmpClientCallback : RtmpClientCallback {
-    override suspend fun onMessage(message: Message) {
-        KrtmpLogger.i(TAG, "Received message: $message")
-    }
-
-    override suspend fun onCommand(command: Command) {
-        KrtmpLogger.i(TAG, "Received command: $command")
-    }
-
-    override suspend fun onData(data: DataAmf) {
-        KrtmpLogger.i(TAG, "Received data: $data")
-    }
-
-    companion object {
-        /**
-         * Default instance of [DefaultRtmpClientCallback].
-         */
-        private const val TAG = "DefaultRtmpClientCallback"
-    }
-}
-
-/**
- * Callback interface for RTMP client events.
- */
-interface RtmpClientCallback {
-    /**
-     * Called when a message is received.
-     *
-     * @param message the received message
-     */
-    suspend fun onMessage(message: Message) = Unit
-
-    /**
-     * Called when a command is received.
-     *
-     * @param command the received command
-     */
-    suspend fun onCommand(command: Command) = Unit
-
-    /**
-     * Called when data is received.
-     *
-     * @param data the received data
-     */
-    suspend fun onData(data: DataAmf) = Unit
-
-    /**
-     * Called when a reconnect request is received.
-     *
-     * This is used to handle reconnection logic.
-     *
-     * @param command the command containing the reconnect request
-     */
-    suspend fun onReconnectRequest(command: Command.OnStatus) = Unit
 }

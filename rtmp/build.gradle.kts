@@ -46,7 +46,7 @@ kotlin {
             api(libs.ktor.network)
             implementation(libs.ktor.network.tls)
             implementation(libs.ktor.http)
-            implementation(libs.ktor.client.core)
+            api(libs.ktor.client.core)
             implementation(libs.ktor.client.cio)
             implementation(libs.kotlinx.io.core)
             implementation(libs.kotlinx.serialization.core)
