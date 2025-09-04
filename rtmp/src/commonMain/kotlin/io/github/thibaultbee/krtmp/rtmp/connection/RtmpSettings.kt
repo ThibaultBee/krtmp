@@ -30,12 +30,12 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
  * @param tooLateFrameDropTimeoutInMs the timeout after which a frame will be dropped (from frame timestamps). Default is 3000ms.
  */
 open class RtmpSettings(
-    val writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
-    val writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
-    val amfVersion: AmfVersion = AmfVersion.AMF0,
-    val clock: RtmpClock = RtmpClock.Default(),
-    val enableTooLateFrameDrop: Boolean = false,
-    val tooLateFrameDropTimeoutInMs: Long = DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS
+    var writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
+    var writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
+    var amfVersion: AmfVersion = AmfVersion.AMF0,
+    var clock: RtmpClock = RtmpClock.Default(),
+    var enableTooLateFrameDrop: Boolean = false,
+    var tooLateFrameDropTimeoutInMs: Long = DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS
 ) {
     /**
      * The default instance of [RtmpSettings]

@@ -13,31 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.rtmp.server
+package io.github.thibaultbee.krtmp.rtmp.client
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpSettings
-import io.github.thibaultbee.krtmp.rtmp.messages.PeerBandwidthLimitType
-import io.github.thibaultbee.krtmp.rtmp.server.util.DefaultStreamIdProvider
-import io.github.thibaultbee.krtmp.rtmp.server.util.IStreamIdProvider
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
- * RTMP server settings.
+ * This class contains configuration for RTMP client.
+ *
+ * @param writeChunkSize RTMP chunk size in bytes
+ * @param writeWindowAcknowledgementSize RTMP acknowledgement window size in bytes
+ * @param amfVersion AMF version
+ * @param clock Clock used to timestamp RTMP messages. You should use the same clock for your video and audio timestamps.
  */
-class RtmpServerSettings(
-    var peerBandwidth: Int = DEFAULT_PEER_BANDWIDTH,
-    var peerBandwidthLimitType: PeerBandwidthLimitType = PeerBandwidthLimitType.DYNAMIC,
+class RtmpClientSettings(
     writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
     writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
     amfVersion: AmfVersion = AmfVersion.AMF0,
-    clock: RtmpClock = RtmpClock.Default(),
-    var streamIdProvider: IStreamIdProvider = DefaultStreamIdProvider()
-) : RtmpSettings(writeChunkSize, writeWindowAcknowledgementSize, amfVersion, clock, false, 0L) {
-    /**
-     * The default instance of [RtmpServerSettings]
-     */
-    companion object Default {
-        const val DEFAULT_PEER_BANDWIDTH = 2500000 // bytes
-    }
-}
+    clock: RtmpClock = RtmpClock.Default()
+) : RtmpSettings(writeChunkSize, writeWindowAcknowledgementSize, amfVersion, clock, false, 0L)

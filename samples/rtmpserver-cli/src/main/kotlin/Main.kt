@@ -9,17 +9,17 @@ import io.github.thibaultbee.krtmp.amf.elements.containers.AmfContainer
 import io.github.thibaultbee.krtmp.common.logger.IKrtmpLogger
 import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
-import io.github.thibaultbee.krtmp.rtmp.messages.Audio
-import io.github.thibaultbee.krtmp.rtmp.messages.Command
-import io.github.thibaultbee.krtmp.rtmp.messages.DataAmf
-import io.github.thibaultbee.krtmp.rtmp.messages.Message
-import io.github.thibaultbee.krtmp.rtmp.messages.Video
+import io.github.thibaultbee.krtmp.rtmp.RtmpConnectionBuilder
+import io.github.thibaultbee.krtmp.rtmp.bind
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject
 import io.github.thibaultbee.krtmp.rtmp.messages.decode
-import io.github.thibaultbee.krtmp.rtmp.server.RtmpServer
-import io.github.thibaultbee.krtmp.rtmp.server.RtmpServerCallback
+import io.ktor.network.selector.SelectorManager
+import kotlinx.coroutines.Dispatchers
 
 class RTMPServerCli : SuspendingCliktCommand() {
+    private val selectorManager = SelectorManager(Dispatchers.IO)
+    private val builder = RtmpConnectionBuilder(selectorManager)
+
     init {
         KrtmpLogger.logger = EchoLogger()
     }
@@ -36,82 +36,69 @@ class RTMPServerCli : SuspendingCliktCommand() {
     override suspend fun run() {
         echo("RTMP server listening on $address")
 
-        // Create the RTMP server
-        val server = RtmpServer(address, object : RtmpServerCallback {
-            override fun onConnect(connect: Command) {
-                echo("Client connected: ${connect.commandObject}")
+        val server = builder.bind(
+            address,
+            message = {
+                connect {
+                    echo("Client connected: $commandObject")
 
-                // Deserialize the connect object
-                connect.commandObject?.let {
-                    val connectObject =
-                        Amf.decodeFromAmfElement(ConnectObject.serializer(), it)
-                    echo("Connect object: $connectObject")
+                    // Deserialize the connect object
+                    commandObject?.let {
+                        val connectObject =
+                            Amf.decodeFromAmfElement(ConnectObject.serializer(), it)
+                        echo("Connect object: $connectObject")
+                    }
                 }
-            }
-
-            override fun onCreateStream(createStream: Command) {
-                echo("Stream created: $createStream")
-            }
-
-            override fun onReleaseStream(releaseStream: Command) {
-                echo("Stream released: $releaseStream")
-            }
-
-            override fun onDeleteStream(deleteStream: Command) {
-                echo("Stream deleted: $deleteStream")
-            }
-
-            override fun onPublish(publish: Command) {
-                echo("Stream published: $publish")
-            }
-
-            override fun onPlay(play: Command) {
-                echo("Stream played: $play")
-            }
-
-            override fun onFCPublish(fcPublish: Command) {
-                echo("Stream FCPublished: $fcPublish")
-            }
-
-            override fun onFCUnpublish(fcUnpublish: Command) {
-                echo("Stream FCUnpublished: $fcUnpublish")
-            }
-
-            override fun onCloseStream(closeStream: Command) {
-                echo("Stream close: $closeStream")
-            }
-
-            override fun onSetDataFrame(setDataFrame: DataAmf) {
-                echo("Set data frame: $setDataFrame")
-
-                val parameters = setDataFrame.parameters
-                // Deserialize the onMetadata object
-                if ((parameters is AmfContainer) && (parameters.size >= 2)) {
-                    val onMetadata = Metadata(parameters[1])
-                    echo("onMetadata: $onMetadata")
+                createStream {
+                    echo("Stream created: $this")
                 }
-            }
+                releaseStream {
+                    echo("Stream released: $this")
+                }
+                deleteStream {
+                    echo("Stream deleted: $this")
+                }
+                publish {
+                    echo("Stream published: $this")
+                }
+                play {
+                    echo("Stream played: $this")
+                }
+                fcPublish {
+                    echo("Stream FCPublished: $this")
+                }
+                fcUnpublish {
+                    echo("Stream FCUnpublished: $this")
+                }
+                closeStream {
+                    echo("Stream close: $this")
+                }
+                setDataFrame {
+                    echo("Set data frame: $this")
 
-            override fun onAudio(audio: Audio) {
-                echo("Audio data received: ${audio.decode()}")
-            }
-
-            override fun onVideo(video: Video) {
-                echo("Video data received: ${video.decode()}")
-            }
-
-            override fun onUnknownMessage(message: Message) {
-                echo("Unknown message received: $message")
-            }
-
-            override fun onUnknownCommandMessage(command: Command) {
-                echo("Unknown command received: $command")
-            }
-
-            override fun onUnknownDataMessage(data: DataAmf) {
-                echo("Unknown data message received: $data")
-            }
-        })
+                    // Deserialize the onMetadata object
+                    val parameters = parameters
+                    if ((parameters is AmfContainer) && (parameters.size >= 2)) {
+                        val onMetadata = Metadata(parameters[1])
+                        echo("onMetadata: $onMetadata")
+                    }
+                }
+                audio {
+                    echo("Audio data received: ${decode()}")
+                }
+                video {
+                    echo("Video data received: ${decode()}")
+                }
+                unknownMessage {
+                    echo("Unknown message received: $this")
+                }
+                unknownCommandMessage {
+                    echo("Unknown command received: $this")
+                }
+                unknownDataMessage {
+                    echo("Unknown data message received: $this")
+                }
+            })
 
         // Start the RTMP server
         server.listen()

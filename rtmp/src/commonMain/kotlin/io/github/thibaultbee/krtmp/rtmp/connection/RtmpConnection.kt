@@ -822,12 +822,32 @@ internal class RtmpConnection internal constructor(
  * Callback interface for the [RtmpConnection].
  */
 internal interface RtmpConnectionCallback {
+    /**
+     * Called when a command message is received.
+     *
+     * @param command the command message
+     */
     suspend fun onCommand(command: Command) = Unit
+
+    /**
+     * Called when a data message is received.
+     *
+     * @param data the data message
+     */
     suspend fun onData(data: DataAmf) = Unit
+
+    /**
+     * Called when a message is received.
+     *
+     * @param message the message
+     */
     suspend fun onMessage(message: Message) = Unit
 
+    /**
+     * Factory interface for creating [RtmpConnectionCallback] instances.
+     */
     interface Factory {
-        fun create(streamer: RtmpConnection): RtmpConnectionCallback
+        fun create(connection: RtmpConnection): RtmpConnectionCallback
     }
 }
 

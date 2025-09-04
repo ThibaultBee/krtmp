@@ -46,12 +46,8 @@ import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublishFailed
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublishStart
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelError
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelStatus
-import io.github.thibaultbee.krtmp.rtmp.util.extensions.startWithScheme
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp.TcpSocket
-import io.github.thibaultbee.krtmp.rtmp.util.sockets.tcp.TcpSocketFactory
 import io.ktor.http.URLBuilder
-import io.ktor.http.Url
-import io.ktor.network.sockets.InetSocketAddress
 import io.ktor.network.sockets.ServerSocket
 import io.ktor.network.sockets.Socket
 import io.ktor.network.sockets.SocketAddress
@@ -59,59 +55,16 @@ import kotlinx.coroutines.job
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Creates a new RTMP server that listens on the specified URL.
- *
- * @param urlString the URL to bind the server to. If null, the server will bind to all available addresses.
- * @param callback the callback to handle RTMP server events.
- * @param settings the settings for the RTMP server.
- * @return a [RtmpServer] instance.
- */
-suspend fun RtmpServer(
-    urlString: String? = null,
-    callback: RtmpServerCallback,
-    settings: RtmpServerSettings = RtmpServerSettings,
-): RtmpServer {
-    return if (urlString == null) {
-        return RtmpServer(localAddress = null, callback = callback, settings = settings)
-    } else {
-        val url = if (urlString.startWithScheme()) {
-            Url(urlString)
-        } else {
-            Url("tcp://$urlString")
-        }
-        RtmpServer(
-            InetSocketAddress(url.host, url.port), callback, settings
-        )
-    }
-}
-
-/**
- * Creates a new RTMP server that listens on the specified local address.
- *
- * @param localAddress the local address to bind the server to. If null, the server will bind to all available addresses.
- * @param callback the callback to handle RTMP server events.
- * @param settings the settings for the RTMP server.
- * @return a [RtmpServer] instance.
- */
-suspend fun RtmpServer(
-    localAddress: SocketAddress? = null,
-    callback: RtmpServerCallback,
-    settings: RtmpServerSettings = RtmpServerSettings,
-) = RtmpServer(
-    TcpSocketFactory.default.server(localAddress), callback, settings
-)
-
-/**
  * The RTMP server.
  *
  * @param serverSocket the server socket to accept connections on.
- * @param callback the callback to handle RTMP server events.
  * @param settings the settings for the RTMP server.
+ * @param callbacks the callback to handle RTMP server events.
  */
 class RtmpServer internal constructor(
     private val serverSocket: ServerSocket,
-    private val callback: RtmpServerCallback,
-    private val settings: RtmpServerSettings
+    private val settings: RtmpServerSettings,
+    private val callbacks: RtmpServerCallback
 ) {
     /**
      * Local socket address. Could throw an exception if no address bound yet.
@@ -130,11 +83,12 @@ class RtmpServer internal constructor(
         KrtmpLogger.i(TAG, "New client connection: ${clientSocket.remoteAddress}")
         onAccept(clientSocket)
 
+
         val connection = TcpSocket(clientSocket, URLBuilder(clientSocket.remoteAddress.toString()))
         connection.serverHandshake(settings.clock)
 
         val rtmpConnection = RtmpConnection(
-            connection, settings, RtmpServerConnectionCallback.Factory(callback, settings)
+            connection, settings, RtmpServerConnectionCallback.Factory(settings, callbacks)
         )
         return RtmpClient(rtmpConnection)
     }
@@ -172,8 +126,8 @@ class RtmpServer internal constructor(
 
 internal class RtmpServerConnectionCallback(
     private val connection: RtmpConnection,
-    private val callback: RtmpServerCallback,
-    private val settings: RtmpServerSettings
+    private val settings: RtmpServerSettings,
+    private val callback: RtmpServerCallback
 ) : RtmpConnectionCallback {
     override suspend fun onCommand(command: Command) {
         when (command.name) {
@@ -182,7 +136,7 @@ internal class RtmpServerConnectionCallback(
                     callback.onConnect(command)
 
                     connection.replyConnect(
-                        settings.writeWindowAcknowledgementSize,
+                        connection.settings.writeWindowAcknowledgementSize,
                         settings.peerBandwidth,
                         settings.peerBandwidthLimitType
                     )
@@ -405,119 +359,10 @@ internal class RtmpServerConnectionCallback(
     }
 
     internal class Factory(
-        private val callback: RtmpServerCallback, private val settings: RtmpServerSettings
+        private val settings: RtmpServerSettings,
+        private val callback: RtmpServerCallback
     ) : RtmpConnectionCallback.Factory {
-        override fun create(streamer: RtmpConnection): RtmpConnectionCallback =
-            RtmpServerConnectionCallback(streamer, callback, settings)
+        override fun create(connection: RtmpConnection): RtmpConnectionCallback =
+            RtmpServerConnectionCallback(connection, settings, callback)
     }
-}
-
-/**
- * Callback interface for RTMP server events.
- */
-interface RtmpServerCallback {
-    /**
-     * Called when a new client connects to the server.
-     *
-     * @param connect the connect command received from the client
-     */
-    fun onConnect(connect: Command) = Unit
-
-    /**
-     * Called when a new stream is created.
-     *
-     * @param createStream the createStream command received from the client
-     */
-    fun onCreateStream(createStream: Command) = Unit
-
-    /**
-     * Called when a stream is released.
-     *
-     * @param releaseStream the releaseStream command received from the client
-     */
-    fun onReleaseStream(releaseStream: Command) = Unit
-
-    /**
-     * Called when a stream is deleted.
-     *
-     * @param deleteStream the deleteStream command received from the client
-     */
-    fun onDeleteStream(deleteStream: Command) = Unit
-
-    /**
-     * Called when a stream is published.
-     *
-     * @param publish the publish command received from the client
-     */
-    fun onPublish(publish: Command) = Unit
-
-    /**
-     * Called when a stream is played.
-     *
-     * @param play the play command received from the client
-     */
-    fun onPlay(play: Command) = Unit
-
-    /**
-     * Called when a stream is FCPublished.
-     *
-     * @param fcPublish the FCPublish command received from the client
-     */
-    fun onFCPublish(fcPublish: Command) = Unit
-
-    /**
-     * Called when a stream is FCUnpublished.
-     *
-     * @param fcUnpublish the FCUnpublish command received from the client
-     */
-    fun onFCUnpublish(fcUnpublish: Command) = Unit
-
-    /**
-     * Called when a stream is closed.
-     *
-     * @param closeStream the closeStream command received from the client
-     */
-    fun onCloseStream(closeStream: Command) = Unit
-
-    /**
-     * Called when a set data frame is received.
-     *
-     * @param setDataFrame the setDataFrame message received from the client
-     */
-    fun onSetDataFrame(setDataFrame: DataAmf) = Unit
-
-    /**
-     * Called when an audio message is received.
-     *
-     * @param audio the audio message received from the client
-     */
-    fun onAudio(audio: Audio) = Unit
-
-    /**
-     * Called when a video message is received.
-     *
-     * @param video the video message received from the client
-     */
-    fun onVideo(video: Video) = Unit
-
-    /**
-     * Called when an unknown message is received.
-     *
-     * @param message the unknown message received from the client
-     */
-    fun onUnknownMessage(message: Message) = Unit
-
-    /**
-     * Called when an unknown command message is received.
-     *
-     * @param command the unknown command message received from the client
-     */
-    fun onUnknownCommandMessage(command: Command) = Unit
-
-    /**
-     * Called when an unknown data message is received.
-     *
-     * @param data the unknown data message received from the client
-     */
-    fun onUnknownDataMessage(data: DataAmf) = Unit
 }
