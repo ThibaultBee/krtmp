@@ -41,19 +41,27 @@ class RTMPClientCli : SuspendingCliktCommand() {
         val parser = FLVDemuxer(path = path)
 
         echo("Trying to connect to $rtmpUrlPath")
-        // Create the RTMP client
-        val client = builder.connect(rtmpUrlPath)
-        try {
-            val result = client.connect {
-                // Configure the connect object
-                // videoCodecs = listOf(VideoMediaType.AVC)
+        val client =
+            try {
+                // Connect the RTMP client
+                builder.connect(rtmpUrlPath, {
+                    connectInfo = {
+                        // Configure the connect object here if needed
+                        // videoCodecs = listOf(VideoMediaType.AVC)
+                    }
+                })
+            } catch (t: Throwable) {
+                echo("Error connecting to connect server: ${t.message}")
+                throw t
             }
-            echo("Connected to RTMP server: $result")
 
+        echo("Connected to RTMP server")
+
+        try {
             client.createStream()
             client.publish()
         } catch (t: Throwable) {
-            echo("Error connecting to connect server: ${t.message}")
+            echo("Error connecting to publish server: ${t.message}")
             client.close()
             throw t
         }

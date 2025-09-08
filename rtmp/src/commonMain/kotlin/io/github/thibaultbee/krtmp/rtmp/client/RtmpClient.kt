@@ -78,7 +78,7 @@ class RtmpClient internal constructor(
      * @param block a block to configure the [ConnectObjectBuilder]
      * @return the [Command.Result] send by the server
      */
-    suspend fun connect(block: ConnectObjectBuilder.() -> Unit = {}) =
+    internal suspend fun connect(block: ConnectObjectBuilder.() -> Unit = {}) =
         connection.connect(block)
 
     /**

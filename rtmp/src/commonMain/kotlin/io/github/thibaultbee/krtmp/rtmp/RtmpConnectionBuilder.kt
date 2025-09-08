@@ -45,8 +45,6 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
      *
      * The [urlBuilder] must use the `rtmp`, `rtmps`, `rtmpt` or `rtmpts` protocol.
      *
-     * Don't forget to call [RtmpClient.connect] after this to complete the RTMP connection.
-     *
      * @param urlBuilder the URL to connect to
      * @param configure the settings for the RTMP client
      * @param message the callback to handle RTMP client events
@@ -86,11 +84,19 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
             socket.close()
             throw t
         }
-        return RtmpClient(
+        val client = RtmpClient(
             socket,
             settings,
             RtmpClientCallbackBuilder().apply { message() }
         )
+
+        try {
+            client.connect(settings.connectInfo)
+        } catch (t: Throwable) {
+            client.close()
+            throw t
+        }
+        return client
     }
 
     /**
@@ -129,8 +135,6 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
  * Connects to the given [urlString] and performs the RTMP handshake.
  *
  * The [urlString] must use the `rtmp`, `rtmps`, `rtmpt` or `rtmpts` protocol.
- *
- * Don't forget to call [RtmpClient.connect] after this to complete the RTMP connection.
  *
  * @param urlString the RTMP URL to connect to
  * @param configure the settings for the RTMP client

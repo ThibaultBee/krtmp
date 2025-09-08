@@ -57,7 +57,6 @@ val client = RtmpConnectionBuilder.connect(
 Then prepare your live by sending these messages to the server:
 
 ```kotlin
-client.connect(...) // Send connect message
 client.createStream() // Send createStream message
 client.publish(StreamPublishType.LIVE) // Send publish message
 ```

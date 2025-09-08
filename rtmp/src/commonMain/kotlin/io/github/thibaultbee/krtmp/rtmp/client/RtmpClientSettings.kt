@@ -17,6 +17,7 @@ package io.github.thibaultbee.krtmp.rtmp.client
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpSettings
+import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
@@ -31,5 +32,6 @@ class RtmpClientSettings(
     writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
     writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
     amfVersion: AmfVersion = AmfVersion.AMF0,
-    clock: RtmpClock = RtmpClock.Default()
+    clock: RtmpClock = RtmpClock.Default(),
+    var connectInfo: ConnectObjectBuilder.() -> Unit = {}
 ) : RtmpSettings(writeChunkSize, writeWindowAcknowledgementSize, amfVersion, clock, false, 0L)
