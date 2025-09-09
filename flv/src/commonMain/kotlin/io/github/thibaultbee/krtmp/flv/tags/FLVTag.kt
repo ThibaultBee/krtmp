@@ -70,14 +70,13 @@ data class FLVTag(
     }
 
     companion object {
-        val HEADER_SIZE = 11 // 11 bytes for the tag header
+        const val HEADER_SIZE = 11 // 11 bytes for the tag header
 
         /**
          * Decodes a FLV tag from the given input stream.
          * It also decodes the body of the tag.
          *
          * @param source The input stream to read the FLV tag from.
-         * @param amfVersion The AMF version to use for decoding.
          */
         fun decode(source: Source): FLVTag {
             val flags = source.readByte().toInt()
@@ -133,6 +132,7 @@ fun FLVTag.readByteArray(amfVersion: AmfVersion = AmfVersion.AMF0): ByteArray {
 /**
  * Represents a raw FLV tag. Raw means that the body is not decoded.
  */
+@ConsistentCopyVisibility
 data class FLVTagRawBody internal constructor(
     val isEncrypted: Boolean,
     val type: Type,
