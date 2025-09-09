@@ -359,7 +359,7 @@ fun hevcVideoExtendedData(
 
 
 /**
- * Creates an AVC/H.264 [ExtendedVideoData] for VPS, SPS and PPS.
+ * Creates an HEVC/H.265 [ExtendedVideoData] for VPS, SPS and PPS.
  *
  * This method will create a [HEVCDecoderConfigurationRecord] from the VPS, SPS and PPS NAL units.
  * If you want to directly pass [HEVCDecoderConfigurationRecord], use [hevcVideoExtendedData] instead.
