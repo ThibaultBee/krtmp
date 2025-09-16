@@ -139,7 +139,7 @@ internal class RtmpConnection internal constructor(
 
     init {
         // Launch coroutine to handle RTMP messages
-        connection.launch {
+        launch {
             handleRtmpMessages()
         }
     }
@@ -702,6 +702,12 @@ internal class RtmpConnection internal constructor(
             }
         }
 
+        launch {
+            processMessage(message)
+        }
+    }
+
+    private suspend fun processMessage(message: Message) {
         when (message) {
             is Acknowledgement -> {
                 /**
