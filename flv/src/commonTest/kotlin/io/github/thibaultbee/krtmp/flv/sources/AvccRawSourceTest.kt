@@ -6,13 +6,13 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
-class NaluRawSourceTest {
+class AvccRawSourceTest {
     @Test
     fun `build nalu raw source from array in avcc format`() {
         val expected = byteArrayOf(0x00, 0x00, 0x00, 0x02, 0x00, 0x00)
 
         val array = byteArrayOf(0x00, 0x00, 0x00, 0x02, 0x00, 0x00)
-        val sizedRawSource = NaluRawSource(array)
+        val sizedRawSource = avccRawSource(array)
         assertEquals(6, sizedRawSource.byteCount)
 
         val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
@@ -24,7 +24,7 @@ class NaluRawSourceTest {
         val expected = byteArrayOf(0x00, 0x00, 0x00, 0x02, 0x00, 0x00)
 
         val array = byteArrayOf(0x00, 0x00, 0x00, 0x01, 0x00, 0x00)
-        val sizedRawSource = NaluRawSource(array)
+        val sizedRawSource = avccRawSource(array)
         assertEquals(6, sizedRawSource.byteCount)
 
         val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
@@ -36,7 +36,7 @@ class NaluRawSourceTest {
         val expected = byteArrayOf(0x00, 0x00, 0x00, 0x02, 0x00, 0x00)
 
         val array = byteArrayOf(0x00, 0x00)
-        val sizedRawSource = NaluRawSource(array)
+        val sizedRawSource = avccRawSource(array)
         assertEquals(6, sizedRawSource.byteCount)
 
         val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
@@ -51,7 +51,7 @@ class NaluRawSourceTest {
             writeInt(2)
             writeShort(0)
         }
-        val sizedRawSource = NaluRawSource(buffer)
+        val sizedRawSource = avccRawSource(buffer)
         assertEquals(6, sizedRawSource.byteCount)
 
         val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
@@ -66,7 +66,7 @@ class NaluRawSourceTest {
             writeInt(1)
             writeShort(0)
         }
-        val sizedRawSource = NaluRawSource(buffer)
+        val sizedRawSource = avccRawSource(buffer)
         assertEquals(6, sizedRawSource.byteCount)
 
         val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()
@@ -80,7 +80,7 @@ class NaluRawSourceTest {
         val buffer = Buffer().apply {
             writeShort(0)
         }
-        val sizedRawSource = NaluRawSource(buffer)
+        val sizedRawSource = avccRawSource(buffer)
         assertEquals(6, sizedRawSource.byteCount)
 
         val actual = Buffer().apply { sizedRawSource.readAtMostTo(this, 6) }.readByteArray()

@@ -1,7 +1,7 @@
 package io.github.thibaultbee.krtmp.flv.util.av.hevc
 
 import io.github.thibaultbee.krtmp.flv.Resource
-import io.github.thibaultbee.krtmp.flv.sources.NaluRawSource
+import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.util.av.ChromaFormat
 import io.github.thibaultbee.krtmp.flv.util.readByteArray
 import kotlin.test.Test
@@ -39,15 +39,24 @@ class HEVCDecoderConfigurationRecordTest {
                 parameterSets = listOf(
                     HEVCDecoderConfigurationRecord.NalUnit(
                         HEVCDecoderConfigurationRecord.NalUnit.Type.VPS,
-                        NaluRawSource(vps)
+                        ByteArrayBackedRawSource(
+                            vps
+                        ),
+                        vps.size
                     ),
                     HEVCDecoderConfigurationRecord.NalUnit(
                         HEVCDecoderConfigurationRecord.NalUnit.Type.SPS,
-                        NaluRawSource(sps)
+                        ByteArrayBackedRawSource(
+                            sps
+                        ),
+                        sps.size
                     ),
                     HEVCDecoderConfigurationRecord.NalUnit(
                         HEVCDecoderConfigurationRecord.NalUnit.Type.PPS,
-                        NaluRawSource(pps)
+                        ByteArrayBackedRawSource(
+                            pps
+                        ),
+                        pps.size
                     )
                 )
             )
@@ -65,27 +74,15 @@ class HEVCDecoderConfigurationRecordTest {
         val pps = Resource("video/hevc/decoderConfigurationRecord/pps").toByteArray()
 
         val decoderConfigurationRecord = HEVCDecoderConfigurationRecord(
-            vps = NaluRawSource(vps),
-            sps = NaluRawSource(sps),
-            pps = NaluRawSource(pps)
-        )
-
-        assertContentEquals(expected, decoderConfigurationRecord.readByteArray())
-    }
-
-    @Test
-    fun `inferred from vps and sps and pps with start code`() {
-        val expected =
-            Resource("video/hevc/decoderConfigurationRecord/HEVCDecoderConfigurationRecord").toByteArray()
-
-        val vps = Resource("video/hevc/decoderConfigurationRecord/vps").toByteArray()
-        val sps = Resource("video/hevc/decoderConfigurationRecord/sps").toByteArray()
-        val pps = Resource("video/hevc/decoderConfigurationRecord/pps").toByteArray()
-
-        val decoderConfigurationRecord = HEVCDecoderConfigurationRecord(
-            vps = NaluRawSource(byteArrayOf(0x00, 0x00, 0x00, 0x01) + vps),
-            sps = NaluRawSource(byteArrayOf(0x00, 0x00, 0x00, 0x01) + sps),
-            pps = NaluRawSource(byteArrayOf(0x00, 0x00, 0x00, 0x01) + pps)
+            vps = ByteArrayBackedRawSource(
+                vps
+            ) to vps.size,
+            sps = ByteArrayBackedRawSource(
+                sps
+            ) to sps.size,
+            pps = ByteArrayBackedRawSource(
+                pps
+            ) to pps.size,
         )
 
         assertContentEquals(expected, decoderConfigurationRecord.readByteArray())

@@ -15,7 +15,6 @@
  */
 package io.github.thibaultbee.krtmp.flv.util.av.hevc
 
-import io.github.thibaultbee.krtmp.flv.sources.NaluRawSource
 import io.github.thibaultbee.krtmp.flv.util.PacketWriter
 import io.github.thibaultbee.krtmp.flv.util.av.ChromaFormat
 import io.github.thibaultbee.krtmp.flv.util.extensions.shl
@@ -23,33 +22,71 @@ import io.github.thibaultbee.krtmp.flv.util.extensions.shr
 import io.github.thibaultbee.krtmp.flv.util.extensions.writeByte
 import io.github.thibaultbee.krtmp.flv.util.extensions.writeLong48
 import io.github.thibaultbee.krtmp.flv.util.extensions.writeShort
+import kotlinx.io.RawSource
 import kotlinx.io.Sink
 import kotlinx.io.Source
 import kotlinx.io.buffered
 import kotlin.experimental.and
 
+/**
+ * Creates a [HEVCDecoderConfigurationRecord] from VPS, SPS and PPS NAL units.
+ *
+ * This function extracts necessary profile information from the SPS NAL unit
+ * to populate the HEVCDecoderConfigurationRecord fields.
+ *
+ * The VPS, SPS and PPS are provided without start codes (0x00000001) or AVCC headers.
+ *
+ * @param vps A pair containing a RawSource representing the VPS NAL unit and its size in bytes.
+ * @param sps A pair containing a RawSource representing the SPS NAL unit and its size in bytes.
+ * @param pps A pair containing a RawSource representing the PPS NAL unit and its size in bytes.
+ * @return An instance of [HEVCDecoderConfigurationRecord]
+ */
 fun HEVCDecoderConfigurationRecord(
-    sps: NaluRawSource,
-    pps: NaluRawSource,
-    vps: NaluRawSource
+    vps: Pair<RawSource, Int>,
+    sps: Pair<RawSource, Int>,
+    pps: Pair<RawSource, Int>
 ) = HEVCDecoderConfigurationRecord(
     listOf(sps),
     listOf(pps),
     listOf(vps)
 )
 
+/**
+ * Creates a [HEVCDecoderConfigurationRecord] from VPS, SPS and PPS NAL units.
+ *
+ * This function extracts necessary profile information from the first SPS NAL unit
+ * to populate the HEVCDecoderConfigurationRecord fields.
+ *
+ * The VPS, SPS and PPS are provided without start codes (0x00000001) or AVCC headers.
+ *
+ * @param vps A list of pairs where each pair contains a RawSource representing a VPS NAL unit and its size in bytes.
+ * @param sps A list of pairs where each pair contains a RawSource representing an SPS NAL unit and its size in bytes.
+ * @param pps A list of pairs where each pair contains a RawSource representing a PPS NAL unit and its size in bytes.
+ * @return An instance of [HEVCDecoderConfigurationRecord]
+ */
 fun HEVCDecoderConfigurationRecord(
-    sps: List<NaluRawSource>,
-    pps: List<NaluRawSource>,
-    vps: List<NaluRawSource>
+    vps: List<Pair<RawSource, Int>>,
+    sps: List<Pair<RawSource, Int>>,
+    pps: List<Pair<RawSource, Int>>
 ) = HEVCDecoderConfigurationRecord(sps + pps + vps)
 
+/**
+ * Creates a [HEVCDecoderConfigurationRecord] from NAL units.
+ *
+ * This function extracts necessary profile information from the first SPS NAL unit
+ * to populate the HEVCDecoderConfigurationRecord fields.
+ *
+ * The NAL units are provided without start codes (0x00000001) or AVCC headers.
+ *
+ * @param parameterSets A list of pairs where each pair contains a RawSource representing a NAL unit and its size in bytes.
+ * @return An instance of [HEVCDecoderConfigurationRecord]
+ */
 fun HEVCDecoderConfigurationRecord(
-    parameterSets: List<NaluRawSource>
+    parameterSets: List<Pair<RawSource, Int>>
 ): HEVCDecoderConfigurationRecord {
     var sps: Source? = null
     val nalUnitParameterSets = parameterSets.map {
-        val bufferedSource = it.nalu.buffered()
+        val bufferedSource = it.first.buffered()
         val peekedSource = bufferedSource.peek()
         val nalType = ((peekedSource.readByte() shr 1) and 0x3F).toByte()
         val type = HEVCDecoderConfigurationRecord.NalUnit.Type.entryOf(nalType)
@@ -58,13 +95,14 @@ fun HEVCDecoderConfigurationRecord(
         }
         HEVCDecoderConfigurationRecord.NalUnit(
             type,
-            NaluRawSource(bufferedSource, it.naluSize)
+            bufferedSource,
+            it.second
         )
     }
 
     require(sps != null) { "SPS is missing" }
     val parsedSps =
-        SequenceParameterSets.parse(sps!!)
+        SequenceParameterSets.parse(sps)
 
     return HEVCDecoderConfigurationRecord(
         generalProfileSpace = parsedSps.profileTierLevel.generalProfileSpace,
@@ -83,6 +121,10 @@ fun HEVCDecoderConfigurationRecord(
     )
 }
 
+/**
+ * Represents an HEVC (H.265) Decoder Configuration Record, which contains important
+ * information about the video stream such as profile, level, and parameter sets (VPS, SPS and PPS).
+ */
 data class HEVCDecoderConfigurationRecord(
     private val configurationVersion: Byte = 0x01,
     private val generalProfileSpace: Byte,
@@ -159,14 +201,15 @@ data class HEVCDecoderConfigurationRecord(
 
     data class NalUnit(
         val type: Type,
-        val source: NaluRawSource,
+        val source: RawSource,
+        val sourceSize: Int,
         val completeness: Boolean = true
     ) {
         fun writeToSink(output: Sink) {
             output.writeByte((completeness shl 7) or type.value.toInt()) // array_completeness + reserved 1bit + naluType 6 bytes
             output.writeShort(1) // numNalus
-            output.writeShort(source.naluSize) // nalUnitLength
-            output.write(source.nalu, source.naluSize.toLong())
+            output.writeShort(sourceSize) // nalUnitLength
+            output.write(source, sourceSize.toLong())
         }
 
         enum class Type(val value: Byte) {

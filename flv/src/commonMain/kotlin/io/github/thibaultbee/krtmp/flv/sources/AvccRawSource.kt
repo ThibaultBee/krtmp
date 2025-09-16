@@ -23,15 +23,13 @@ import kotlinx.io.RawSource
 private const val AVCC_HEADER_SIZE = 4
 
 /**
- * Creates a [NaluRawSource] from a [ByteArray].
- *
- * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
+ * Creates a [RawSource] in AVCC format from a [ByteArray].
  *
  * @param array the [ByteArray] to transform
  */
-fun NaluRawSource(array: ByteArray): NaluRawSource {
+fun avccRawSource(array: ByteArray): RawSourceWithSize {
     if (array.isAvcc) {
-        return NaluRawSource(
+        return avccRawSource(
             ByteArrayBackedRawSource(array, AVCC_HEADER_SIZE.toLong()),
             array.size - AVCC_HEADER_SIZE
         )
@@ -39,51 +37,49 @@ fun NaluRawSource(array: ByteArray): NaluRawSource {
 
     // Convert AnnexB start code to AVCC format
     val startCodeSize = array.startCodeSize
-    return NaluRawSource(
+    return avccRawSource(
         ByteArrayBackedRawSource(array, startCodeSize.toLong()), array.size - startCodeSize
     )
 }
 
+
 /**
- * Creates a [NaluRawSource] from a [Buffer].
- *
- * It will extract the NAL unit by removing header (start code 0x00000001 or AVCC).
+ * Creates a [RawSource] in AVCC format from a [Buffer].
  *
  * @param buffer the [Buffer] to transform
  */
-fun NaluRawSource(buffer: Buffer): NaluRawSource {
+fun avccRawSource(buffer: Buffer): RawSourceWithSize {
     if (buffer.isAvcc) {
         buffer.skip(AVCC_HEADER_SIZE.toLong())
-        return NaluRawSource(buffer, buffer.size.toInt())
+        return avccRawSource(buffer, buffer.size.toInt())
     }
 
     // Convert AnnexB start code to AVCC format
     val startCodeSize = buffer.startCodeSize
     // Remove start code
     buffer.skip(startCodeSize.toLong())
-    return NaluRawSource(
+    return avccRawSource(
         buffer, buffer.size.toInt()
     )
 }
 
+
 /**
- * Creates a [NaluRawSource] from a [RawSource].
- *
- * It will extract the NAL unit by removing the header.
+ * Creates a [RawSource] in AVCC format from a [RawSource].
  *
  * @param source the [RawSource] to wrap
  * @param byteCount the number of bytes of the [source]
  * @param headerSize the size of the header to remove (0 if no header). Header could be AVCC (4 bytes) or AnnexB (often 4 bytes)
  */
-fun NaluRawSource(source: RawSource, byteCount: Int, headerSize: Int): NaluRawSource {
+fun avccRawSource(source: RawSource, byteCount: Int, headerSize: Int): RawSourceWithSize {
     if (headerSize == 0) {
-        return NaluRawSource(source, byteCount)
+        return avccRawSource(source, byteCount)
     }
 
     // Remove header
     source.readAtMostTo(Buffer(), headerSize.toLong())
 
-    return NaluRawSource(
+    return avccRawSource(
         source, byteCount - headerSize
     )
 }
@@ -93,18 +89,17 @@ fun NaluRawSource(source: RawSource, byteCount: Int, headerSize: Int): NaluRawSo
  *
  * The purpose of this class is to simplify the handling of frame data for AVC/H.264, HEVC/H.265.
  *
- * The [RawSourceWithSize] will be in the NAL unit in AVCC format.
+ * The [RawSource] will be in the NAL unit in AVCC format.
  *
- * To convert from other format such as AnnexB format (NAL unit with a start code 0x00000001) or no header, use other [NaluRawSource] builder.
+ * To convert from other format such as AnnexB format (NAL unit with a start code 0x00000001) or no header, use other [avccRawSource] builder.
  * methods.
  *
  * @param nalu the NAL unit [RawSource] (without AVCC or AnnexB header)
  * @param naluSize the size of the NAL unit
  */
-class NaluRawSource
-internal constructor(
-    val nalu: RawSource, val naluSize: Int
-) : RawSourceWithSize(
+private fun avccRawSource(
+    nalu: RawSource, naluSize: Int
+) = RawSourceWithSize(
     MultiRawSource(Buffer().apply { writeInt(naluSize) }, nalu),
     naluSize + AVCC_HEADER_SIZE.toLong()
 )
