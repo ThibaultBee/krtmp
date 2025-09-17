@@ -59,6 +59,22 @@ class RawAudioTagBody(
     }
 }
 
+/**
+ * Empty video tag body.
+ */
+internal class EmptyAudioTagBody : SingleAudioTagBody {
+    override val size = 0
+
+    override fun encode(output: Sink) =
+        Unit  // End of sequence does not have a body
+
+    override fun readRawSource() = Buffer()
+
+    override fun toString(): String {
+        return "Empty"
+    }
+}
+
 sealed class MultichannelConfigAudioTagBody(
     val channelOrder: AudioChannelOrder,
     val channelCount: Byte,

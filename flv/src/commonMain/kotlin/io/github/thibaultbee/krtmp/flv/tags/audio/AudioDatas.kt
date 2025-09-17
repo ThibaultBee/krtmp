@@ -32,76 +32,178 @@ import kotlinx.io.RawSource
  */
 
 /**
- * Creates a legacy AAC [LegacyAudioData] from the [AAC.ADTS].
+ * Creates a legacy [AudioData] from its parameters.
  *
- * @param adts the [ADTS] header
- * @return the [LegacyAudioData] with the [ADTS] header
+ * For AAC audio data, consider using [AACAudioDataFactory].
+ *
+ * @param soundFormat the [SoundFormat]
+ * @param soundRate the [SoundRate]
+ * @param soundSize the [SoundSize]
+ * @param soundType the [SoundType]
+ * @param body the coded [RawSource]
+ * @param bodySize the size of the coded [RawSource]
+ * @return the [AudioData]
  */
-fun aacHeaderAudioData(adts: ADTS): LegacyAudioData {
-    val audioSpecificConfig = AudioSpecificConfig(adts).readBuffer()
+fun AudioData(
+    soundFormat: SoundFormat,
+    soundRate: SoundRate,
+    soundSize: SoundSize,
+    soundType: SoundType,
+    body: RawSource,
+    bodySize: Int
+) = LegacyAudioData(soundFormat, soundRate, soundSize, soundType, RawAudioTagBody(body, bodySize))
 
-    return LegacyAudioData(
+/**
+ * Factory to create AAC [AudioData].
+ */
+class AACAudioDataFactory(
+    val soundRate: SoundRate,
+    val soundSize: SoundSize,
+    val soundType: SoundType
+) {
+    /**
+     * Creates a legacy AAC [AudioData] for sequence header from a [RawSource] and its size.
+     *
+     * @param audioSpecificConfig the AAC [AudioSpecificConfig] as a [RawSource]
+     * @param audioSpecificConfigSize the size of the AAC [AudioSpecificConfig]
+     * @return the [AudioData]
+     */
+    fun sequenceStart(
+        audioSpecificConfig: RawSource,
+        audioSpecificConfigSize: Int
+    ): LegacyAudioData {
+        return LegacyAudioData(
+            soundFormat = SoundFormat.AAC,
+            soundRate = soundRate,
+            soundSize = soundSize,
+            soundType = soundType,
+            aacPacketType = AACPacketType.SEQUENCE_HEADER,
+            body = RawAudioTagBody(
+                data = audioSpecificConfig,
+                dataSize = audioSpecificConfigSize
+            )
+        )
+    }
+
+    /**
+     * Creates a legacy AAC audio frame from a [RawSource] and its size.
+     *
+     * @param data the coded AAC [RawSource]
+     * @param dataSize the size of the coded AAC [RawSource]
+     * @return the [LegacyAudioData]
+     */
+    fun codedFrame(
+        data: RawSource,
+        dataSize: Int
+    ) = LegacyAudioData(
         soundFormat = SoundFormat.AAC,
-        soundRate = SoundRate.fromSampleRate(adts.sampleRate),
-        soundSize = SoundSize.S_16BITS,
-        soundType = SoundType.fromNumOfChannels(adts.channelConfiguration.numOfChannel),
-        aacPacketType = AACPacketType.SEQUENCE_HEADER,
+        soundRate = soundRate,
+        soundSize = soundSize,
+        soundType = soundType,
+        aacPacketType = AACPacketType.RAW,
         body = RawAudioTagBody(
-            data = audioSpecificConfig,
-            dataSize = audioSpecificConfig.size.toInt()
+            data = data, dataSize = dataSize
         )
     )
 }
 
 /**
- * Creates a legacy AAC audio frame from a [RawSource] and its size.
+ * Creates a legacy AAC [LegacyAudioData] for sequence header from the [AAC.ADTS].
  *
- * @param soundRate the sound rate
- * @param soundSize the sound size
- * @param soundType the sound type
- * @param aacPacketType the AAC packet type
- * @param data the coded AAC [RawSource]
- * @param dataSize the size of the coded AAC [RawSource]
- * @return the [LegacyAudioData] with the AAC frame
+ * @param adts the [ADTS] header
+ * @return the [LegacyAudioData]
  */
-fun aacAudioData(
-    soundRate: SoundRate,
-    soundSize: SoundSize,
-    soundType: SoundType,
-    aacPacketType: AACPacketType,
-    data: RawSource,
-    dataSize: Int
-) = LegacyAudioData(
-    soundFormat = SoundFormat.AAC,
-    soundRate = soundRate,
-    soundSize = soundSize,
-    soundType = soundType,
-    aacPacketType = aacPacketType,
-    body = RawAudioTagBody(
-        data = data, dataSize = dataSize
+fun AACAudioDataFactory.sequenceStart(adts: ADTS): LegacyAudioData {
+    require(SoundType.fromNumOfChannels(adts.channelConfiguration.numOfChannel) == soundType) {
+        "ADTS channel configuration (${adts.channelConfiguration.numOfChannel} channels) does not match the factory sound type ($soundType)"
+    }
+    require(SoundRate.fromSampleRate(adts.sampleRate) == soundRate) {
+        "ADTS sample rate (${adts.sampleRate} Hz) does not match the factory sound rate ($soundRate)"
+    }
+    val audioSpecificConfig = AudioSpecificConfig(adts).readBuffer()
+
+    return sequenceStart(
+        audioSpecificConfig,
+        audioSpecificConfig.size.toInt()
     )
-)
+}
+
+// Extended audio data
 
 /**
- * Creates an [ExtendedAudioData] for multichannel config audio data.
- *
- * @param packetType the packet type
- * @param fourCC the FourCCs
- * @param channelCount the number of channels
+ * Factory to create single track [ExtendedAudioData].
  */
-fun unspecifiedMultiChannelConfigExtendedAudioData(
-    packetType: AudioPacketType,
-    fourCC: AudioFourCC,
-    channelCount: Byte
-) = ExtendedAudioData(
-    packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
-        packetType = packetType,
-        fourCC = fourCC,
-        body = MultichannelConfigAudioTagBody.UnspecifiedMultichannelConfigAudioTagBody(
-            channelCount = channelCount
+class ExtendedAudioDataFactory(
+    val fourCC: AudioFourCC
+) {
+    /**
+     * Creates an [ExtendedAudioData] from the given [RawSource] and its size.
+     *
+     * @param body the [RawSource] of the audio data
+     * @param bodySize the size of the [RawSource]
+     */
+    fun codedFrame(
+        body: RawSource,
+        bodySize: Int
+    ) = ExtendedAudioData(
+        packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
+            packetType = AudioPacketType.CODED_FRAME,
+            fourCC = fourCC,
+            body = RawAudioTagBody(data = body, dataSize = bodySize)
         )
     )
-)
+
+    fun sequenceStart(
+        body: RawSource,
+        bodySize: Int
+    ) = ExtendedAudioData(
+        packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
+            packetType = AudioPacketType.SEQUENCE_START,
+            fourCC = fourCC,
+            body = RawAudioTagBody(data = body, dataSize = bodySize)
+        )
+    )
+
+    fun sequenceEnd() = ExtendedAudioData(
+        packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
+            packetType = AudioPacketType.SEQUENCE_END,
+            fourCC = fourCC,
+            body = EmptyAudioTagBody()
+        )
+    )
+
+    fun multiChannelConfig(
+        body: RawSource,
+        bodySize: Int
+    ) = ExtendedAudioData(
+        packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
+            packetType = AudioPacketType.MULTICHANNEL_CONFIG,
+            fourCC = fourCC,
+            body = RawAudioTagBody(data = body, dataSize = bodySize)
+        )
+    )
+
+    /**
+     * Creates an [ExtendedAudioData] for unspecified multichannel config audio data.
+     *
+     * @param fourCC the FourCCs
+     * @param channelCount the number of channels
+     */
+    fun multiChannelConfig(
+        fourCC: AudioFourCC,
+        channelCount: Byte
+    ) = ExtendedAudioData(
+        packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
+            packetType = AudioPacketType.MULTICHANNEL_CONFIG,
+            fourCC = fourCC,
+            body = MultichannelConfigAudioTagBody.UnspecifiedMultichannelConfigAudioTagBody(
+                channelCount = channelCount
+            )
+        )
+    )
+}
+
+// Multi track audio data
 
 /**
  * Creates a [MultitrackAudioTagBody] for one track audio data.

@@ -19,9 +19,9 @@ import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.FLVTagRawBody
-import io.github.thibaultbee.krtmp.flv.tags.audio.aacAudioData
-import io.github.thibaultbee.krtmp.flv.tags.video.avcHeaderVideoData
-import io.github.thibaultbee.krtmp.flv.tags.video.avcVideoData
+import io.github.thibaultbee.krtmp.flv.tags.audio.AACAudioDataFactory
+import io.github.thibaultbee.krtmp.flv.tags.video.AVCVideoDataFactory
+import io.github.thibaultbee.krtmp.flv.tags.video.HEVCExtendedVideoDataFactory
 import io.github.thibaultbee.krtmp.flv.util.FLVHeader
 import kotlinx.io.Sink
 import kotlinx.io.buffered
@@ -54,8 +54,8 @@ fun FLVMuxer(
  * // Encode onMetadata
  * muxer.encode(0, OnMetadata(...))
  * // Encode video and audio frames
- * muxer.encode(0 /* timestamp */, avcHeaderVideoData(...))
- * muxer.encode(0 /* timestamp */, avcVideoData(...))
+ * muxer.encode(0 /* timestamp */, VideoData(...))
+ * muxer.encode(0 /* timestamp */, VideoData(...))
  * ...
  * // Don't forget to close the sink
  * sink.close()
@@ -134,7 +134,7 @@ class FLVMuxer(private val output: Sink, private val amfVersion: AmfVersion = Am
  * Encodes a [FLVData] to the muxer.
  *
  * This method is a convenience method that wraps the [FLVTag] encoding.
- * The project comes with [FLVData] factories such as [avcHeaderVideoData], [avcVideoData], [aacAudioData], etc.
+ * The project comes with [FLVData] factories such as [AVCVideoDataFactory], [HEVCExtendedVideoDataFactory], [AACAudioDataFactory], etc.
  *
  * @param timestampMs the timestamp in milliseconds
  * @param data the [FLVData] to encode

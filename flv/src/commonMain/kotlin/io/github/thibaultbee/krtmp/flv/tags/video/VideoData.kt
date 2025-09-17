@@ -574,14 +574,16 @@ enum class VideoPacketType(
     override val value: Byte, val avcPacketType: AVCPacketType? = null
 ) : WithValue<Byte> {
     SEQUENCE_START(0, AVCPacketType.SEQUENCE_HEADER), // Sequence Start
-    CODED_FRAMES(1, AVCPacketType.NALU), SEQUENCE_END(
+    CODED_FRAMES(1, AVCPacketType.NALU),
+    SEQUENCE_END(
         2, AVCPacketType.END_OF_SEQUENCE
     ),
 
     /**
      * Composition time is implicitly set to 0.
      */
-    CODED_FRAMES_X(3, null), META_DATA(
+    CODED_FRAMES_X(3, null),
+    META_DATA(
         4, null
     ),
 

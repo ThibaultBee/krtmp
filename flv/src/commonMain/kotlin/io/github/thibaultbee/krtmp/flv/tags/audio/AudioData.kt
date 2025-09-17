@@ -43,7 +43,7 @@ import kotlin.experimental.and
 /**
  * Represents audio data in legacy FLV format.
  */
-class LegacyAudioData(
+class LegacyAudioData internal constructor(
     soundFormat: SoundFormat,
     val soundRate: SoundRate,
     val soundSize: SoundSize,
@@ -102,25 +102,6 @@ class LegacyAudioData(
         }
     }
 }
-
-/**
- * Creates an [ExtendedAudioData] from the given [AudioPacketType], [AudioFourCC], and [SingleAudioTagBody].
- *
- * @param packetType the [AudioPacketType] of the audio data
- * @param fourCC the [AudioFourCC] of the audio data
- * @param body the [SingleAudioTagBody] of the audio data
- */
-fun ExtendedAudioData(
-    packetType: AudioPacketType,
-    fourCC: AudioFourCC,
-    body: SingleAudioTagBody
-) = ExtendedAudioData(
-    packetDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
-        packetType = packetType,
-        fourCC = fourCC,
-        body = body
-    )
-)
 
 class ExtendedAudioData internal constructor(
     val packetDescriptor: AudioDataDescriptor,

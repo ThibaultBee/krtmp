@@ -143,10 +143,14 @@ val videoConfig = FLVVideoConfig(
 muxer.encode(0, OnMetadata(audioConfig, videoConfig))
 
 // Write audio/video data
-muxer.encode(audioFrame)
-muxer.encode(videoFrame)
-muxer.encode(audioFrame)
-muxer.encode(videoFrame)
+val audioDataFactory = AACAudioDataFactory(...)
+val videoDataFactory = AVCVideoDataFactory()
+// Always start with sequence headers
+muxer.encode(timestamp1, audioDataFactory.sequenceStart(...))
+muxer.encode(timestamp2, videoDataFactory.sequenceStart(...))
+// Then write your frames
+muxer.encode(timestamp3, audioDataFactory.codedFrame(...))
+muxer.encode(timestamp4, videoDataFactory.codedFrame(...))
 
 // Till you're done, then
 muxer.flush()
