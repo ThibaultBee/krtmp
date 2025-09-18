@@ -104,26 +104,26 @@ class LegacyAudioData internal constructor(
 }
 
 class ExtendedAudioData internal constructor(
-    val packetDescriptor: AudioDataDescriptor,
+    val dataDescriptor: AudioDataDescriptor,
     val modExs: Set<ModEx<AudioPacketModExType, *>> = emptySet()
 ) : AudioData(
     SoundFormat.EX_HEADER, if (modExs.isEmpty()) {
-        packetDescriptor.packetType.value
+        dataDescriptor.packetType.value
     } else {
         AudioPacketType.MOD_EX.value
-    }.toInt(), packetDescriptor.body
+    }.toInt(), dataDescriptor.body
 ) {
     override val size =
-        super.size + packetDescriptor.size + AudioModExCodec.encoder.getSize(modExs)
-    val packetType = packetDescriptor.packetType
+        super.size + dataDescriptor.size + AudioModExCodec.encoder.getSize(modExs)
+    val packetType = dataDescriptor.packetType
 
     override fun encodeHeaderImpl(output: Sink) {
         AudioModExCodec.encoder.encode(output, modExs, packetType.value)
-        packetDescriptor.encode(output)
+        dataDescriptor.encode(output)
     }
 
     override fun toString(): String {
-        return "ExtendedAudioData(packetType=$packetType, packetDescriptor=$packetDescriptor, modExs=$modExs)"
+        return "ExtendedAudioData(packetType=$packetType, packetDescriptor=$dataDescriptor, modExs=$modExs)"
     }
 
     companion object {

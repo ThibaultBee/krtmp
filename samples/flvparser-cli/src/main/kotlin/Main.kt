@@ -43,7 +43,7 @@ class FLVParserCli : SuspendingCliktCommand() {
 
             is ExtendedAudioData -> {
                 """
-            |Extended Audio Data: Packet Type: ${data.packetType} Packet Descriptor: ${data.packetDescriptor} ModExs: ${data.modExs} Body: ${data.body}
+            |Extended Audio Data: Packet Type: ${data.packetType} Packet Descriptor: ${data.dataDescriptor} ModExs: ${data.modExs} Body: ${data.body}
             """.trimMargin()
             }
 
@@ -55,7 +55,7 @@ class FLVParserCli : SuspendingCliktCommand() {
 
             is ExtendedVideoData -> {
                 """
-            |Extended Video Data: Packet Type: ${data.packetType} Frame Type: ${data.frameType} Packet Descriptor: ${data.packetDescriptor} ModExs: ${data.modExs} Body: ${data.body}
+            |Extended Video Data: Packet Type: ${data.packetType} Frame Type: ${data.frameType} Packet Descriptor: ${data.dataDescriptor} ModExs: ${data.modExs} Body: ${data.body}
             """.trimMargin()
             }
 

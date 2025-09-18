@@ -278,6 +278,10 @@ class OneTrackVideoTagBody(
 class ManyTrackOneCodecVideoTagBody internal constructor(
     val tracks: Set<OneTrackVideoTagBody>
 ) : OneCodecMultitrackVideoTagBody {
+    init {
+        require(tracks.size > 1) { "Many track video tag body must have at least 2 tracks" }
+    }
+
     override fun getSize(amfVersion: AmfVersion) =
         tracks.sumOf { it.getSize(amfVersion) + 3 } // +3 for sizeOfVideoTrack
 
@@ -331,6 +335,10 @@ class ManyTrackOneCodecVideoTagBody internal constructor(
 class ManyTrackManyCodecVideoTagBody(
     val tracks: Set<OneTrackMultiCodecVideoTagBody>
 ) : MultitrackVideoTagBody {
+    init {
+        require(tracks.size > 1) { "Many track video tag body must have at least 2 tracks" }
+    }
+
     override fun getSize(amfVersion: AmfVersion): Int {
         return tracks.sumOf { it.getSize(amfVersion) }
     }

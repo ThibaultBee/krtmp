@@ -161,7 +161,7 @@ fun AVCVideoDataFactory.sequenceStart(
 fun CommandExtendedVideoData(
     packetType: VideoPacketType, command: VideoCommand
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.CommandVideoDataDescriptor(
+    dataDescriptor = ExtendedVideoData.CommandVideoDataDescriptor(
         command = command, packetType = packetType
     )
 )
@@ -384,7 +384,7 @@ class ExtendedVideoDataFactory(fourCC: VideoFourCC) : CommonExtendedVideoDataFac
  *
  * @param frameType the frame type
  * @param fourCC the FourCCs
- * @param framePacketType the frame packet type
+ * @param packetType the frame packet type
  * @param trackID the track ID
  * @param body the coded [RawSource]
  * @param bodySize the size of the coded [RawSource]
@@ -392,17 +392,40 @@ class ExtendedVideoDataFactory(fourCC: VideoFourCC) : CommonExtendedVideoDataFac
 fun oneTrackMultitrackExtendedVideoData(
     frameType: VideoFrameType,
     fourCC: VideoFourCC,
-    framePacketType: VideoPacketType,
+    packetType: VideoPacketType,
     trackID: Byte,
     body: RawSource,
     bodySize: Int
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.MultitrackVideoDataDescriptor.OneTrackVideoDataDescriptor(
+    dataDescriptor = ExtendedVideoData.MultitrackVideoDataDescriptor.OneTrackVideoDataDescriptor(
         frameType = frameType,
         fourCC = fourCC,
-        framePacketType = framePacketType,
+        framePacketType = packetType,
         body = OneTrackVideoTagBody(
             trackId = trackID, body = RawVideoTagBody(data = body, dataSize = bodySize)
+        )
+    )
+)
+
+
+/**
+ * Creates a [MultitrackVideoTagBody] for one track video data.
+ *
+ * The [ExtendedVideoData.SingleVideoDataDescriptor] comes from a single track [ExtendedVideoData.dataDescriptor].
+ *
+ * @param trackID the track ID
+ * @param dataDescriptor the [ExtendedVideoData.SingleVideoDataDescriptor] containing the video data
+ */
+fun oneTrackMultitrackExtendedVideoData(
+    trackID: Byte,
+    dataDescriptor: ExtendedVideoData.SingleVideoDataDescriptor
+) = ExtendedVideoData(
+    dataDescriptor = ExtendedVideoData.MultitrackVideoDataDescriptor.OneTrackVideoDataDescriptor(
+        frameType = dataDescriptor.frameType,
+        fourCC = dataDescriptor.fourCC,
+        framePacketType = dataDescriptor.packetType,
+        body = OneTrackVideoTagBody(
+            trackId = trackID, body = dataDescriptor.body
         )
     )
 )
@@ -413,35 +436,34 @@ fun oneTrackMultitrackExtendedVideoData(
  *
  * @param frameType the frame type
  * @param fourCC the FourCCs
- * @param framePacketType the frame packet type
+ * @param packetType the frame packet type
  * @param tracks the set of [OneTrackVideoTagBody]. If there is only one track in the set it is considered as a one track video data.
  */
 fun oneCodecMultitrackExtendedVideoData(
     frameType: VideoFrameType,
     fourCC: VideoFourCC,
-    framePacketType: VideoPacketType,
+    packetType: VideoPacketType,
     tracks: Set<OneTrackVideoTagBody>
 ): ExtendedVideoData {
+    require(tracks.isNotEmpty()) { "tracks cannot be empty" }
     val packetDescriptor = if (tracks.size == 1) {
         ExtendedVideoData.MultitrackVideoDataDescriptor.OneTrackVideoDataDescriptor(
             frameType = frameType,
             fourCC = fourCC,
-            framePacketType = framePacketType,
+            framePacketType = packetType,
             body = tracks.first()
         )
-    } else if (tracks.size > 1) {
+    } else {
         ExtendedVideoData.MultitrackVideoDataDescriptor.ManyTrackVideoDataDescriptor(
             frameType = frameType,
             fourCC = fourCC,
-            framePacketType = framePacketType,
+            framePacketType = packetType,
             body = ManyTrackOneCodecVideoTagBody(tracks)
         )
-    } else {
-        throw IllegalArgumentException("No track in the set")
     }
 
     return ExtendedVideoData(
-        packetDescriptor = packetDescriptor
+        dataDescriptor = packetDescriptor
     )
 }
 
@@ -450,17 +472,17 @@ fun oneCodecMultitrackExtendedVideoData(
  * Creates a [MultitrackVideoTagBody] for a many codec and many track video data.
  *
  * @param frameType the frame type
- * @param framePacketType the frame packet type
+ * @param packetType the frame packet type
  * @param tracks the set of [OneTrackMultiCodecVideoTagBody]
  */
 fun manyCodecMultitrackExtendedVideoData(
     frameType: VideoFrameType,
-    framePacketType: VideoPacketType,
+    packetType: VideoPacketType,
     tracks: Set<OneTrackMultiCodecVideoTagBody>
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.MultitrackVideoDataDescriptor.ManyTrackManyCodecVideoDataDescriptor(
+    dataDescriptor = ExtendedVideoData.MultitrackVideoDataDescriptor.ManyTrackManyCodecVideoDataDescriptor(
         frameType = frameType,
-        framePacketType = framePacketType,
+        framePacketType = packetType,
         body = ManyTrackManyCodecVideoTagBody(tracks)
     )
 )

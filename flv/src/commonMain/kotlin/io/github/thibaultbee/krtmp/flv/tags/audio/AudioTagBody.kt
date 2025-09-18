@@ -257,6 +257,10 @@ class OneTrackAudioTagBody(
 class ManyTrackOneCodecAudioTagBody internal constructor(
     val tracks: Set<OneTrackAudioTagBody>
 ) : OneCodecMultitrackAudioTagBody {
+    init {
+        require(tracks.size > 1) { "Many track audio tag body must have at least 2 tracks" }
+    }
+
     override val size = tracks.sumOf { it.size + 3 } // +3 for sizeOfAudioTrack
 
     override fun encode(output: Sink) {
@@ -314,6 +318,10 @@ class ManyTrackOneCodecAudioTagBody internal constructor(
 class ManyTrackManyCodecAudioTagBody(
     val tracks: Set<OneTrackMultiCodecAudioTagBody>
 ) : MultitrackAudioTagBody {
+    init {
+        require(tracks.size > 1) { "Many track video tag body must have at least 2 tracks" }
+    }
+    
     override val size = tracks.sumOf { it.size }
 
     override fun encode(output: Sink) {

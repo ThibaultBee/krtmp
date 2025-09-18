@@ -139,51 +139,51 @@ fun ExtendedVideoData(
     fourCC: VideoFourCC,
     body: SingleVideoTagBody
 ) = ExtendedVideoData(
-    packetDescriptor = ExtendedVideoData.SingleVideoDataDescriptor(
+    dataDescriptor = ExtendedVideoData.SingleVideoDataDescriptor(
         frameType, packetType, fourCC, body
-    ), modExs = setOf(VideoModEx.TimestampOffsetNano(123))
+    )
 )
 
 /**
  * Representation of extended video data in enhanced FLV format (v1 and v2).
  *
- * @param packetDescriptor the packet descriptor
+ * @param dataDescriptor the packet descriptor
  * @param modExs the set of video mod ex
  */
 class ExtendedVideoData internal constructor(
-    val packetDescriptor: VideoDataDescriptor,
+    val dataDescriptor: VideoDataDescriptor,
     val modExs: Set<ModEx<VideoPacketModExType, *>> = emptySet()
 ) : VideoData(
-    true, packetDescriptor.frameType, if (modExs.isEmpty()) {
-        packetDescriptor.packetType.value
+    true, dataDescriptor.frameType, if (modExs.isEmpty()) {
+        dataDescriptor.packetType.value
     } else {
         VideoPacketType.MOD_EX.value
-    }.toInt(), packetDescriptor.body
+    }.toInt(), dataDescriptor.body
 ) {
-    val packetType = packetDescriptor.packetType
+    val packetType = dataDescriptor.packetType
 
     override fun getSize(amfVersion: AmfVersion): Int {
-        return super.getSize(amfVersion) + packetDescriptor.size + VideoModExCodec.encoder.getSize(
+        return super.getSize(amfVersion) + dataDescriptor.size + VideoModExCodec.encoder.getSize(
             modExs
         )
     }
 
     override fun encodeHeaderImpl(output: Sink) {
         if ((packetType != VideoPacketType.META_DATA) && (frameType == VideoFrameType.COMMAND)) {
-            require(packetDescriptor is CommandVideoDataDescriptor) {
+            require(dataDescriptor is CommandVideoDataDescriptor) {
                 "Invalid frame type for command: $frameType. Only CommandHeaderExtension is supported."
             }
         } else if (packetType == VideoPacketType.MULTITRACK) {
-            require(packetDescriptor is MultitrackVideoDataDescriptor) {
+            require(dataDescriptor is MultitrackVideoDataDescriptor) {
                 "Invalid frame type for multitrack: $frameType. Only MultitrackHeaderExtension is supported."
             }
         }
         VideoModExCodec.encoder.encode(output, modExs, packetType.value)
-        packetDescriptor.encode(output)
+        dataDescriptor.encode(output)
     }
 
     override fun toString(): String {
-        return "ExtendedVideoData(frameType=$frameType, packetType=${packetType}, packetDescriptor=$packetDescriptor, modExs=$modExs)"
+        return "ExtendedVideoData(frameType=$frameType, packetType=${packetType}, packetDescriptor=$dataDescriptor, modExs=$modExs)"
     }
 
     companion object {
@@ -240,7 +240,7 @@ class ExtendedVideoData internal constructor(
     /**
      * Description of an extended video data.
      */
-    interface VideoDataDescriptor : SinkEncoder {
+    sealed interface VideoDataDescriptor : SinkEncoder {
         val frameType: VideoFrameType
         val packetType: VideoPacketType
         val body: VideoTagBody
