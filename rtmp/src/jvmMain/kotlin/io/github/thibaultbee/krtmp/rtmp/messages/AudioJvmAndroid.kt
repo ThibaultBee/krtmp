@@ -1,6 +1,6 @@
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.flv.sources.ByteBufferBackedRawSource
+import io.github.thibaultbee.krtmp.common.sources.ByteBufferBackedRawSource
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import java.nio.ByteBuffer
 

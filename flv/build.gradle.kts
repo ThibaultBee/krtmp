@@ -49,7 +49,8 @@ kotlin {
             implementation(libs.kotlinx.serialization.core)
             implementation(libs.kotlinx.coroutines.core)
             api(project(":amf"))
-            api(project(":common"))
+            implementation(project(":common"))
+            api(project(":logger"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -45,6 +45,13 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(libs.kotlinx.io.core)
+        }
+        androidMain {
+            kotlin.srcDir("src/commonJvmAndroid/kotlin")
+        }
+        jvmMain {
+            kotlin.srcDir("src/commonJvmAndroid/kotlin")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

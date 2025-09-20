@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.sources
+package io.github.thibaultbee.krtmp.common.sources
 
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource

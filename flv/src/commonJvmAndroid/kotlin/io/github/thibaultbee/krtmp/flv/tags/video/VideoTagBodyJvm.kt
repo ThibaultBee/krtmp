@@ -1,6 +1,6 @@
 package io.github.thibaultbee.krtmp.flv.tags.video
 
-import io.github.thibaultbee.krtmp.flv.sources.ByteBufferBackedRawSource
+import io.github.thibaultbee.krtmp.common.sources.ByteBufferBackedRawSource
 import java.nio.ByteBuffer
 
 /**

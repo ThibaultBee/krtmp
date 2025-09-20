@@ -1,4 +1,4 @@
-package io.github.thibaultbee.krtmp.flv.sources
+package io.github.thibaultbee.krtmp.common.sources
 
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
@@ -6,11 +6,10 @@ import java.nio.ByteBuffer
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-class BytBufferBackedRawSourceTest {
+class ByteBufferBackedRawSourceTest {
     @Test
     fun `read from empty source`() {
         val byteBuffer = ByteBuffer.allocate(0)

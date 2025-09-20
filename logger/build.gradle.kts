@@ -7,11 +7,13 @@ plugins {
     `krtmp-publish`
 }
 
-description = "RTMP library"
+description = "Logger for krtmp"
 
 kotlin {
     linuxX64()
     linuxArm64()
+
+    mingwX64()
 
     macosX64()
     macosArm64()
@@ -36,39 +38,19 @@ kotlin {
         iosSimulatorArm64()
     ).forEach {
         it.binaries.framework {
-            baseName = "rtmp"
+            baseName = "logger"
             isStatic = true
         }
     }
 
     sourceSets {
         commonMain.dependencies {
-            api(libs.ktor.network)
-            implementation(libs.ktor.network.tls)
-            implementation(libs.ktor.http)
-            api(libs.ktor.client.core)
-            implementation(libs.ktor.client.cio)
-            implementation(libs.kotlinx.io.core)
-            implementation(libs.kotlinx.serialization.core)
-            implementation(libs.kotlinx.coroutines.core)
-            api(project(":flv"))
-            api(project(":amf"))
-            implementation(project(":common"))
-            api(project(":logger"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.test)
-        }
-        androidMain {
-            kotlin.srcDir("src/commonJvmAndroid/kotlin")
-        }
-        jvmMain {
-            kotlin.srcDir("src/commonJvmAndroid/kotlin")
         }
         jvmTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.test)
         }
     }
 
@@ -80,7 +62,7 @@ kotlin {
 }
 
 android {
-    namespace = "io.github.thibaultbee.krtmp.rtmp"
+    namespace = "io.github.thibaultbee.krtmp.logger"
     compileSdk = 36
     defaultConfig {
         minSdk = 21

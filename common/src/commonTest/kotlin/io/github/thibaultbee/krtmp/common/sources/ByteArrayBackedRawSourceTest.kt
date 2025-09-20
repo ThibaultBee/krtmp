@@ -1,4 +1,4 @@
-package io.github.thibaultbee.krtmp.flv.sources
+package io.github.thibaultbee.krtmp.common.sources
 
 import kotlinx.io.Buffer
 import kotlinx.io.readByteArray
