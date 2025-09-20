@@ -28,10 +28,11 @@ import kotlinx.io.Source
 /**
  * Interface for audio tag body.
  */
-interface AudioTagBody {
+interface AudioTagBody : AutoCloseable {
     val size: Int
     fun encode(output: Sink)
     fun readRawSource(): RawSource
+    override fun close() {}
 }
 
 interface SingleAudioTagBody : AudioTagBody
@@ -50,6 +51,13 @@ class RawAudioTagBody(
 
     override fun toString(): String {
         return "RawAudioTagBody(dataSize=$dataSize)"
+    }
+
+    /**
+     * Closes the underlying [RawSource].
+     */
+    override fun close() {
+        data.close()
     }
 
     companion object {
@@ -233,6 +241,13 @@ class OneTrackAudioTagBody(
         return MultiRawSource(Buffer().apply { encodeHeader(this) }, body.readRawSource())
     }
 
+    /**
+     * Closes the underlying [body].
+     */
+    override fun close() {
+        body.close()
+    }
+
     override fun toString(): String {
         return "OneTrackAudioTagBody(trackId=$trackId, body=$body)"
     }
@@ -283,6 +298,13 @@ class ManyTrackOneCodecAudioTagBody internal constructor(
         return MultiRawSource(rawSources)
     }
 
+    /**
+     * Closes the underlying [tracks].
+     */
+    override fun close() {
+        tracks.forEach { it.close() }
+    }
+
     override fun toString(): String {
         return "ManyTrackOneCodecAudioTagBody(tracks=$tracks)"
     }
@@ -321,7 +343,7 @@ class ManyTrackManyCodecAudioTagBody(
     init {
         require(tracks.size > 1) { "Many track video tag body must have at least 2 tracks" }
     }
-    
+
     override val size = tracks.sumOf { it.size }
 
     override fun encode(output: Sink) {
@@ -332,6 +354,13 @@ class ManyTrackManyCodecAudioTagBody(
 
     override fun readRawSource(): RawSource {
         return MultiRawSource(tracks.map { it.readRawSource() })
+    }
+
+    /**
+     * Closes the underlying [tracks].
+     */
+    override fun close() {
+        tracks.forEach { it.close() }
     }
 
     override fun toString(): String {
@@ -357,7 +386,7 @@ class ManyTrackManyCodecAudioTagBody(
         val fourCC: AudioFourCC,
         val trackId: Byte = 0,
         val body: SingleAudioTagBody
-    ) {
+    ) : AutoCloseable {
         val size = 8 + body.size
 
         private fun encodeHeader(output: Sink) {
@@ -378,6 +407,13 @@ class ManyTrackManyCodecAudioTagBody(
                 },
                 body.readRawSource()
             )
+        }
+
+        /**
+         * Closes the underlying [body].
+         */
+        override fun close() {
+            body.close()
         }
 
         companion object {

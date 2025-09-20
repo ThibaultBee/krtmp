@@ -34,10 +34,15 @@ import kotlinx.io.Source
 /**
  * Interface for video tag body.
  */
-interface VideoTagBody {
+interface VideoTagBody : AutoCloseable {
     fun getSize(amfVersion: AmfVersion): Int
     fun encode(output: Sink, amfVersion: AmfVersion)
     fun readRawSource(amfVersion: AmfVersion): RawSource
+
+    /**
+     * Closes the video tag body and releases any resources associated with it.
+     */
+    override fun close() {}
 }
 
 interface SingleVideoTagBody : VideoTagBody {
@@ -118,6 +123,10 @@ class RawVideoTagBody(
 
     override fun readRawSource(amfVersion: AmfVersion): RawSource {
         return data
+    }
+
+    override fun close() {
+        data.close()
     }
 
     override fun toString(): String {
@@ -203,6 +212,10 @@ class CompositionTimeExtendedVideoTagBody(
         )
     }
 
+    override fun close() {
+        data.close()
+    }
+
     override fun toString(): String {
         return "ExtendedWithCompositionTimeVideoTagBody(compositionTime=$compositionTime, dataSize=$dataSize)"
     }
@@ -252,6 +265,13 @@ class OneTrackVideoTagBody(
             Buffer().apply { encodeHeader(this) },
             body.readRawSource(amfVersion)
         )
+    }
+
+    /**
+     * Closes the body of the one track video tag body.
+     */
+    override fun close() {
+        body.close()
     }
 
     override fun toString(): String {
@@ -305,6 +325,13 @@ class ManyTrackOneCodecVideoTagBody internal constructor(
         return MultiRawSource(rawSources)
     }
 
+    /**
+     * Closes all the tracks in the many track video tag body.
+     */
+    override fun close() {
+        tracks.forEach { it.close() }
+    }
+
     override fun toString(): String {
         return "ManyTrackOneCodecVideoTagBody(tracks=$tracks)"
     }
@@ -353,6 +380,10 @@ class ManyTrackManyCodecVideoTagBody(
         return MultiRawSource(tracks.map { it.readRawSource(amfVersion) })
     }
 
+    override fun close() {
+        tracks.forEach { it.close() }
+    }
+
     override fun toString(): String {
         return "ManyTrackManyCodecVideoTagBody(tracks=$tracks)"
     }
@@ -376,7 +407,7 @@ class ManyTrackManyCodecVideoTagBody(
         val fourCC: VideoFourCC,
         val trackId: Byte = 0,
         val body: SingleVideoTagBody
-    ) {
+    ) : AutoCloseable {
         fun getSize(amfVersion: AmfVersion) = 8 + body.getSize(amfVersion)
 
         private fun encodeHeader(output: Sink, amfVersion: AmfVersion) {
@@ -397,6 +428,13 @@ class ManyTrackManyCodecVideoTagBody(
                 },
                 body.readRawSource(amfVersion)
             )
+        }
+
+        /**
+         * Closes the body of the one track multi codec video tag body.
+         */
+        override fun close() {
+            body.close()
         }
 
         companion object {

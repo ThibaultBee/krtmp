@@ -46,6 +46,6 @@ class ByteBufferBackedRawSource(private val buffer: ByteBuffer) : RawSource {
     }
 
     override fun close() {
-        // Nothing to do
+        buffer.clear()
     }
 }
