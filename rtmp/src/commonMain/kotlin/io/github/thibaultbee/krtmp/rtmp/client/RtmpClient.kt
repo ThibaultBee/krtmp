@@ -124,52 +124,19 @@ class RtmpClient internal constructor(
         connection.writeSetDataFrame(metadata)
 
     /**
-     * Writes the SetDataFrame from a [ByteArray].
-     * It must be called after [publish] and before sending audio or video frames.
-     *
-     * Expected AMF format is the one set in [RtmpSettings.amfVersion].
-     *
-     * @param onMetadata the on metadata to send
-     */
-    suspend fun writeSetDataFrame(onMetadata: ByteArray) = connection.writeSetDataFrame(
-        ByteArrayBackedRawSource(onMetadata), onMetadata.size
-    )
-
-    /**
      * Writes the SetDataFrame from a [Buffer].
      * It must be called after [publish] and before sending audio or video frames.
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
      * @param onMetadata the on metadata to send
+     * @param onMetadataSize the size of the on metadata
      */
-    suspend fun writeSetDataFrame(onMetadata: RawSource, size: Int) =
-        connection.writeSetDataFrame(onMetadata, size)
+    suspend fun writeSetDataFrame(onMetadata: RawSource, onMetadataSize: Int) =
+        connection.writeSetDataFrame(onMetadata, onMetadataSize)
 
     /**
-     * Writes an audio frame.
-     *
-     * The frame must be wrapped in a FLV body.
-     *
-     * @param timestamp the timestamp of the frame
-     * @param array the audio frame to write
-     */
-    suspend fun writeAudio(timestamp: Int, array: ByteArray) =
-        connection.writeAudio(timestamp, array)
-
-    /**
-     * Writes a video frame.
-     *
-     * The frame must be wrapped in a FLV body.
-     *
-     * @param timestamp the timestamp of the frame
-     * @param array the video frame to write
-     */
-    suspend fun writeVideo(timestamp: Int, array: ByteArray) =
-        connection.writeVideo(timestamp, array)
-
-    /**
-     * Writes an audio frame.
+     * Writes an audio frame from a [RawSource] and its size.
      *
      * The frame must be wrapped in a FLV body.
      *
@@ -180,7 +147,7 @@ class RtmpClient internal constructor(
         connection.writeAudio(timestamp, source, sourceSize)
 
     /**
-     * Writes a video frame.
+     * Writes a video frame from a [RawSource] and its size.
      *
      * The frame must be wrapped in a FLV body.
      *
@@ -231,10 +198,45 @@ class RtmpClient internal constructor(
     override fun dispose() {
         try {
             close()
-        } catch (ignore: Throwable) {
+        } catch (_: Throwable) {
         }
     }
 }
+
+/**
+ * Writes the SetDataFrame from a [ByteArray].
+ * It must be called after [publish] and before sending audio or video frames.
+ *
+ * Expected AMF format is the one set in [RtmpSettings.amfVersion].
+ *
+ * @param onMetadata the on metadata to send
+ */
+suspend fun RtmpClient.writeSetDataFrame(onMetadata: ByteArray) = writeSetDataFrame(
+    onMetadata = ByteArrayBackedRawSource(onMetadata), onMetadataSize = onMetadata.size
+)
+
+/**
+ * Writes an audio frame from a [ByteArray].
+ *
+ * The frame must be wrapped in a FLV body.
+ *
+ * @param timestamp the timestamp of the frame
+ * @param array the audio frame to write
+ */
+suspend fun RtmpClient.writeAudio(timestamp: Int, array: ByteArray) =
+    writeAudio(timestamp, ByteArrayBackedRawSource(array), array.size)
+
+/**
+ * Writes a video frame from a [ByteArray].
+ *
+ * The frame must be wrapped in a FLV body.
+ *
+ * @param timestamp the timestamp of the frame
+ * @param array the video frame to write
+ */
+suspend fun RtmpClient.writeVideo(timestamp: Int, array: ByteArray) =
+    writeVideo(timestamp, ByteArrayBackedRawSource(array), array.size)
+
 
 internal class RtmpClientConnectionCallback(
     private val socket: RtmpConnection,

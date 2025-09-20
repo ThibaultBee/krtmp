@@ -543,29 +543,7 @@ internal class RtmpConnection internal constructor(
         writeSetDataFrame(onMetadata, size, settings.amfVersion)
 
     /**
-     * Writes an audio frame.
-     *
-     * The frame must be wrapped in a FLV body.
-     *
-     * @param timestamp the timestamp of the frame
-     * @param array the audio frame to write
-     */
-    suspend fun writeAudio(timestamp: Int, array: ByteArray) =
-        writeAudio(timestamp, ByteArrayBackedRawSource(array), array.size)
-
-    /**
-     * Writes a video frame.
-     *
-     * The frame must be wrapped in a FLV body.
-     *
-     * @param timestamp the timestamp of the frame
-     * @param array the video frame to write
-     */
-    suspend fun writeVideo(timestamp: Int, array: ByteArray) =
-        writeVideo(timestamp, ByteArrayBackedRawSource(array), array.size)
-
-    /**
-     * Writes an audio frame.
+     * Writes an audio frame from a [RawSource] and its size.
      *
      * The frame must be wrapped in a FLV body.
      *
@@ -582,7 +560,7 @@ internal class RtmpConnection internal constructor(
     }
 
     /**
-     * Writes a video frame.
+     * Writes a video frame from a [RawSource] and its size.
      *
      * The frame must be wrapped in a FLV body.
      *
@@ -886,7 +864,7 @@ internal suspend fun RtmpConnection.write(source: Source) {
     val peek = source.peek()
     val isHeader = try {
         peek.readString(3) == "FLV"
-    } catch (t: Throwable) {
+    } catch (_: Throwable) {
         false
     }
     if (isHeader) {
