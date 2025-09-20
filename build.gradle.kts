@@ -57,6 +57,7 @@ dependencies {
     kover(project(":amf"))
     kover(project(":flv"))
     kover(project(":rtmp"))
+    kover(project(":common"))
 }
 
 kover {

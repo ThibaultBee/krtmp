@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
+import io.github.thibaultbee.krtmp.common.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.rtmp.messages.chunk.ChunkStreamId
 import kotlinx.io.Buffer

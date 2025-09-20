@@ -53,7 +53,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             api(project(":flv"))
             api(project(":amf"))
-            api(project(":common"))
+            implementation(project(":common"))
+            api(project(":logger"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

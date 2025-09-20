@@ -17,7 +17,7 @@ package io.github.thibaultbee.krtmp.rtmp.server
 
 import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfNumber
-import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
+import io.github.thibaultbee.krtmp.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.client.RtmpClient
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnection
 import io.github.thibaultbee.krtmp.rtmp.connection.RtmpConnectionCallback

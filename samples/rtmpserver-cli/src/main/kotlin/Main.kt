@@ -6,9 +6,9 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.arguments.argument
 import io.github.thibaultbee.krtmp.amf.Amf
 import io.github.thibaultbee.krtmp.amf.elements.containers.AmfContainer
-import io.github.thibaultbee.krtmp.common.logger.IKrtmpLogger
-import io.github.thibaultbee.krtmp.common.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.flv.tags.script.Metadata
+import io.github.thibaultbee.krtmp.logger.IKrtmpLogger
+import io.github.thibaultbee.krtmp.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.RtmpConnectionBuilder
 import io.github.thibaultbee.krtmp.rtmp.bind
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObject

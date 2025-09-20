@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags.audio
 
-import io.github.thibaultbee.krtmp.flv.sources.ByteBufferBackedRawSource
+import io.github.thibaultbee.krtmp.common.sources.ByteBufferBackedRawSource
 import java.nio.ByteBuffer
 
 /**

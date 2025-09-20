@@ -1,7 +1,7 @@
 package io.github.thibaultbee.krtmp.flv.util.av.avc
 
 import io.github.thibaultbee.krtmp.flv.Resource
-import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
+import io.github.thibaultbee.krtmp.common.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.util.readByteArray
 import kotlin.test.Test
 import kotlin.test.assertContentEquals

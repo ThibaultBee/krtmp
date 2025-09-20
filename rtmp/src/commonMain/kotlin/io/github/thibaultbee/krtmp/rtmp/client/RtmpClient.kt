@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.client
 
-import io.github.thibaultbee.krtmp.flv.sources.ByteArrayBackedRawSource
+import io.github.thibaultbee.krtmp.common.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.tags.FLVData
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.FLVTagRawBody
