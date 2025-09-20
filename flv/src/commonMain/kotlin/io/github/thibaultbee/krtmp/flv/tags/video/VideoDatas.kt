@@ -126,12 +126,12 @@ class AVCVideoDataFactory {
 
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] for sequence start from SPS and PPS.
+ * Creates a legacy AVC/H.264 [VideoData] for sequence start from SPS and PPS as [RawSource]s.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
  *
- * @param sps the SPS NAL units
- * @param pps the PPS NAL units
+ * @param sps the SPS NAL units and their sizes
+ * @param pps the PPS NAL units and their sizes
  * @return the [VideoData]
  */
 fun AVCVideoDataFactory.sequenceStart(
@@ -228,8 +228,8 @@ class AVCExtendedVideoDataFactory : AVCHEVCExtendedVideoDataFactory(VideoFourCC.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
  *
- * @param sps the SPS NAL units
- * @param pps the PPS NAL units
+ * @param sps the SPS NAL units and their sizes
+ * @param pps the PPS NAL units and their sizes
  * @return the [ExtendedVideoData]
  */
 fun AVCExtendedVideoDataFactory.sequenceStart(
@@ -258,8 +258,9 @@ class HEVCExtendedVideoDataFactory : AVCHEVCExtendedVideoDataFactory(VideoFourCC
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
  *
- * @param sps the SPS NAL units
- * @param pps the PPS NAL units
+ * @param vps the VPS NAL units and their sizes
+ * @param sps the SPS NAL units and their sizes
+ * @param pps the PPS NAL units and their sizes
  * @return the [ExtendedVideoData]
  */
 fun HEVCExtendedVideoDataFactory.sequenceStart(
@@ -380,7 +381,7 @@ class ExtendedVideoDataFactory(fourCC: VideoFourCC) : CommonExtendedVideoDataFac
 // Multi track video data
 
 /**
- * Creates a [MultitrackVideoTagBody] for one track video data.
+ * Creates a [MultitrackVideoTagBody] for one track video data from a [RawSource] and its size.
  *
  * @param frameType the frame type
  * @param fourCC the FourCCs

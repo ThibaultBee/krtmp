@@ -31,8 +31,9 @@ import kotlinx.io.RawSource
  * Factories to create [AudioData].
  */
 
+// Legacy audio data
 /**
- * Creates a legacy [AudioData] from its parameters.
+ * Creates a legacy [AudioData] from its parameters and a [RawSource].
  *
  * For AAC audio data, consider using [AACAudioDataFactory].
  *
@@ -137,7 +138,7 @@ class ExtendedAudioDataFactory(
     val fourCC: AudioFourCC
 ) {
     /**
-     * Creates an [ExtendedAudioData] from the given [RawSource] and its size.
+     * Creates an [ExtendedAudioData] for coded frame from a [RawSource] and its size.
      *
      * @param body the [RawSource] of the audio data
      * @param bodySize the size of the [RawSource]
@@ -153,6 +154,12 @@ class ExtendedAudioDataFactory(
         )
     )
 
+    /**
+     * Creates an [ExtendedAudioData] for sequence start from a [RawSource] and its size.
+     *
+     * @param body the [RawSource] of the audio data
+     * @param bodySize the size of the [RawSource]
+     */
     fun sequenceStart(
         body: RawSource,
         bodySize: Int
@@ -164,6 +171,9 @@ class ExtendedAudioDataFactory(
         )
     )
 
+    /**
+     * Creates an [ExtendedAudioData] for sequence end.
+     */
     fun sequenceEnd() = ExtendedAudioData(
         dataDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
             packetType = AudioPacketType.SEQUENCE_END,
@@ -172,6 +182,12 @@ class ExtendedAudioDataFactory(
         )
     )
 
+    /**
+     * Creates an [ExtendedAudioData] for multichannel config audio data from a [RawSource] and its size.
+     *
+     * @param body the [RawSource] of the audio data
+     * @param bodySize the size of the [RawSource]
+     */
     fun multiChannelConfig(
         body: RawSource,
         bodySize: Int
@@ -206,7 +222,7 @@ class ExtendedAudioDataFactory(
 // Multi track audio data
 
 /**
- * Creates a [MultitrackAudioTagBody] for one track audio data.
+ * Creates a [MultitrackAudioTagBody] for one track audio data from a [RawSource] and its size.
  *
  * @param fourCC the FourCCs
  * @param framePacketType the frame packet type
