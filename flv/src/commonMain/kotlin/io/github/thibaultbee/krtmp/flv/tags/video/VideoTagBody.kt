@@ -110,9 +110,9 @@ class MetadataVideoTagBody(
 }
 
 /**
- * Creates a raw video tag body from a [ByteArray].s
+ * Creates a raw video tag body from a [ByteArray].
  *
- * @param data The [ByteArray] data of the video frame.
+ * @param data the coded frame as a [ByteArray]
  */
 fun RawVideoTagBody(data: ByteArray) =
     RawVideoTagBody(ByteArrayBackedRawSource(data), data.size)
@@ -120,8 +120,8 @@ fun RawVideoTagBody(data: ByteArray) =
 /**
  * Default video tag body for a single frame.
  *
- * @param data The [RawSource] data of the video frame.
- * @param dataSize The size of the data in bytes.
+ * @param data the coded frame as a [RawSource]
+ * @param dataSize The size of the [data]
  */
 class RawVideoTagBody(
     val data: RawSource,
@@ -197,8 +197,8 @@ internal class EmptyVideoTagBody : SingleVideoTagBody {
  * [VideoPacketType.CODED_FRAMES].
  *
  * @param compositionTime 24 bits composition time
- * @param data The raw source data of the video frame.
- * @param dataSize The size of the data in bytes.
+ * @param data The coded frame as a [RawSource]
+ * @param dataSize The size of the [data]
  */
 class CompositionTimeExtendedVideoTagBody(
     val compositionTime: Int, // 24 bits

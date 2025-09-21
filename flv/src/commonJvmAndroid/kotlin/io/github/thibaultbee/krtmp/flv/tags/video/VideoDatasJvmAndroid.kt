@@ -23,52 +23,52 @@ import io.github.thibaultbee.krtmp.flv.util.readBuffer
 import java.nio.ByteBuffer
 
 /**
- * Extensions for JVM to create [VideoData] and [ExtendedVideoData] from [ByteBuffer]s.
+ * Extensions for JVM to create [VideoData] from [ByteBuffer].
  */
 
 // Legacy video data
 
 /**
- * Creates a legacy [VideoData] from a [ByteBuffer]s.
+ * Creates a [LegacyVideoData] from a [ByteBuffer].
  *
  * For AVC/H.264, use [AVCVideoDataFactory] instead.
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param body the coded [ByteBuffer]
- * @return the [VideoData] with the frame
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [LegacyVideoData] with the frame
  */
 fun VideoData(
     frameType: VideoFrameType,
     codecID: CodecID,
-    body: ByteBuffer
-) = VideoData(frameType, codecID, ByteBufferBackedRawSource(body), body.remaining())
+    data: ByteBuffer
+) = VideoData(frameType, codecID, ByteBufferBackedRawSource(data), data.remaining())
 
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] from a [ByteBuffer].
+ * Creates an AVC/H.264 [LegacyVideoData] fpr a coded frame from a [ByteBuffer].
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param body the coded AVC [ByteBuffer] without AVCC or AnnexB header
+ * @param data the coded frame as a [ByteBuffer]
  * @param compositionTime the composition time (24 bits). Default is 0.
- * @return the [VideoData]
+ * @return the [LegacyVideoData] with the frame
  */
 fun AVCVideoDataFactory.codedFrame(
     frameType: VideoFrameType,
-    body: ByteBuffer,
+    data: ByteBuffer,
     compositionTime: Int = 0
 ) = codedFrame(
     frameType,
-    ByteBufferBackedRawSource(body),
-    body.remaining(),
+    ByteBufferBackedRawSource(data),
+    data.remaining(),
     compositionTime
 )
 
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] for [AVCDecoderConfigurationRecord] from a [ByteBuffer].
+ * Creates an AVC/H.264 [LegacyVideoData] for sequence start from a [ByteBuffer].
  *
  * @param decoderConfigurationRecord the [AVCDecoderConfigurationRecord] as a [ByteBuffer]
- * @return the [VideoData]
+ * @return the [LegacyVideoData] with the sequence start
  */
 fun AVCVideoDataFactory.sequenceStart(
     decoderConfigurationRecord: ByteBuffer
@@ -79,13 +79,13 @@ fun AVCVideoDataFactory.sequenceStart(
 
 
 /**
- * Creates a legacy AVC/H.264 [VideoData] for sequence start from SPS and PPS as [ByteBuffer]s.
+ * Creates an AVC/H.264 [LegacyVideoData] for sequence start from SPS and PPS as [ByteBuffer]s.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
  *
  * @param sps the SPS NAL units
  * @param pps the PPS NAL units
- * @return the [VideoData]
+ * @return the [LegacyVideoData] with the sequence start
  */
 fun AVCVideoDataFactory.sequenceStartByteBuffer(
     sps: List<ByteBuffer>,
@@ -108,25 +108,25 @@ fun AVCVideoDataFactory.sequenceStartByteBuffer(
 /**
  * Creates an [ExtendedVideoData] for the sequence start.
  *
- * @param body the body [ByteBuffer], usually a decoder configuration record
- * @return the [ExtendedVideoData] for sequence start
+ * @param decoderConfigurationRecord the decoder configuration record as a [ByteBuffer]
+ * @return the [ExtendedVideoData] with the sequence start
  */
 fun CommonExtendedVideoDataFactory.sequenceStart(
-    body: ByteBuffer
+    decoderConfigurationRecord: ByteBuffer
 ) = sequenceStart(
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(decoderConfigurationRecord),
+    decoderConfigurationRecord.remaining()
 )
 
 
 /**
- * Creates an extended AVC/H.264 [ExtendedVideoData] for sequence start from SPS and PPS as [ByteBuffer]s.
+ * Creates an AVC/H.264 [ExtendedVideoData] for sequence start from SPS and PPS as [ByteBuffer]s.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
  *
  * @param sps the SPS NAL units
  * @param pps the PPS NAL units
- * @return the [ExtendedVideoData]
+ * @return the [ExtendedVideoData] with the sequence start
  */
 fun AVCExtendedVideoDataFactory.sequenceStartByteBuffer(
     sps: List<ByteBuffer>,
@@ -137,13 +137,13 @@ fun AVCExtendedVideoDataFactory.sequenceStartByteBuffer(
 )
 
 /**
- * Creates an extended HEVC/H.264 [ExtendedVideoData] for sequence start from SPS and PPS as [ByteBuffer]s.
+ * Creates an HEVC/H.265 [ExtendedVideoData] for sequence start from SPS and PPS as [ByteBuffer]s.
  *
  * This method will create a [AVCDecoderConfigurationRecord] from the SPS and PPS NAL units.
  *
  * @param sps the SPS NAL units
  * @param pps the PPS NAL units
- * @return the [ExtendedVideoData]
+ * @return the [ExtendedVideoData] with the sequence start
  */
 fun HEVCExtendedVideoDataFactory.sequenceStartByteBuffer(
     vps: List<ByteBuffer>,
@@ -157,51 +157,51 @@ fun HEVCExtendedVideoDataFactory.sequenceStartByteBuffer(
 
 
 /**
- * Creates an [ExtendedVideoData] from a [ByteBuffer] with composition time.
+ * Creates an [ExtendedVideoData] for coded frame from a [ByteBuffer] with composition time.
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param compositionTime the composition time (24 bits).
- * @param body the coded [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer]
  * @return the [ExtendedVideoData] with the frame
  * @see codedFrameX
  */
 fun AVCHEVCExtendedVideoDataFactory.codedFrame(
     frameType: VideoFrameType,
     compositionTime: Int,
-    body: ByteBuffer
+    data: ByteBuffer
 ) = codedFrame(
     frameType,
     compositionTime,
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )
 
 
 /**
- * Creates an [ExtendedVideoData] from a [ByteBuffer] where composition time is implicitly 0.
+ * Creates an [ExtendedVideoData] for coded frame from a [ByteBuffer] where composition time is implicitly 0.
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param body the coded [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer]
  * @return the [ExtendedVideoData] with the frame
  * @see codedFrame
  */
 fun AVCHEVCExtendedVideoDataFactory.codedFrameX(
     frameType: VideoFrameType,
-    body: ByteBuffer
-) = codedFrameX(frameType, ByteBufferBackedRawSource(body), body.remaining())
+    data: ByteBuffer
+) = codedFrameX(frameType, ByteBufferBackedRawSource(data), data.remaining())
 
 
 /**
- * Creates an [ExtendedVideoData] from a [ByteBuffer].
+ * Creates an [ExtendedVideoData] for coded frame from a [ByteBuffer].
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param body the coded [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer]
  * @return the [ExtendedVideoData] with the frame
  */
 fun ExtendedVideoDataFactory.codedFrame(
     frameType: VideoFrameType,
-    body: ByteBuffer
-) = codedFrame(frameType, ByteBufferBackedRawSource(body), body.remaining())
+    data: ByteBuffer
+) = codedFrame(frameType, ByteBufferBackedRawSource(data), data.remaining())
 
 
 // Multi track video data
@@ -213,19 +213,20 @@ fun ExtendedVideoDataFactory.codedFrame(
  * @param fourCC the FourCCs
  * @param packetType the frame packet type
  * @param trackID the track ID
- * @param body the coded [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [ExtendedVideoData] with the one track video data
  */
 fun oneTrackMultitrackExtendedVideoData(
     frameType: VideoFrameType,
     fourCC: VideoFourCC,
     packetType: VideoPacketType,
     trackID: Byte,
-    body: ByteBuffer
+    data: ByteBuffer
 ) = oneTrackMultitrackExtendedVideoData(
     frameType,
     fourCC,
     packetType,
     trackID,
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )

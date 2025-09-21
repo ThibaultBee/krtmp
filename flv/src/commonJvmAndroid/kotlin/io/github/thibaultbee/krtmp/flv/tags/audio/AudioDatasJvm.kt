@@ -21,18 +21,16 @@ import io.github.thibaultbee.krtmp.flv.config.SoundFormat
 import io.github.thibaultbee.krtmp.flv.config.SoundRate
 import io.github.thibaultbee.krtmp.flv.config.SoundSize
 import io.github.thibaultbee.krtmp.flv.config.SoundType
-import io.github.thibaultbee.krtmp.flv.tags.video.ExtendedVideoData
-import io.github.thibaultbee.krtmp.flv.tags.video.VideoData
 import io.github.thibaultbee.krtmp.flv.util.av.AudioSpecificConfig
 import java.nio.ByteBuffer
 
 /**
- * Extensions to create [VideoData] and [ExtendedVideoData] from [ByteBuffer]s.
+ * Extensions to create [AudioData] from [ByteBuffer].
  */
 
 // Legacy audio data
 /**
- * Creates a legacy [AudioData] from its parameters and a [ByteBuffer].
+ * Creates a [LegacyAudioData] from a [ByteBuffer].
  *
  * For AAC audio data, consider using [AACAudioDataFactory].
  *
@@ -40,30 +38,30 @@ import java.nio.ByteBuffer
  * @param soundRate the [SoundRate]
  * @param soundSize the [SoundSize]
  * @param soundType the [SoundType]
- * @param body the coded [ByteBuffer]
- * @return the [AudioData]
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [LegacyAudioData] with the frame
  */
 fun AudioData(
     soundFormat: SoundFormat,
     soundRate: SoundRate,
     soundSize: SoundSize,
     soundType: SoundType,
-    body: ByteBuffer
+    data: ByteBuffer
 ) = AudioData(
     soundFormat,
     soundRate,
     soundSize,
     soundType,
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )
 
 
 /**
- * Creates a legacy AAC [AudioData] for sequence header from a [ByteBuffer].
+ * Creates an AAC [LegacyAudioData] for sequence start from a [ByteBuffer].
  *
  * @param audioSpecificConfig the AAC [AudioSpecificConfig] as a [ByteBuffer]
- * @return the [AudioData]
+ * @return the [LegacyAudioData] with the sequence start
  */
 fun AACAudioDataFactory.sequenceStart(
     audioSpecificConfig: ByteBuffer
@@ -74,16 +72,16 @@ fun AACAudioDataFactory.sequenceStart(
 
 
 /**
- * Creates a legacy AAC audio frame from a [ByteBuffer].
+ * Creates an AAC [LegacyAudioData] for coded frame from a [ByteBuffer].
  *
- * @param body the coded AAC [ByteBuffer]
- * @return the [LegacyAudioData]
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [LegacyAudioData] with the frame
  */
 fun AACAudioDataFactory.codedFrame(
-    body: ByteBuffer
+    data: ByteBuffer
 ) = codedFrame(
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )
 
 // Extended audio data
@@ -91,58 +89,62 @@ fun AACAudioDataFactory.codedFrame(
 /**
  * Creates an [ExtendedAudioData] for coded frame from a [ByteBuffer].
  *
- * @param body the [ByteBuffer] of the audio data
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [ExtendedAudioData] with the frame
  */
 fun ExtendedAudioDataFactory.codedFrame(
-    body: ByteBuffer
+    data: ByteBuffer
 ) = codedFrame(
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )
 
 /**
  * Creates an [ExtendedAudioData] for sequence start from a [ByteBuffer].
  *
- * @param body the [ByteBuffer] of the audio data
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [ExtendedAudioData] with the sequence start
  */
 fun ExtendedAudioDataFactory.sequenceStart(
-    body: ByteBuffer
+    data: ByteBuffer
 ) = sequenceStart(
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )
 
 /**
  * Creates an [ExtendedAudioData] for multichannel config audio data from a [ByteBuffer].
  *
- * @param body the [ByteBuffer] of the audio data
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [ExtendedAudioData] with the multichannel config
  */
 fun ExtendedAudioDataFactory.multiChannelConfig(
-    body: ByteBuffer
+    data: ByteBuffer
 ) = multiChannelConfig(
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )
 
 // Multi track audio data
 
 /**
- * Creates a [MultitrackAudioTagBody] for one track audio data from a [ByteBuffer].
+ * Creates a [ExtendedAudioData] for one track audio data from a [ByteBuffer].
  *
  * @param fourCC the FourCCs
  * @param framePacketType the frame packet type
  * @param trackID the track ID
- * @param body the coded [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer]
+ * @return the [ExtendedAudioData] with the one track audio data
  */
 fun oneTrackMultitrackExtendedAudioData(
     fourCC: AudioFourCC,
     framePacketType: AudioPacketType,
     trackID: Byte,
-    body: ByteBuffer
+    data: ByteBuffer
 ) = oneTrackMultitrackExtendedAudioData(
     fourCC,
     framePacketType,
     trackID,
-    ByteBufferBackedRawSource(body),
-    body.remaining()
+    ByteBufferBackedRawSource(data),
+    data.remaining()
 )

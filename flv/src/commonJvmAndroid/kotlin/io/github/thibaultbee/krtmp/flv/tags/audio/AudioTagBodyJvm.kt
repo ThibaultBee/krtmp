@@ -25,7 +25,7 @@ import java.nio.ByteBuffer
 /**
  * Creates a [RawAudioTagBody] from a [ByteBuffer].
  *
- * @param body the coded [ByteBuffer]
+ * @param body the coded frame as a [ByteBuffer]
  * @return the [RawAudioTagBody]
  */
 fun RawAudioTagBody(body: ByteBuffer) =

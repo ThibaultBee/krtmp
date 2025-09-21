@@ -41,7 +41,7 @@ interface SingleAudioTagBody : AudioTagBody
 /**
  * Creates a raw [RawAudioTagBody] from a [ByteArray].
  *
- * @param data The raw audio data as a [ByteArray]
+ * @param data the coded frame as a [ByteArray]
  */
 fun RawAudioTagBody(data: ByteArray) =
     RawAudioTagBody(ByteArrayBackedRawSource(data), data.size)
@@ -49,8 +49,8 @@ fun RawAudioTagBody(data: ByteArray) =
 /**
  * Default audio tag body for a single frame.
  *
- * @param data The raw audio data as a [RawSource]
- * @param dataSize The size of the raw audio data
+ * @param data the coded frame as a [RawSource]
+ * @param dataSize the size of [data]
  */
 class RawAudioTagBody(
     val data: RawSource,
@@ -83,7 +83,7 @@ class RawAudioTagBody(
 }
 
 /**
- * Empty video tag body.
+ * Empty audio tag body.
  */
 internal class EmptyAudioTagBody : SingleAudioTagBody {
     override val size = 0
@@ -356,7 +356,7 @@ class ManyTrackManyCodecAudioTagBody(
     val tracks: Set<OneTrackMultiCodecAudioTagBody>
 ) : MultitrackAudioTagBody {
     init {
-        require(tracks.size > 1) { "Many track video tag body must have at least 2 tracks" }
+        require(tracks.size > 1) { "Many track audio tag body must have at least 2 tracks" }
     }
 
     override val size = tracks.sumOf { it.size }
