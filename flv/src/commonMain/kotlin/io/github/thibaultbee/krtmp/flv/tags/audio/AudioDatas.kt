@@ -15,6 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags.audio
 
+import io.github.thibaultbee.krtmp.common.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.config.AudioFourCC
 import io.github.thibaultbee.krtmp.flv.config.SoundFormat
 import io.github.thibaultbee.krtmp.flv.config.SoundRate
@@ -55,6 +56,33 @@ fun AudioData(
 ) = LegacyAudioData(soundFormat, soundRate, soundSize, soundType, RawAudioTagBody(body, bodySize))
 
 /**
+ * Creates a legacy [AudioData] from its parameters and a [ByteArray].
+ *
+ * For AAC audio data, consider using [AACAudioDataFactory].
+ *
+ * @param soundFormat the [SoundFormat]
+ * @param soundRate the [SoundRate]
+ * @param soundSize the [SoundSize]
+ * @param soundType the [SoundType]
+ * @param body the coded [ByteArray]
+ * @return the [AudioData]
+ */
+fun AudioData(
+    soundFormat: SoundFormat,
+    soundRate: SoundRate,
+    soundSize: SoundSize,
+    soundType: SoundType,
+    body: ByteArray
+) = AudioData(
+    soundFormat,
+    soundRate,
+    soundSize,
+    soundType,
+    ByteArrayBackedRawSource(body),
+    body.size
+)
+
+/**
  * Factory to create AAC [AudioData].
  */
 class AACAudioDataFactory(
@@ -62,6 +90,27 @@ class AACAudioDataFactory(
     val soundSize: SoundSize,
     val soundType: SoundType
 ) {
+    /**
+     * Creates a legacy AAC audio frame from a [RawSource] and its size.
+     *
+     * @param body the coded AAC [RawSource]
+     * @param bodySize the size of the coded AAC [RawSource]
+     * @return the [LegacyAudioData]
+     */
+    fun codedFrame(
+        body: RawSource,
+        bodySize: Int
+    ) = LegacyAudioData(
+        soundFormat = SoundFormat.AAC,
+        soundRate = soundRate,
+        soundSize = soundSize,
+        soundType = soundType,
+        aacPacketType = AACPacketType.RAW,
+        body = RawAudioTagBody(
+            data = body, dataSize = bodySize
+        )
+    )
+
     /**
      * Creates a legacy AAC [AudioData] for sequence header from a [RawSource] and its size.
      *
@@ -85,28 +134,22 @@ class AACAudioDataFactory(
             )
         )
     }
-
-    /**
-     * Creates a legacy AAC audio frame from a [RawSource] and its size.
-     *
-     * @param data the coded AAC [RawSource]
-     * @param dataSize the size of the coded AAC [RawSource]
-     * @return the [LegacyAudioData]
-     */
-    fun codedFrame(
-        data: RawSource,
-        dataSize: Int
-    ) = LegacyAudioData(
-        soundFormat = SoundFormat.AAC,
-        soundRate = soundRate,
-        soundSize = soundSize,
-        soundType = soundType,
-        aacPacketType = AACPacketType.RAW,
-        body = RawAudioTagBody(
-            data = data, dataSize = dataSize
-        )
-    )
 }
+
+
+/**
+ * Creates a legacy AAC audio frame from a [ByteArray].
+ *
+ * @param body the coded AAC [ByteArray]
+ * @return the [LegacyAudioData]
+ */
+fun AACAudioDataFactory.codedFrame(
+    body: ByteArray
+) = codedFrame(
+    ByteArrayBackedRawSource(body),
+    body.size
+)
+
 
 /**
  * Creates a legacy AAC [LegacyAudioData] for sequence header from the [AAC.ADTS].
@@ -128,6 +171,20 @@ fun AACAudioDataFactory.sequenceStart(adts: ADTS): LegacyAudioData {
         audioSpecificConfig.size.toInt()
     )
 }
+
+
+/**
+ * Creates a legacy AAC [AudioData] for sequence header from a [ByteArray].
+ *
+ * @param audioSpecificConfig the AAC [AudioSpecificConfig] as a [ByteArray]
+ * @return the [AudioData]
+ */
+fun AACAudioDataFactory.sequenceStart(
+    audioSpecificConfig: ByteArray
+) = sequenceStart(
+    ByteArrayBackedRawSource(audioSpecificConfig),
+    audioSpecificConfig.size
+)
 
 // Extended audio data
 
@@ -219,6 +276,38 @@ class ExtendedAudioDataFactory(
     )
 }
 
+
+/**
+ * Creates an [ExtendedAudioData] for coded frame from a [ByteArray].
+ *
+ * @param body the [ByteArray] of the audio data
+ */
+fun ExtendedAudioDataFactory.codedFrame(
+    body: ByteArray
+) = ExtendedAudioData(
+    dataDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
+        packetType = AudioPacketType.CODED_FRAME,
+        fourCC = fourCC,
+        body = RawAudioTagBody(data = ByteArrayBackedRawSource(body), dataSize = body.size)
+    )
+)
+
+
+/**
+ * Creates an [ExtendedAudioData] for sequence start from a [ByteArray].
+ *
+ * @param body the [ByteArray] of the audio data
+ */
+fun ExtendedAudioDataFactory.sequenceStart(
+    body: ByteArray
+) = ExtendedAudioData(
+    dataDescriptor = ExtendedAudioData.SingleAudioDataDescriptor(
+        packetType = AudioPacketType.SEQUENCE_START,
+        fourCC = fourCC,
+        body = RawAudioTagBody(data = ByteArrayBackedRawSource(body), dataSize = body.size)
+    )
+)
+
 // Multi track audio data
 
 /**
@@ -244,6 +333,28 @@ fun oneTrackMultitrackExtendedAudioData(
             trackId = trackID, body = RawAudioTagBody(data = body, dataSize = bodySize)
         )
     )
+)
+
+
+/**
+ * Creates a [MultitrackAudioTagBody] for one track audio data from a [ByteArray].
+ *
+ * @param fourCC the FourCCs
+ * @param framePacketType the frame packet type
+ * @param trackID the track ID
+ * @param body the coded [ByteArray]
+ */
+fun oneTrackMultitrackExtendedAudioData(
+    fourCC: AudioFourCC,
+    framePacketType: AudioPacketType,
+    trackID: Byte,
+    body: ByteArray
+) = oneTrackMultitrackExtendedAudioData(
+    fourCC,
+    framePacketType,
+    trackID,
+    ByteArrayBackedRawSource(body),
+    body.size
 )
 
 

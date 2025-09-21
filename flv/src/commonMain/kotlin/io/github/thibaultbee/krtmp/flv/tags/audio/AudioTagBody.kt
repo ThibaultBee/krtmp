@@ -17,6 +17,7 @@ package io.github.thibaultbee.krtmp.flv.tags.audio
 
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
+import io.github.thibaultbee.krtmp.common.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.config.AudioFourCC
 import io.github.thibaultbee.krtmp.flv.sources.MultiRawSource
 import io.github.thibaultbee.krtmp.flv.util.extensions.readSource
@@ -37,6 +38,20 @@ interface AudioTagBody : AutoCloseable {
 
 interface SingleAudioTagBody : AudioTagBody
 
+/**
+ * Creates a raw [RawAudioTagBody] from a [ByteArray].
+ *
+ * @param data The raw audio data as a [ByteArray]
+ */
+fun RawAudioTagBody(data: ByteArray) =
+    RawAudioTagBody(ByteArrayBackedRawSource(data), data.size)
+
+/**
+ * Default audio tag body for a single frame.
+ *
+ * @param data The raw audio data as a [RawSource]
+ * @param dataSize The size of the raw audio data
+ */
 class RawAudioTagBody(
     val data: RawSource,
     val dataSize: Int

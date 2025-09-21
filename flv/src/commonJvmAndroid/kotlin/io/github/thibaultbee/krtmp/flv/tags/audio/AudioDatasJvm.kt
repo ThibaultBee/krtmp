@@ -76,14 +76,14 @@ fun AACAudioDataFactory.sequenceStart(
 /**
  * Creates a legacy AAC audio frame from a [ByteBuffer].
  *
- * @param data the coded AAC [ByteBuffer]
+ * @param body the coded AAC [ByteBuffer]
  * @return the [LegacyAudioData]
  */
 fun AACAudioDataFactory.codedFrame(
-    data: ByteBuffer
+    body: ByteBuffer
 ) = codedFrame(
-    ByteBufferBackedRawSource(data),
-    data.remaining()
+    ByteBufferBackedRawSource(body),
+    body.remaining()
 )
 
 // Extended audio data

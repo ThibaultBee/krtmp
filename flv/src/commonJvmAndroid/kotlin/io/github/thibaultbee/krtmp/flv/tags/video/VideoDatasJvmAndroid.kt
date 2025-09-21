@@ -87,7 +87,7 @@ fun AVCVideoDataFactory.sequenceStart(
  * @param pps the PPS NAL units
  * @return the [VideoData]
  */
-fun AVCVideoDataFactory.sequenceStart(
+fun AVCVideoDataFactory.sequenceStartByteBuffer(
     sps: List<ByteBuffer>,
     pps: List<ByteBuffer>,
 ): VideoData {
@@ -128,7 +128,7 @@ fun CommonExtendedVideoDataFactory.sequenceStart(
  * @param pps the PPS NAL units
  * @return the [ExtendedVideoData]
  */
-fun AVCExtendedVideoDataFactory.sequenceStart(
+fun AVCExtendedVideoDataFactory.sequenceStartByteBuffer(
     sps: List<ByteBuffer>,
     pps: List<ByteBuffer>,
 ) = sequenceStart(
@@ -145,7 +145,7 @@ fun AVCExtendedVideoDataFactory.sequenceStart(
  * @param pps the PPS NAL units
  * @return the [ExtendedVideoData]
  */
-fun HEVCExtendedVideoDataFactory.sequenceStart(
+fun HEVCExtendedVideoDataFactory.sequenceStartByteBuffer(
     vps: List<ByteBuffer>,
     sps: List<ByteBuffer>,
     pps: List<ByteBuffer>,

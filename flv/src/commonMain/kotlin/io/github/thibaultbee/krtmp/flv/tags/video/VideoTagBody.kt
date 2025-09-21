@@ -22,6 +22,7 @@ import io.github.thibaultbee.krtmp.amf.elements.containers.amfContainerOf
 import io.github.thibaultbee.krtmp.amf.elements.primitives.AmfString
 import io.github.thibaultbee.krtmp.amf.internal.utils.readInt24
 import io.github.thibaultbee.krtmp.amf.internal.utils.writeInt24
+import io.github.thibaultbee.krtmp.common.sources.ByteArrayBackedRawSource
 import io.github.thibaultbee.krtmp.flv.config.VideoFourCC
 import io.github.thibaultbee.krtmp.flv.sources.MultiRawSource
 import io.github.thibaultbee.krtmp.flv.tags.video.SingleVideoTagBody.Companion.decode
@@ -109,7 +110,18 @@ class MetadataVideoTagBody(
 }
 
 /**
- * Default video tag body.
+ * Creates a raw video tag body from a [ByteArray].s
+ *
+ * @param data The [ByteArray] data of the video frame.
+ */
+fun RawVideoTagBody(data: ByteArray) =
+    RawVideoTagBody(ByteArrayBackedRawSource(data), data.size)
+
+/**
+ * Default video tag body for a single frame.
+ *
+ * @param data The [RawSource] data of the video frame.
+ * @param dataSize The size of the data in bytes.
  */
 class RawVideoTagBody(
     val data: RawSource,
