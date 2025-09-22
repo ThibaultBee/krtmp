@@ -31,7 +31,19 @@ import kotlinx.io.files.SystemFileSystem
 /**
  * Creates a [FLVMuxer] dedicated to write to a file.
  *
- * @param path the path to the file
+ * @param pathString the path to the file as a [String]
+ * @param amfVersion the AMF version to use
+ * @return a [FLVMuxer]
+ */
+fun FLVMuxer(
+    pathString: String,
+    amfVersion: AmfVersion = AmfVersion.AMF0
+) = FLVMuxer(Path(pathString), amfVersion)
+
+/**
+ * Creates a [FLVMuxer] dedicated to write to a file.
+ *
+ * @param path the path to the file as a [Path]
  * @param amfVersion the AMF version to use
  * @return a [FLVMuxer]
  */

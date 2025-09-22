@@ -28,7 +28,17 @@ import kotlinx.io.readString
 /**
  * Creates a [FLVDemuxer] dedicated to read from a file.
  *
- * @param path the path to the file
+ * @param pathString the path to the file as a [String]
+ * @return a [FLVDemuxer]
+ */
+fun FLVDemuxer(
+    pathString: String
+) = FLVDemuxer(Path(pathString))
+
+/**
+ * Creates a [FLVDemuxer] dedicated to read from a file.
+ *
+ * @param path the path to the file as a [Path]
  * @return a [FLVDemuxer]
  */
 fun FLVDemuxer(
