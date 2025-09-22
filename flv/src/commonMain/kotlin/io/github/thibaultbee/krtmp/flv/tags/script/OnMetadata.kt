@@ -100,6 +100,9 @@ open class Metadata(
             audioConfig: FLVAudioConfig?,
             videoConfig: FLVVideoConfig?
         ): Metadata {
+            require(audioConfig != null || videoConfig != null) {
+                "Either audio or video config must be provided"
+            }
             val audioConfigs = audioConfig?.let { mapOf(0 to it) } ?: emptyMap()
             val videoConfigs = videoConfig?.let { mapOf(0 to it) } ?: emptyMap()
             return fromConfigs(audioConfigs, videoConfigs)
@@ -109,7 +112,7 @@ open class Metadata(
             audioConfigs: Map<Int, FLVAudioConfig>,
             videoConfigs: Map<Int, FLVVideoConfig>
         ): Metadata {
-            require((audioConfigs.isNotEmpty()) or (videoConfigs.isNotEmpty())) {
+            require((audioConfigs.isNotEmpty()) || (videoConfigs.isNotEmpty())) {
                 "Either audio or video config must be provided"
             }
             require(audioConfigs.keys.distinct().size == audioConfigs.keys.size) {
