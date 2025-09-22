@@ -396,9 +396,9 @@ sealed class AudioData(
         encodeBody(output)
     }
 
-    override fun readRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource {
         val header = Buffer().apply { encodeHeader(this) }
-        val body = body.readRawSource()
+        val body = body.asRawSource()
         return MultiRawSource(header, body)
     }
 

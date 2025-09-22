@@ -50,7 +50,7 @@ interface FLVData {
      * @param amfVersion The AMF version to use for encoding. Only for [ScriptDataObject].
      * @param isEncrypted Indicates whether the data is encrypted or not.
      */
-    fun readRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource
+    fun asRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource
 }
 
 /**

@@ -61,7 +61,7 @@ open class ScriptDataObject(
     override fun encode(output: Sink, amfVersion: AmfVersion, isEncrypted: Boolean) =
         container.write(amfVersion, output)
 
-    override fun readRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource {
         return Buffer().apply {
             container.write(amfVersion, this)
         }

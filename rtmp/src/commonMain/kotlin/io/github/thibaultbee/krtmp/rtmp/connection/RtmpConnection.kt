@@ -895,7 +895,7 @@ internal suspend fun RtmpConnection.write(source: Source) {
  * @param data the frame to write
  */
 internal suspend fun RtmpConnection.write(timestampMs: Int, data: FLVData) {
-    val rawSource = data.readRawSource(settings.amfVersion, false)
+    val rawSource = data.asRawSource(settings.amfVersion, false)
     val size = data.getSize(settings.amfVersion)
 
     when (data) {

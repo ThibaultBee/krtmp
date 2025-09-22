@@ -39,7 +39,7 @@ class ExtendedVideoDatasTest {
         assertTrue(codedFrame.body is CompositionTimeExtendedVideoTagBody)
         assertEquals(1234, codedFrame.body.compositionTime)
         assertEquals(7, codedFrame.body.getSize(AmfVersion.AMF0))
-        val body = codedFrame.body.readRawSource(AmfVersion.AMF0).buffered()
+        val body = codedFrame.body.asRawSource(AmfVersion.AMF0).buffered()
         assertEquals(
             1234,
             body.readInt24()
@@ -65,7 +65,7 @@ class ExtendedVideoDatasTest {
         assertEquals(4, codedFrame.body.getSize(AmfVersion.AMF0))
         assertEquals(
             0x01020304,
-            codedFrame.body.readRawSource(AmfVersion.AMF0).buffered().readInt()
+            codedFrame.body.asRawSource(AmfVersion.AMF0).buffered().readInt()
         )
     }
 
@@ -81,7 +81,7 @@ class ExtendedVideoDatasTest {
         assertEquals(4, codedFrame.body.getSize(AmfVersion.AMF0))
         assertEquals(
             0x01020304,
-            codedFrame.body.readRawSource(AmfVersion.AMF0).buffered().readInt()
+            codedFrame.body.asRawSource(AmfVersion.AMF0).buffered().readInt()
         )
     }
 

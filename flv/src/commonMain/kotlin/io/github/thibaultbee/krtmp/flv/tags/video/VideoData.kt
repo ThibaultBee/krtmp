@@ -473,9 +473,9 @@ sealed class VideoData(
         encodeBody(output, amfVersion)
     }
 
-    override fun readRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion, isEncrypted: Boolean): RawSource {
         val header = Buffer().apply { encodeHeader(this) }
-        val body = body.readRawSource(amfVersion)
+        val body = body.asRawSource(amfVersion)
         return MultiRawSource(header, body)
     }
 

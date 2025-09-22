@@ -39,7 +39,7 @@ class LegacyVideoDatasTest {
         assertEquals(4, codedFrame.body.getSize(AmfVersion.AMF0))
         assertEquals(
             0x01020304,
-            codedFrame.body.readRawSource(AmfVersion.AMF0).buffered().readInt()
+            codedFrame.body.asRawSource(AmfVersion.AMF0).buffered().readInt()
         )
     }
 
@@ -55,7 +55,7 @@ class LegacyVideoDatasTest {
         assertEquals(4, codedFrame.body.getSize(AmfVersion.AMF0))
         assertEquals(
             0x01020304,
-            codedFrame.body.readRawSource(AmfVersion.AMF0).buffered().readInt()
+            codedFrame.body.asRawSource(AmfVersion.AMF0).buffered().readInt()
         )
     }
 

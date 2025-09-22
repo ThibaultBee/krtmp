@@ -15,6 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.flv.tags.audio
 
+import io.github.thibaultbee.krtmp.amf.AmfVersion
 import io.github.thibaultbee.krtmp.flv.Resource
 import io.github.thibaultbee.krtmp.flv.config.SoundFormat
 import io.github.thibaultbee.krtmp.flv.config.SoundRate
@@ -23,6 +24,7 @@ import io.github.thibaultbee.krtmp.flv.config.SoundType
 import io.github.thibaultbee.krtmp.flv.tags.FLVTag
 import io.github.thibaultbee.krtmp.flv.tags.readByteArray
 import kotlinx.io.Buffer
+import kotlinx.io.buffered
 import kotlinx.io.readByteArray
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -73,6 +75,33 @@ class LegacyAudioDataTest {
             )
 
         assertContentEquals(expected, audioData.readByteArray())
+    }
+
+    @Test
+    fun `write aac data as raw source test`() {
+        val expected = Resource("tags/audio/aac/raw/data").toByteArray()
+
+        val raw = Resource("tags/audio/aac/raw/raw").toByteArray()
+        val rawBuffer = Buffer().apply {
+            write(raw)
+        }
+
+        val audioTagBody = RawAudioTagBody(rawBuffer, rawBuffer.size.toInt())
+        val audioData =
+            LegacyAudioData(
+                soundFormat = SoundFormat.AAC,
+                soundRate = SoundRate.F_44100HZ,
+                soundSize = SoundSize.S_16BITS,
+                soundType = SoundType.STEREO,
+                aacPacketType = AACPacketType.RAW,
+                body = audioTagBody
+            )
+
+        assertEquals(expected.size, audioData.size)
+        assertContentEquals(
+            expected,
+            audioData.asRawSource(AmfVersion.AMF0, false).buffered().readByteArray()
+        )
     }
 
     @Test

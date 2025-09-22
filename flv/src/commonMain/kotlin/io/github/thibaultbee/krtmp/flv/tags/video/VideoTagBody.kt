@@ -38,7 +38,7 @@ import kotlinx.io.Source
 interface VideoTagBody : AutoCloseable {
     fun getSize(amfVersion: AmfVersion): Int
     fun encode(output: Sink, amfVersion: AmfVersion)
-    fun readRawSource(amfVersion: AmfVersion): RawSource
+    fun asRawSource(amfVersion: AmfVersion): RawSource
 
     /**
      * Closes the video tag body and releases any resources associated with it.
@@ -89,7 +89,7 @@ class MetadataVideoTagBody(
         container.write(amfVersion, output)
     }
 
-    override fun readRawSource(amfVersion: AmfVersion): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion): RawSource {
         return Buffer().apply {
             encode(this, amfVersion)
         }
@@ -133,7 +133,7 @@ class RawVideoTagBody(
         output.write(data, dataSize.toLong())
     }
 
-    override fun readRawSource(amfVersion: AmfVersion): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion): RawSource {
         return data
     }
 
@@ -161,7 +161,7 @@ internal class CommandLegacyVideoTagBody(
         output.writeByte(command.value)
     }
 
-    override fun readRawSource(amfVersion: AmfVersion): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion): RawSource {
         return Buffer().apply { encode(this, amfVersion) }
     }
 
@@ -182,7 +182,7 @@ internal class EmptyVideoTagBody : SingleVideoTagBody {
     override fun encode(output: Sink, amfVersion: AmfVersion) =
         Unit  // End of sequence does not have a body
 
-    override fun readRawSource(amfVersion: AmfVersion) = Buffer()
+    override fun asRawSource(amfVersion: AmfVersion) = Buffer()
 
     override fun toString(): String {
         return "Empty"
@@ -217,7 +217,7 @@ class CompositionTimeExtendedVideoTagBody(
         output.write(data, dataSize.toLong())
     }
 
-    override fun readRawSource(amfVersion: AmfVersion): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion): RawSource {
         return MultiRawSource(
             Buffer().apply { encodeHeader(this) },
             data
@@ -272,10 +272,10 @@ class OneTrackVideoTagBody(
         body.encode(output, amfVersion)
     }
 
-    override fun readRawSource(amfVersion: AmfVersion): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion): RawSource {
         return MultiRawSource(
             Buffer().apply { encodeHeader(this) },
-            body.readRawSource(amfVersion)
+            body.asRawSource(amfVersion)
         )
     }
 
@@ -325,14 +325,14 @@ class ManyTrackOneCodecVideoTagBody internal constructor(
         }
     }
 
-    override fun readRawSource(amfVersion: AmfVersion): RawSource {
+    override fun asRawSource(amfVersion: AmfVersion): RawSource {
         val rawSources = mutableListOf<RawSource>()
         tracks.forEach { track ->
             rawSources.add(Buffer().apply {
                 writeByte(track.trackId)
                 writeInt24(track.body.getSize(amfVersion))
             })
-            rawSources.add(track.body.readRawSource(amfVersion))
+            rawSources.add(track.body.asRawSource(amfVersion))
         }
         return MultiRawSource(rawSources)
     }
@@ -388,8 +388,8 @@ class ManyTrackManyCodecVideoTagBody(
         }
     }
 
-    override fun readRawSource(amfVersion: AmfVersion): RawSource {
-        return MultiRawSource(tracks.map { it.readRawSource(amfVersion) })
+    override fun asRawSource(amfVersion: AmfVersion): RawSource {
+        return MultiRawSource(tracks.map { it.asRawSource(amfVersion) })
     }
 
     override fun close() {
@@ -433,12 +433,12 @@ class ManyTrackManyCodecVideoTagBody(
             body.encode(output, amfVersion)
         }
 
-        fun readRawSource(amfVersion: AmfVersion): RawSource {
+        fun asRawSource(amfVersion: AmfVersion): RawSource {
             return MultiRawSource(
                 Buffer().apply {
                     encodeHeader(this, amfVersion)
                 },
-                body.readRawSource(amfVersion)
+                body.asRawSource(amfVersion)
             )
         }
 

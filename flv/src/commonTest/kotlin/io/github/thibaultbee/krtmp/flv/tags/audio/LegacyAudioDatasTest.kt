@@ -40,7 +40,7 @@ class LegacyAudioDatasTest {
         assertEquals(SoundType.STEREO, codedFrame.soundType)
         assertEquals(AACPacketType.RAW, codedFrame.aacPacketType)
         assertEquals(4, codedFrame.body.size)
-        assertEquals(0x01020304, codedFrame.body.readRawSource().buffered().readInt())
+        assertEquals(0x01020304, codedFrame.body.asRawSource().buffered().readInt())
     }
 
     @Test
@@ -59,6 +59,6 @@ class LegacyAudioDatasTest {
         assertEquals(SoundType.STEREO, sequenceStart.soundType)
         assertEquals(AACPacketType.SEQUENCE_HEADER, sequenceStart.aacPacketType)
         assertEquals(4, sequenceStart.body.size)
-        assertEquals(0x01020304, sequenceStart.body.readRawSource().buffered().readInt())
+        assertEquals(0x01020304, sequenceStart.body.asRawSource().buffered().readInt())
     }
 }

@@ -32,7 +32,7 @@ import kotlinx.io.Source
 interface AudioTagBody : AutoCloseable {
     val size: Int
     fun encode(output: Sink)
-    fun readRawSource(): RawSource
+    fun asRawSource(): RawSource
     override fun close() {}
 }
 
@@ -62,7 +62,7 @@ class RawAudioTagBody(
         output.write(data, dataSize.toLong())
     }
 
-    override fun readRawSource() = data
+    override fun asRawSource() = data
 
     override fun toString(): String {
         return "RawAudioTagBody(dataSize=$dataSize)"
@@ -91,7 +91,7 @@ internal class EmptyAudioTagBody : SingleAudioTagBody {
     override fun encode(output: Sink) =
         Unit  // End of sequence does not have a body
 
-    override fun readRawSource() = Buffer()
+    override fun asRawSource() = Buffer()
 
     override fun toString(): String {
         return "Empty"
@@ -111,7 +111,7 @@ sealed class MultichannelConfigAudioTagBody(
         output.writeByte(channelCount)
     }
 
-    override fun readRawSource(): RawSource {
+    override fun asRawSource(): RawSource {
         return Buffer().apply {
             encode(this)
         }
@@ -252,8 +252,8 @@ class OneTrackAudioTagBody(
         body.encode(output)
     }
 
-    override fun readRawSource(): RawSource {
-        return MultiRawSource(Buffer().apply { encodeHeader(this) }, body.readRawSource())
+    override fun asRawSource(): RawSource {
+        return MultiRawSource(Buffer().apply { encodeHeader(this) }, body.asRawSource())
     }
 
     /**
@@ -301,14 +301,14 @@ class ManyTrackOneCodecAudioTagBody internal constructor(
         }
     }
 
-    override fun readRawSource(): RawSource {
+    override fun asRawSource(): RawSource {
         val rawSources = mutableListOf<RawSource>()
         tracks.forEach { track ->
             rawSources.add(Buffer().apply {
                 writeByte(track.trackId)
                 writeInt24(track.body.size)
             })
-            rawSources.add(track.body.readRawSource())
+            rawSources.add(track.body.asRawSource())
         }
         return MultiRawSource(rawSources)
     }
@@ -367,8 +367,8 @@ class ManyTrackManyCodecAudioTagBody(
         }
     }
 
-    override fun readRawSource(): RawSource {
-        return MultiRawSource(tracks.map { it.readRawSource() })
+    override fun asRawSource(): RawSource {
+        return MultiRawSource(tracks.map { it.asRawSource() })
     }
 
     /**
@@ -415,12 +415,12 @@ class ManyTrackManyCodecAudioTagBody(
             body.encode(output)
         }
 
-        fun readRawSource(): RawSource {
+        fun asRawSource(): RawSource {
             return MultiRawSource(
                 Buffer().apply {
                     encodeHeader(this)
                 },
-                body.readRawSource()
+                body.asRawSource()
             )
         }
 
