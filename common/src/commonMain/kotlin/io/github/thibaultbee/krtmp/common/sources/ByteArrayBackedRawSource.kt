@@ -9,6 +9,7 @@ import kotlin.math.min
  */
 class ByteArrayBackedRawSource(private val array: ByteArray, startIndex: Long = 0) :
     RawSource {
+    private var isClosed = false
     private var position = startIndex
     private val size = array.size.toLong()
 
@@ -17,13 +18,14 @@ class ByteArrayBackedRawSource(private val array: ByteArray, startIndex: Long = 
 
     init {
         require(startIndex >= 0) { "Start index must be a positive value" }
-        require(size >= 0) { "size must be a positive value" }
+        require(startIndex <= size) { "Start index must be lower than size" }
     }
 
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
-        if (byteCount < 0) {
-            throw IllegalArgumentException("byteCount < 0: $byteCount")
+        if (isClosed) {
+            throw IllegalStateException("Source is closed")
         }
+        require(byteCount >= 0) { "byteCount must be non-negative" }
 
         if (isExhausted) {
             return -1
@@ -36,6 +38,6 @@ class ByteArrayBackedRawSource(private val array: ByteArray, startIndex: Long = 
     }
 
     override fun close() {
-        // Nothing to do
+        isClosed = true
     }
 }

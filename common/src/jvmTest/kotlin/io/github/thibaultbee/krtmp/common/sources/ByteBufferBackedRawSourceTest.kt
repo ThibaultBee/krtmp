@@ -13,10 +13,11 @@ class ByteBufferBackedRawSourceTest {
     @Test
     fun `read from empty source`() {
         val byteBuffer = ByteBuffer.allocate(0)
-        val byteBufferRawSource = ByteBufferBackedRawSource(byteBuffer)
+
+        val rawSource = ByteBufferBackedRawSource(byteBuffer)
         val buffer = Buffer()
 
-        val size = byteBufferRawSource.readAtMostTo(buffer, 4)
+        val size = rawSource.readAtMostTo(buffer, 4)
         assertContentEquals(byteBuffer.array(), buffer.readByteArray())
         assertEquals(-1, size)
     }
@@ -26,15 +27,16 @@ class ByteBufferBackedRawSourceTest {
         val byteBuffer = ByteBuffer.allocate(4)
         byteBuffer.putInt(0x01020304)
         byteBuffer.flip() // Prepare the buffer for reading
-        val byteBufferRawSource = ByteBufferBackedRawSource(byteBuffer)
 
+        val rawSource = ByteBufferBackedRawSource(byteBuffer)
         var buffer = Buffer()
-        var size = byteBufferRawSource.readAtMostTo(buffer, 2)
+
+        var size = rawSource.readAtMostTo(buffer, 2)
         assertContentEquals(byteArrayOf(0x01, 0x02), buffer.readByteArray())
         assertEquals(2, size)
 
         buffer = Buffer()
-        size = byteBufferRawSource.readAtMostTo(buffer, 2)
+        size = rawSource.readAtMostTo(buffer, 2)
         assertContentEquals(byteArrayOf(0x03, 0x04), buffer.readByteArray())
         assertEquals(2, size)
     }
@@ -44,11 +46,12 @@ class ByteBufferBackedRawSourceTest {
         val byteBuffer = ByteBuffer.allocate(4)
         byteBuffer.putInt(0x01020304)
         byteBuffer.flip() // Prepare the buffer for reading
-        val byteBufferRawSource = ByteBufferBackedRawSource(byteBuffer)
+
+        val rawSource = ByteBufferBackedRawSource(byteBuffer)
         val buffer = Buffer()
 
-        byteBufferRawSource.readAtMostTo(buffer, 4)
-        assertEquals(-1, byteBufferRawSource.readAtMostTo(buffer, 4))
+        rawSource.readAtMostTo(buffer, 4)
+        assertEquals(-1, rawSource.readAtMostTo(buffer, 4))
     }
 
     @Test
@@ -56,12 +59,27 @@ class ByteBufferBackedRawSourceTest {
         val byteBuffer = ByteBuffer.allocate(4)
         byteBuffer.putInt(0x01020304)
         byteBuffer.flip() // Prepare the buffer for reading
-        val byteBufferRawSource = ByteBufferBackedRawSource(byteBuffer)
+
+        val rawSource = ByteBufferBackedRawSource(byteBuffer)
         val buffer = Buffer()
 
-        val size = byteBufferRawSource.readAtMostTo(buffer, 5)
+        val size = rawSource.readAtMostTo(buffer, 5)
         assertContentEquals(byteBuffer.array(), buffer.readByteArray(4))
         assertEquals(4, size)
+    }
+
+    @Test
+    fun `read 0 bytes`() {
+        val byteBuffer = ByteBuffer.allocate(4)
+        byteBuffer.putInt(0x01020304)
+        byteBuffer.flip() // Prepare the buffer for reading
+
+        val rawSource = ByteBufferBackedRawSource(byteBuffer)
+        val buffer = Buffer()
+
+        val size = rawSource.readAtMostTo(buffer, 0)
+        assertEquals(buffer.size, 0)
+        assertEquals(0, size)
     }
 
     @Test
@@ -69,14 +87,32 @@ class ByteBufferBackedRawSourceTest {
         val byteBuffer = ByteBuffer.allocate(4)
         byteBuffer.putInt(0x01020304)
         byteBuffer.flip() // Prepare the buffer for reading
-        val byteBufferRawSource = ByteBufferBackedRawSource(byteBuffer)
+
+        val rawSource = ByteBufferBackedRawSource(byteBuffer)
         val buffer = Buffer()
 
         try {
-            byteBufferRawSource.readAtMostTo(buffer, -1)
+            rawSource.readAtMostTo(buffer, -1)
             fail("Should throw IllegalArgumentException")
         } catch (e: Exception) {
             assertTrue(e is IllegalArgumentException)
+        }
+    }
+
+    @Test
+    fun `read after close`() {
+        val byteBuffer = ByteBuffer.allocate(4)
+        byteBuffer.putInt(0x01020304)
+        byteBuffer.flip() // Prepare the buffer for reading
+
+        val rawSource = ByteBufferBackedRawSource(byteBuffer)
+        val buffer = Buffer()
+
+        rawSource.close()
+        try {
+            rawSource.readAtMostTo(buffer, 4)
+            fail("Should throw IllegalStateException")
+        } catch (_: Throwable) {
         }
     }
 }

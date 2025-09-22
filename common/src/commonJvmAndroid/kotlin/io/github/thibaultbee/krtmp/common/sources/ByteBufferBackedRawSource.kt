@@ -26,10 +26,13 @@ import java.nio.ByteBuffer
  * @param buffer the [ByteBuffer] to wrap
  */
 class ByteBufferBackedRawSource(private val buffer: ByteBuffer) : RawSource {
+    private var isClosed = false
+
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
-        if (byteCount < 0) {
-            throw IllegalArgumentException("byteCount < 0: $byteCount")
+        if (isClosed) {
+            throw IllegalStateException("Source is closed")
         }
+        require(byteCount >= 0) { "byteCount must be non-negative" }
 
         if (!buffer.hasRemaining()) {
             return -1
@@ -46,6 +49,6 @@ class ByteBufferBackedRawSource(private val buffer: ByteBuffer) : RawSource {
     }
 
     override fun close() {
-        buffer.clear()
+        isClosed = true
     }
 }
