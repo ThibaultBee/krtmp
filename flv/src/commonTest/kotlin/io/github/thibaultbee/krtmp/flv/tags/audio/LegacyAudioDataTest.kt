@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2025 Thibault B.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.github.thibaultbee.krtmp.flv.tags.audio
 
 import io.github.thibaultbee.krtmp.flv.Resource
@@ -15,7 +30,7 @@ import kotlin.test.assertEquals
 
 class LegacyAudioDataTest {
     @Test
-    fun `test write aac raw tag`() {
+    fun `write aac raw tag test`() {
         val expected = Resource("tags/audio/aac/raw/tag").toByteArray()
 
         val raw = Resource("tags/audio/aac/raw/raw").toByteArray()
@@ -38,7 +53,7 @@ class LegacyAudioDataTest {
     }
 
     @Test
-    fun `test write aac data`() {
+    fun `write aac data test`() {
         val expected = Resource("tags/audio/aac/raw/data").toByteArray()
 
         val raw = Resource("tags/audio/aac/raw/raw").toByteArray()
@@ -61,7 +76,7 @@ class LegacyAudioDataTest {
     }
 
     @Test
-    fun `test write aac sequence header tag`() {
+    fun `write aac sequence header tag test`() {
         val expected = Resource("tags/audio/aac/sequence/tag").toByteArray()
 
         val sequenceHeader = Resource("tags/audio/aac/sequence/sequence").toByteArray()
@@ -85,7 +100,7 @@ class LegacyAudioDataTest {
     }
 
     @Test
-    fun `test read aac raw`() {
+    fun `read aac raw test`() {
         val expected = Resource("tags/audio/aac/raw/raw").toByteArray()
 
         val muxed = Resource("tags/audio/aac/raw/tag").toByteArray()
@@ -111,7 +126,7 @@ class LegacyAudioDataTest {
     }
 
     @Test
-    fun `test read aac sequence`() {
+    fun `read aac sequence test`() {
         val expected = Resource("tags/audio/aac/sequence/sequence").toByteArray()
 
         val muxed = Resource("tags/audio/aac/sequence/tag").toByteArray()

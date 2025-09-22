@@ -51,6 +51,7 @@ class LegacyAudioData internal constructor(
     body: RawAudioTagBody,
     val aacPacketType: AACPacketType? = null,
 ) : AudioData(
+    false,
     soundFormat,
     (soundRate.value.toInt() shl 2) or (soundSize.value.toInt() shl 1) or (soundType.value).toInt(),
     body
@@ -107,11 +108,14 @@ class ExtendedAudioData internal constructor(
     val dataDescriptor: AudioDataDescriptor,
     val modExs: Set<ModEx<AudioPacketModExType, *>> = emptySet()
 ) : AudioData(
-    SoundFormat.EX_HEADER, if (modExs.isEmpty()) {
+    true,
+    SoundFormat.EX_HEADER,
+    if (modExs.isEmpty()) {
         dataDescriptor.packetType.value
     } else {
         AudioPacketType.MOD_EX.value
-    }.toInt(), dataDescriptor.body
+    }.toInt(),
+    dataDescriptor.body
 ) {
     override val size =
         super.size + dataDescriptor.size + AudioModExCodec.encoder.getSize(modExs)
@@ -363,7 +367,10 @@ class ExtendedAudioData internal constructor(
 }
 
 sealed class AudioData(
-    val soundFormat: SoundFormat, val next4bitsValue: Int, val body: AudioTagBody
+    val isExtended: Boolean,
+    val soundFormat: SoundFormat,
+    val next4bitsValue: Int,
+    val body: AudioTagBody
 ) : FLVData {
     open val size = body.size + 1
     override fun getSize(amfVersion: AmfVersion) = size

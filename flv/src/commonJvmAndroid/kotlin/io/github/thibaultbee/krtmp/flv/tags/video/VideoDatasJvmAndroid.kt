@@ -72,7 +72,7 @@ fun AVCVideoDataFactory.codedFrame(
  */
 fun AVCVideoDataFactory.sequenceStart(
     decoderConfigurationRecord: ByteBuffer
-): VideoData = sequenceStart(
+) = sequenceStart(
     ByteBufferBackedRawSource(decoderConfigurationRecord),
     decoderConfigurationRecord.remaining()
 )
@@ -90,7 +90,7 @@ fun AVCVideoDataFactory.sequenceStart(
 fun AVCVideoDataFactory.sequenceStartByteBuffer(
     sps: List<ByteBuffer>,
     pps: List<ByteBuffer>,
-): VideoData {
+): LegacyVideoData {
     val decoderConfigurationRecord = AVCDecoderConfigurationRecord(
         sps.map { ByteBufferBackedRawSource(it) to it.remaining() },
         pps.map { ByteBufferBackedRawSource(it) to it.remaining() }
@@ -167,13 +167,13 @@ fun HEVCExtendedVideoDataFactory.sequenceStartByteBuffer(
  */
 fun AVCHEVCExtendedVideoDataFactory.codedFrame(
     frameType: VideoFrameType,
-    compositionTime: Int,
-    data: ByteBuffer
+    data: ByteBuffer,
+    compositionTime: Int
 ) = codedFrame(
     frameType,
-    compositionTime,
     ByteBufferBackedRawSource(data),
-    data.remaining()
+    data.remaining(),
+    compositionTime
 )
 
 

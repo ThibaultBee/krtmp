@@ -120,7 +120,7 @@ class AVCVideoDataFactory {
      */
     fun sequenceStart(
         decoderConfigurationRecord: RawSource, decoderConfigurationRecordSize: Int
-    ): VideoData = LegacyVideoData(
+    ) = LegacyVideoData(
         frameType = VideoFrameType.KEY,
         codecID = CodecID.AVC,
         packetType = AVCPacketType.SEQUENCE_HEADER,
@@ -175,7 +175,7 @@ fun AVCVideoDataFactory.codedFrame(
  */
 fun AVCVideoDataFactory.sequenceStart(
     decoderConfigurationRecord: ByteArray, decoderConfigurationRecordSize: Int
-): VideoData = sequenceStart(
+) = sequenceStart(
     ByteArrayBackedRawSource(decoderConfigurationRecord), decoderConfigurationRecordSize
 )
 
@@ -192,7 +192,7 @@ fun AVCVideoDataFactory.sequenceStart(
 fun AVCVideoDataFactory.sequenceStart(
     sps: List<Pair<RawSource, Int>>,
     pps: List<Pair<RawSource, Int>>,
-): VideoData {
+): LegacyVideoData {
     val decoderConfigurationRecord = AVCDecoderConfigurationRecord(
         sps, pps
     ).readBuffer()
@@ -218,6 +218,30 @@ fun CommandExtendedVideoData(
         command = command, packetType = packetType
     )
 )
+
+
+/**
+ * Creates a [ExtendedVideoData] from a [body] for a single track.
+ *
+ * When using [VideoPacketType.CODED_FRAMES] and [VideoFourCC.AVC] or [VideoFourCC.HEVC], the body must be a [CompositionTimeExtendedVideoTagBody]
+ *
+ * @param frameType the frame type (key frame or intra frame)
+ * @param packetType the packet type (excluding [VideoPacketType.MULTITRACK] nad [VideoPacketType.MOD_EX])
+ * @param fourCC the FourCCs
+ * @param body the coded frame [RawSource]
+ * @return the [ExtendedVideoData] with the coded frame
+ */
+fun ExtendedVideoData(
+    frameType: VideoFrameType,
+    packetType: VideoPacketType,
+    fourCC: VideoFourCC,
+    body: SingleVideoTagBody
+) = ExtendedVideoData(
+    dataDescriptor = ExtendedVideoData.SingleVideoDataDescriptor(
+        frameType, packetType, fourCC, body
+    )
+)
+
 
 /**
  * Base class for factories to create [ExtendedVideoData] with a predefined [VideoFourCC].
@@ -388,14 +412,14 @@ sealed class AVCHEVCExtendedVideoDataFactory(fourCC: VideoFourCC) :
      * Creates an [ExtendedVideoData] for coded frame from a [RawSource] with composition time.
      *
      * @param frameType the frame type (key frame or intra frame)
-     * @param compositionTime the composition time (24 bits).
      * @param data the coded frame as a [RawSource]
      * @param dataSize the size of the [data]
+     * @param compositionTime the composition time (24 bits).
      * @return the [ExtendedVideoData] with the frame
      * @see codedFrameX
      */
     fun codedFrame(
-        frameType: VideoFrameType, compositionTime: Int, data: RawSource, dataSize: Int
+        frameType: VideoFrameType, data: RawSource, dataSize: Int, compositionTime: Int
     ) = ExtendedVideoData(
         frameType = frameType,
         packetType = VideoPacketType.CODED_FRAMES,

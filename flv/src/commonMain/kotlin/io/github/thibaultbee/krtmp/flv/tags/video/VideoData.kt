@@ -122,27 +122,6 @@ class LegacyVideoData internal constructor(
     }
 }
 
-/**
- * Creates a [ExtendedVideoData] from a [body] for a single track.
- *
- * When using [VideoPacketType.CODED_FRAMES] and [VideoFourCC.AVC] or [VideoFourCC.HEVC], the body must be a [CompositionTimeExtendedVideoTagBody]
- *
- * @param frameType the frame type (key frame or intra frame)
- * @param packetType the packet type (excluding [VideoPacketType.MULTITRACK] nad [VideoPacketType.MOD_EX])
- * @param fourCC the FourCCs
- * @param body the coded frame [RawSource]
- * @return the [ExtendedVideoData] with the coded frame
- */
-fun ExtendedVideoData(
-    frameType: VideoFrameType,
-    packetType: VideoPacketType,
-    fourCC: VideoFourCC,
-    body: SingleVideoTagBody
-) = ExtendedVideoData(
-    dataDescriptor = ExtendedVideoData.SingleVideoDataDescriptor(
-        frameType, packetType, fourCC, body
-    )
-)
 
 /**
  * Representation of extended video data in enhanced FLV format (v1 and v2).
