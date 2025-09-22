@@ -20,15 +20,6 @@ class ByteArrayBackedRawSource(private val array: ByteArray, startIndex: Long = 
         require(size >= 0) { "size must be a positive value" }
     }
 
-    private fun checkBounds(index: Long, byteCount: Long) {
-        if (byteCount < 0) {
-            throw IllegalArgumentException("byteCount < 0: $byteCount")
-        }
-        if (index < 0) {
-            throw IndexOutOfBoundsException()
-        }
-    }
-
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         if (byteCount < 0) {
             throw IllegalArgumentException("byteCount < 0: $byteCount")
