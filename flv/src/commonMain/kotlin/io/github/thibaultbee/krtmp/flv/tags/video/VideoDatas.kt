@@ -94,7 +94,7 @@ class AVCVideoDataFactory {
      * Creates an AVC/H.264 [LegacyVideoData] for a coded frame from a [RawSource].
      *
      * @param frameType the frame type (key frame or intra frame)
-     * @param data the coded frame as a [RawSource]
+     * @param data the coded frame as a [RawSource] in AVCC format (length + NALU)
      * @param dataSize the size of [data]
      * @param compositionTime the composition time (24 bits). Default is 0.
      * @return the [LegacyVideoData] with the frame
@@ -149,7 +149,7 @@ class AVCVideoDataFactory {
  * Creates an AVC/H.264 [LegacyVideoData] for a coded frame from a [ByteArray].
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param data the coded frame as a [ByteArray]
+ * @param data the coded frame as a [ByteArray] in AVCC format (length + NALU)
  * @param compositionTime the composition time (24 bits). Default is 0.
  * @return the [LegacyVideoData] with the frame
  */
@@ -412,7 +412,7 @@ sealed class AVCHEVCExtendedVideoDataFactory(fourCC: VideoFourCC) :
      * Creates an [ExtendedVideoData] for coded frame from a [RawSource] with composition time.
      *
      * @param frameType the frame type (key frame or intra frame)
-     * @param data the coded frame as a [RawSource]
+     * @param data the coded frame as a [RawSource] in AVCC format (length + NALU)
      * @param dataSize the size of the [data]
      * @param compositionTime the composition time (24 bits).
      * @return the [ExtendedVideoData] with the frame
@@ -433,7 +433,7 @@ sealed class AVCHEVCExtendedVideoDataFactory(fourCC: VideoFourCC) :
      * Creates an [ExtendedVideoData] for coded frame from a [RawSource] where composition time is implicitly 0.
      *
      * @param frameType the frame type (key frame or intra frame)
-     * @param data the coded frame as a [RawSource]
+     * @param data the coded frame as a [RawSource] in AVCC format (length + NALU)
      * @param dataSize the size of the [data]
      * @return the [ExtendedVideoData] with the frame
      * @see codedFrame
@@ -456,7 +456,7 @@ sealed class AVCHEVCExtendedVideoDataFactory(fourCC: VideoFourCC) :
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param compositionTime the composition time (24 bits).
- * @param data the coded frame as a [ByteArray]
+ * @param data the coded frame as a [ByteArray] in AVCC format (length + NALU)
  * @return the [ExtendedVideoData] with the frame
  * @see codedFrameX
  */
@@ -474,7 +474,7 @@ fun AVCHEVCExtendedVideoDataFactory.codedFrame(
  * Creates an [ExtendedVideoData] for coded frame from a [ByteArray] where composition time is implicitly 0.
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param data the coded frame as a [ByteArray]
+ * @param data the coded frame as a [ByteArray] in AVCC format (length + NALU)
  * @return the [ExtendedVideoData] with the frame
  * @see codedFrame
  */

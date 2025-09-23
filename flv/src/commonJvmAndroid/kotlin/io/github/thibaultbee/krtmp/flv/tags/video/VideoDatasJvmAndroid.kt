@@ -48,7 +48,7 @@ fun VideoData(
  * Creates an AVC/H.264 [LegacyVideoData] fpr a coded frame from a [ByteBuffer].
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param data the coded frame as a [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer] in AVCC format (length + NALU)
  * @param compositionTime the composition time (24 bits). Default is 0.
  * @return the [LegacyVideoData] with the frame
  */
@@ -161,7 +161,7 @@ fun HEVCExtendedVideoDataFactory.sequenceStartByteBuffer(
  *
  * @param frameType the frame type (key frame or intra frame)
  * @param compositionTime the composition time (24 bits).
- * @param data the coded frame as a [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer] in AVCC format (length + NALU)
  * @return the [ExtendedVideoData] with the frame
  * @see codedFrameX
  */
@@ -181,7 +181,7 @@ fun AVCHEVCExtendedVideoDataFactory.codedFrame(
  * Creates an [ExtendedVideoData] for coded frame from a [ByteBuffer] where composition time is implicitly 0.
  *
  * @param frameType the frame type (key frame or intra frame)
- * @param data the coded frame as a [ByteBuffer]
+ * @param data the coded frame as a [ByteBuffer] in AVCC format (length + NALU)
  * @return the [ExtendedVideoData] with the frame
  * @see codedFrame
  */
