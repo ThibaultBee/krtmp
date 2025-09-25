@@ -15,7 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages
 
-import io.github.thibaultbee.krtmp.flv.sources.RawSourceWithSize
+import io.github.thibaultbee.krtmp.flv.sources.LimitedRawSource
 import io.github.thibaultbee.krtmp.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.RtmpConstants
 import io.github.thibaultbee.krtmp.rtmp.extensions.readFully
@@ -284,7 +284,7 @@ internal fun Message.createChunks(chunkSize: Int, previousMessage: Message?): Li
         Chunk(
             chunkStreamId,
             header,
-            RawSourceWithSize(payload, firstChunkPayloadSize.toLong()),
+            LimitedRawSource(payload, firstChunkPayloadSize.toLong()),
             firstChunkPayloadSize
         )
     )
@@ -296,7 +296,7 @@ internal fun Message.createChunks(chunkSize: Int, previousMessage: Message?): Li
             Chunk(
                 chunkStreamId,
                 MessageHeader3(),
-                RawSourceWithSize(payload, chunkPayloadSize.toLong()),
+                LimitedRawSource(payload, chunkPayloadSize.toLong()),
                 chunkPayloadSize
             )
         )

@@ -21,7 +21,7 @@ import kotlinx.io.RawSource
 /**
  * Creates a [MultiRawSource] from a single [RawSource].
  */
-fun MultiRawSource(vararg sources: RawSource) =
+internal fun MultiRawSource(vararg sources: RawSource) =
     MultiRawSource(sources.toList())
 
 /**
@@ -29,7 +29,7 @@ fun MultiRawSource(vararg sources: RawSource) =
  *
  * @param sources List of [RawSource] to read from.
  */
-class MultiRawSource(private val sources: List<RawSource>) : RawSource {
+internal class MultiRawSource(private val sources: List<RawSource>) : RawSource {
     private var currentSourceIndex = 0
     override fun readAtMostTo(sink: Buffer, byteCount: Long): Long {
         var readSize = 0L

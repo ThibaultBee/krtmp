@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.thibaultbee.krtmp.flv.sources
+package io.github.thibaultbee.krtmp.flv.util
 
 import io.github.thibaultbee.krtmp.common.sources.ByteArrayBackedRawSource
+import io.github.thibaultbee.krtmp.flv.sources.MultiRawSource
 import io.github.thibaultbee.krtmp.flv.util.extensions.isAvcc
 import io.github.thibaultbee.krtmp.flv.util.extensions.startCodeSize
 import kotlinx.io.Buffer
@@ -27,18 +28,16 @@ private const val AVCC_HEADER_SIZE = 4
  * Creates a [RawSource] in AVCC format from a [ByteArray].
  *
  * @param array the [ByteArray] to transform
+ * @return a pair of [RawSource] in AVCC format and its size (including the AVCC header size)
  */
-fun avccRawSource(array: ByteArray): RawSourceWithSize {
+fun transformToAVCC(array: ByteArray): Pair<RawSource, Int> {
     if (array.isAvcc) {
-        return avccRawSource(
-            ByteArrayBackedRawSource(array, AVCC_HEADER_SIZE.toLong()),
-            array.size - AVCC_HEADER_SIZE
-        )
+        return ByteArrayBackedRawSource(array) to array.size
     }
 
     // Convert AnnexB start code to AVCC format
     val startCodeSize = array.startCodeSize
-    return avccRawSource(
+    return transformToAVCC(
         ByteArrayBackedRawSource(array, startCodeSize.toLong()), array.size - startCodeSize
     )
 }
@@ -48,59 +47,37 @@ fun avccRawSource(array: ByteArray): RawSourceWithSize {
  * Creates a [RawSource] in AVCC format from a [Buffer].
  *
  * @param buffer the [Buffer] to transform
+ * @return a pair of [RawSource] in AVCC format and its size (including the AVCC header size)
  */
-fun avccRawSource(buffer: Buffer): RawSourceWithSize {
+fun transformToAVCC(buffer: Buffer): Pair<RawSource, Int> {
     if (buffer.isAvcc) {
-        buffer.skip(AVCC_HEADER_SIZE.toLong())
-        return avccRawSource(buffer, buffer.size.toInt())
+        return buffer to buffer.size.toInt()
     }
 
     // Convert AnnexB start code to AVCC format
     val startCodeSize = buffer.startCodeSize
-    // Remove start code
+    // Skip start code
     buffer.skip(startCodeSize.toLong())
-    return avccRawSource(
+    return transformToAVCC(
         buffer, buffer.size.toInt()
     )
 }
 
-
 /**
- * Creates a [RawSource] in AVCC format from a [RawSource].
- *
- * @param source the [RawSource] to wrap
- * @param byteCount the number of bytes of the [source]
- * @param headerSize the size of the header to remove (0 if no header). Header could be AVCC (4 bytes) or AnnexB (often 4 bytes)
- */
-fun avccRawSource(source: RawSource, byteCount: Int, headerSize: Int): RawSourceWithSize {
-    if (headerSize == 0) {
-        return avccRawSource(source, byteCount)
-    }
-
-    // Remove header
-    source.readAtMostTo(Buffer(), headerSize.toLong())
-
-    return avccRawSource(
-        source, byteCount - headerSize
-    )
-}
-
-/**
- * A [RawSourceWithSize] that represents a NAL unit.
+ * Creates a [RawSource] in AVCC format from a NAL unit [RawSource].
  *
  * The purpose of this class is to simplify the handling of frame data for AVC/H.264, HEVC/H.265.
  *
  * The [RawSource] will be in the NAL unit in AVCC format.
  *
- * To convert from other format such as AnnexB format (NAL unit with a start code 0x00000001) or no header, use other [avccRawSource] builder.
+ * To convert from other format such as AnnexB format (NAL unit with a start code 0x00000001) or no header, use other [transformToAVCC] builder.
  * methods.
  *
  * @param nalu the NAL unit [RawSource] (without AVCC or AnnexB header)
- * @param naluSize the size of the NAL unit
+ * @param naluSize the size of the [nalu]
+ * @return a pair of [RawSource] in AVCC format and its size (including the AVCC header size)
  */
-private fun avccRawSource(
+internal fun transformToAVCC(
     nalu: RawSource, naluSize: Int
-) = RawSourceWithSize(
-    MultiRawSource(Buffer().apply { writeInt(naluSize) }, nalu),
-    naluSize + AVCC_HEADER_SIZE.toLong()
-)
+) = MultiRawSource(Buffer().apply { writeInt(naluSize) }, nalu) to naluSize + AVCC_HEADER_SIZE
+
