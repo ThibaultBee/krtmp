@@ -35,7 +35,7 @@ fun transformToAVCC(buffer: ByteBuffer): Pair<RawSource, Int> {
 
     // Convert AnnexB start code to AVCC format
     val startCodeSize = buffer.startCodeSize
-    buffer.position(startCodeSize)
+    buffer.position(buffer.position() + startCodeSize)
     return transformToAVCC(
         ByteBufferBackedRawSource(buffer), buffer.remaining()
     )
