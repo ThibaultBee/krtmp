@@ -15,12 +15,44 @@
  */
 package io.github.thibaultbee.krtmp.flv.config
 
+/**
+ * Creates an audio configuration for FLV.
+ *
+ * @param mediaType The audio media type.
+ * @param bitrateBps The bitrate in bits per second.
+ * @param soundRate The sound rate.
+ * @param soundSize The sound size.
+ * @param soundType The sound type.
+ */
+fun FLVAudioConfig(
+    mediaType: AudioMediaType,
+    bitrateBps: Int,
+    soundRate: SoundRate,
+    soundSize: SoundSize,
+    soundType: SoundType,
+) = FLVAudioConfig(
+    mediaType = mediaType,
+    bitrateBps = bitrateBps,
+    sampleRate = soundRate.sampleRate,
+    sampleSize = soundSize.byteFormat.numOfBytes.times(Byte.SIZE_BITS),
+    numOfChannels = soundType.numOfChannels
+)
+
+/**
+ * Audio configuration for FLV.
+ *
+ * @param mediaType The audio media type.
+ * @param bitrateBps The bitrate in bits per second.
+ * @param sampleRate The sound rate in Hz. Use [SoundRate.sampleRate] for legacy FLV sound rates.
+ * @param sampleSize The sample size in bits.
+ * @param numOfChannels The number of audio channels.
+ */
 class FLVAudioConfig(
     override val mediaType: AudioMediaType,
     override val bitrateBps: Int,
-    val soundRate: SoundRate,
-    val soundSize: SoundSize,
-    val soundType: SoundType,
+    val sampleRate: Int,
+    val sampleSize: Int,
+    val numOfChannels: Int,
 ) : FLVConfig<AudioMediaType> {
     val soundFormat = mediaType.soundFormat
     val fourCC = mediaType.fourCCs

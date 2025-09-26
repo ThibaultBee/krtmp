@@ -23,7 +23,6 @@ import io.github.thibaultbee.krtmp.amf.elements.containers.amfEcmaArrayOf
 import io.github.thibaultbee.krtmp.amf.elements.containers.amfObjectOf
 import io.github.thibaultbee.krtmp.flv.config.FLVAudioConfig
 import io.github.thibaultbee.krtmp.flv.config.FLVVideoConfig
-import io.github.thibaultbee.krtmp.flv.config.SoundType
 import kotlinx.serialization.Serializable
 
 /**
@@ -137,19 +136,18 @@ open class Metadata(
                     } else {
                         null
                     },
-                    channels = if (config.soundType != firstAudioConfig?.soundType) {
-                        config.soundType.value.toDouble()
+                    channels = if (config.numOfChannels != firstAudioConfig?.numOfChannels) {
+                        config.numOfChannels.toDouble()
                     } else {
                         null
                     },
-                    audiosamplerate = if (config.soundRate != firstAudioConfig?.soundRate) {
-                        config.soundRate.sampleRate.toDouble()
+                    audiosamplerate = if (config.sampleRate != firstAudioConfig?.sampleRate) {
+                        config.sampleRate.toDouble()
                     } else {
                         null
                     },
-                    audiosamplesize = if (config.soundSize != firstAudioConfig?.soundSize) {
-                        config.soundSize.byteFormat.numOfBytes.times(Byte.SIZE_BITS)
-                            .toDouble()
+                    audiosamplesize = if (config.sampleSize != firstAudioConfig?.sampleSize) {
+                        config.sampleSize.toDouble()
                     } else {
                         null
                     }
@@ -186,11 +184,9 @@ open class Metadata(
                 duration = 0.0,
                 audiocodecid = firstAudioConfig?.metadataType?.toDouble(),
                 audiodatarate = firstAudioConfig?.bitrateBps?.div(1000)?.toDouble(), // to Kbps
-                audiosamplerate = firstAudioConfig?.soundRate?.sampleRate?.toDouble(),
-                audiosamplesize = firstAudioConfig?.soundSize?.byteFormat?.numOfBytes?.times(
-                    Byte.SIZE_BITS
-                )?.toDouble(),
-                stereo = firstAudioConfig?.let { (it.soundType == SoundType.STEREO) },
+                audiosamplerate = firstAudioConfig?.sampleRate?.toDouble(),
+                audiosamplesize = firstAudioConfig?.sampleSize?.toDouble(),
+                stereo = firstAudioConfig?.let { (it.numOfChannels == 2) },
                 videocodecid = firstVideoConfig?.metadataType?.toDouble(),
                 videodatarate = firstVideoConfig?.bitrateBps?.div(1000)?.toDouble(), // to Kbps
                 width = firstVideoConfig?.width?.toDouble(),
