@@ -82,7 +82,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
@@ -162,7 +161,7 @@ internal class RtmpConnection internal constructor(
             "Chunk size must be in range ${RtmpConstants.chunkSizeRange}, but was $chunkSize"
         }
         if (writeChunkSize != chunkSize) {
-            val setChunkSize = SetChunkSize(settings.clock.nowInMs, chunkSize)
+            val setChunkSize = SetChunkSize(0, chunkSize)
             writeMessage(setChunkSize)
         }
     }
@@ -174,7 +173,7 @@ internal class RtmpConnection internal constructor(
      */
     suspend fun writeWindowAcknowledgementSize(size: Int) {
         val setWindowAcknowledgementSize = WindowAcknowledgementSize(
-            settings.clock.nowInMs, size
+            0, size
         )
         writeMessage(setWindowAcknowledgementSize)
     }
@@ -187,7 +186,7 @@ internal class RtmpConnection internal constructor(
      */
     suspend fun writeSetPeerBandwidth(size: Int, type: PeerBandwidthLimitType) {
         val setPeerBandwidth = SetPeerBandwidth(
-            settings.clock.nowInMs, size, type
+            0, size, type
         )
         writeMessage(setPeerBandwidth)
     }
@@ -195,13 +194,15 @@ internal class RtmpConnection internal constructor(
     /**
      * Writes a user control message with the given event type.
      *
+     * @param timestampMs the timestamp of the user control event in milliseconds
      * @param eventType the type of the user control event
      */
     suspend fun writeUserControl(
+        timestampMs: Int = settings.clock.nowInMs,
         eventType: UserControl.EventType
     ) {
         val userControl = UserControl(
-            settings.clock.nowInMs, eventType
+            timestampMs, eventType
         )
         writeMessage(userControl)
     }
@@ -210,14 +211,16 @@ internal class RtmpConnection internal constructor(
     /**
      * Writes a user control message with the given event type and data.
      *
+     * @param timestampMs the timestamp of the user control event in milliseconds
      * @param eventType the type of the user control event
      * @param data the data to send with the user control event
      */
     suspend fun writeUserControl(
+        timestampMs: Int = settings.clock.nowInMs,
         eventType: UserControl.EventType, data: Buffer
     ) {
         val userControl = UserControl(
-            settings.clock.nowInMs, eventType, data
+            timestampMs, eventType, data
         )
         writeMessage(userControl)
     }
@@ -235,19 +238,19 @@ internal class RtmpConnection internal constructor(
         peerBandwidthType: PeerBandwidthLimitType
     ) {
         val setWindowAcknowledgementSize = WindowAcknowledgementSize(
-            settings.clock.nowInMs, windowAcknowledgementSize
+            0, windowAcknowledgementSize
         )
 
         val setPeerBandwidth = SetPeerBandwidth(
-            settings.clock.nowInMs, peerBandwidth, peerBandwidthType
+            0, peerBandwidth, peerBandwidthType
         )
 
         val userControlStreamBegin = UserControl(
-            settings.clock.nowInMs, UserControl.EventType.STREAM_BEGIN
+            0, UserControl.EventType.STREAM_BEGIN
         )
 
         val result = CommandNetConnectionResult(
-            settings.clock.nowInMs,
+            0,
             NetConnectionConnectResultObject.default,
             if (settings.amfVersion == AmfVersion.AMF0) {
                 ObjectEncoding.AMF0
@@ -311,16 +314,16 @@ internal class RtmpConnection internal constructor(
      */
     suspend fun createStream(): Command.Result {
         val releaseStreamCommand = CommandReleaseStream(
-            transactionId, settings.clock.nowInMs, connection.urlBuilder.rtmpStreamKey
+            transactionId, 0, connection.urlBuilder.rtmpStreamKey
         )
 
         val fcPublishCommand = CommandFCPublish(
-            transactionId, settings.clock.nowInMs, connection.urlBuilder.rtmpStreamKey
+            transactionId, 0, connection.urlBuilder.rtmpStreamKey
         )
 
         val createStreamTransactionId = transactionId
         val createStreamCommand =
-            CommandCreateStream(createStreamTransactionId, settings.clock.nowInMs)
+            CommandCreateStream(createStreamTransactionId, 0)
 
         val result = try {
             writeAmfMessagesWithResponse(
@@ -350,7 +353,7 @@ internal class RtmpConnection internal constructor(
         val publishCommand = CommandPublish(
             messageStreamId,
             publishTransactionId,
-            settings.clock.nowInMs,
+            0,
             connection.urlBuilder.rtmpStreamKey,
             type
         )
@@ -371,7 +374,7 @@ internal class RtmpConnection internal constructor(
      */
     suspend fun play(streamName: String) {
         val playCommand = CommandPlay(
-            settings.clock.nowInMs, streamName
+            0, streamName
         )
 
         return try {
@@ -687,9 +690,7 @@ internal class RtmpConnection internal constructor(
             }
         }
 
-        launch {
-            processMessage(message)
-        }
+        processMessage(message)
     }
 
     private suspend fun processMessage(message: Message) {
@@ -703,7 +704,9 @@ internal class RtmpConnection internal constructor(
             }
 
             is CommandMessage -> {
-                handleCommandMessage(message)
+                launch {
+                    handleCommandMessage(message)
+                }
             }
 
             is SetChunkSize -> {
@@ -715,10 +718,7 @@ internal class RtmpConnection internal constructor(
             }
 
             is SetPeerBandwidth -> {
-                val windowAcknowledgementSize = WindowAcknowledgementSize(
-                    settings.clock.nowInMs, settings.writeWindowAcknowledgementSize
-                )
-                writeMessage(windowAcknowledgementSize)
+                writeWindowAcknowledgementSize(settings.writeWindowAcknowledgementSize)
             }
 
             is UserControl -> {
@@ -745,14 +745,14 @@ internal class RtmpConnection internal constructor(
             }
 
             else -> {
-                withContext(callbackDispatcher) {
+                launch(callbackDispatcher) {
                     callback.onMessage(message)
                 }
             }
         }
     }
 
-    private suspend fun handleCommandMessage(message: CommandMessage) {
+    private fun handleCommandMessage(message: CommandMessage) = launch(callbackDispatcher) {
         when (val command = Command.read(message)) {
             is Command.Result -> commandChannels.complete(command.transactionId, command)
             is Command.Error -> commandChannels.completeExceptionally(
@@ -776,12 +776,12 @@ internal class RtmpConnection internal constructor(
                 }
             }
 
-            else -> withContext(callbackDispatcher) { callback.onCommand(command) }
+            else -> callback.onCommand(command)
         }
     }
 
-    private suspend fun handleDataMessage(message: DataAmfMessage) {
-        withContext(callbackDispatcher) {
+    private fun handleDataMessage(message: DataAmfMessage) {
+        launch(callbackDispatcher) {
             callback.onData(DataAmf.read(message))
         }
     }
@@ -797,7 +797,7 @@ internal class RtmpConnection internal constructor(
     }
 
     companion object {
-        internal const val TAG = "MessageStreamer"
+        internal const val TAG = "RtmpConnection"
     }
 
     override fun dispose() {
