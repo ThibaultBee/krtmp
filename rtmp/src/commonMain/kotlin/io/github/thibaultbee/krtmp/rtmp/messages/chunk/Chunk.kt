@@ -15,6 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages.chunk
 
+import io.github.thibaultbee.krtmp.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.extensions.readFully
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
@@ -84,6 +85,8 @@ internal class Chunk(
     }
 
     companion object {
+        private const val TAG = "Chunk"
+
         /**
          * Read chunk from input stream
          *
@@ -111,15 +114,20 @@ internal class Chunk(
             buffer: Buffer
         ): Chunk {
             val basicHeader = BasicHeader.read(channel)
-            val messageHeader = MessageHeader.read(channel, basicHeader.headerType)
-            // Extended timestamp is read in MessageHeader.read
-            val messageLength = when (messageHeader) {
-                is MessageHeader0 -> messageHeader.messageLength
-                is MessageHeader1 -> messageHeader.messageLength
-                else -> Int.MAX_VALUE // Do nothing, Already pass by chunkSize
+            try {
+                val messageHeader = MessageHeader.read(channel, basicHeader.headerType)
+                // Extended timestamp is read in MessageHeader.read
+                val messageLength = when (messageHeader) {
+                    is MessageHeader0 -> messageHeader.messageLength
+                    is MessageHeader1 -> messageHeader.messageLength
+                    else -> Int.MAX_VALUE // Do nothing, Already pass by chunkSize
+                }
+                channel.readFully(buffer, min(messageLength, chunkSize))
+                return Chunk(basicHeader, messageHeader, buffer)
+            } catch (t: Throwable) {
+                KrtmpLogger.e(TAG, "Error while reading chunk $basicHeader: ${t.message}")
+                throw t
             }
-            channel.readFully(buffer, min(messageLength, chunkSize))
-            return Chunk(basicHeader, messageHeader, buffer)
         }
     }
 }

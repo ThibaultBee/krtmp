@@ -15,6 +15,7 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.messages.chunk
 
+import io.github.thibaultbee.krtmp.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.extensions.readInt24
 import io.github.thibaultbee.krtmp.rtmp.extensions.writeInt24
 import io.github.thibaultbee.krtmp.rtmp.extensions.writeIntLittleEndian
@@ -145,6 +146,8 @@ internal class MessageHeader1(
     }
 
     companion object {
+        private const val TAG = "MessageHeader1"
+
         /**
          * Read message header from input stream
          *
@@ -154,15 +157,22 @@ internal class MessageHeader1(
         suspend fun read(channel: ByteReadChannel): MessageHeader1 {
             val timestampDelta = channel.readInt24()
             val messageLength = channel.readInt24()
-            val messageType = MessageType.entryOf(channel.readByte())
-            return if (timestampDelta == TIMESTAMP_EXTENDED) {
-                val extendedTimestamp = channel.readInt()
-                MessageHeader1(extendedTimestamp, messageLength, messageType)
-            } else {
-                MessageHeader1(timestampDelta, messageLength, messageType)
+            try {
+                val messageType = MessageType.entryOf(channel.readByte())
+                return if (timestampDelta == TIMESTAMP_EXTENDED) {
+                    val extendedTimestamp = channel.readInt()
+                    MessageHeader1(extendedTimestamp, messageLength, messageType)
+                } else {
+                    MessageHeader1(timestampDelta, messageLength, messageType)
+                }
+            } catch (t: Throwable) {
+                KrtmpLogger.e(
+                    TAG,
+                    "Error while reading message header type 1: timestamp delta = $timestampDelta, messageLength = $messageLength: ${t.message}"
+                )
+                throw t
             }
         }
-
     }
 }
 

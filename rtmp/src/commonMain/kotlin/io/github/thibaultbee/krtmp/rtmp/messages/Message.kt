@@ -30,6 +30,7 @@ import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.io.Buffer
 import kotlinx.io.RawSource
+import kotlinx.io.snapshot
 import kotlin.math.min
 
 sealed class Message(
@@ -149,12 +150,21 @@ sealed class Message(
                     ?: throw IllegalArgumentException("Header3: Previous message with $chunkStreamId must not be null")
             }
 
-            while (payload.size < messageLength) {
-                Chunk.read(
-                    channel,
-                    min(chunkSize, messageLength - payload.size.toInt()),
-                    payload
+            try {
+                while (payload.size < messageLength) {
+                    Chunk.read(
+                        channel,
+                        min(chunkSize, messageLength - payload.size.toInt()),
+                        payload
+                    )
+                }
+            } catch (t: Throwable) {
+                KrtmpLogger.e(
+                    TAG,
+                    "Error while reading message of type $messageType with length $messageLength on chunk stream $chunkStreamId and payload ${payload.snapshot()}",
+                    t
                 )
+                throw t
             }
 
             return when (messageType) {
