@@ -86,11 +86,18 @@ fun AudioData(
 
 /**
  * Factory to create AAC [AudioData].
+ *
+ * The [soundRate] and [soundType] should match the FLV AAC configuration but as the decoder ignores them,
+ * and extracts the correct values from the [AudioSpecificConfig].
+ *
+ * @param soundSize the [SoundSize]
+ * @param soundRate the [SoundRate]. According to the FLV specification, it should be 44.1kHz.
+ * @param soundType the [SoundType]. According to the FLV specification, it should be stereo.
  */
 class AACAudioDataFactory(
-    val soundRate: SoundRate,
     val soundSize: SoundSize,
-    val soundType: SoundType
+    val soundRate: SoundRate = SoundRate.F_44100HZ,
+    val soundType: SoundType = SoundType.STEREO
 ) {
     /**
      * Creates an AAC [LegacyAudioData] for coded frame from a [RawSource].
