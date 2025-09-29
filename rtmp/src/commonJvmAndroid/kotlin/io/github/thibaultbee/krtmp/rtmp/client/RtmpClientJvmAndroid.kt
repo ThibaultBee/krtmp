@@ -48,8 +48,11 @@ suspend fun RtmpClient.writeVideo(timestamp: Int, buffer: ByteBuffer) =
  *
  * Expected AMF format is the one set in [RtmpSettings.amfVersion].
  *
+ * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
  * @param onMetadata the on metadata to send
  */
-suspend fun RtmpClient.writeSetDataFrame(onMetadata: ByteBuffer) = writeSetDataFrame(
-    onMetadata = ByteBufferBackedRawSource(onMetadata), onMetadataSize = onMetadata.remaining()
-)
+suspend fun RtmpClient.writeSetDataFrame(timestampMs: Int, onMetadata: ByteBuffer) =
+    writeSetDataFrame(
+        timestampMs = timestampMs,
+        onMetadata = ByteBufferBackedRawSource(onMetadata), onMetadataSize = onMetadata.remaining()
+    )

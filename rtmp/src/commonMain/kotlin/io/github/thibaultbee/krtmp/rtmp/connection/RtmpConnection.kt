@@ -470,16 +470,17 @@ internal class RtmpConnection internal constructor(
      * It must be called after [publish] and before sending audio or video frames.
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
-     *
+
+     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param metadata the on metadata to send
      */
-    suspend fun writeSetDataFrame(metadata: Metadata) {
+    suspend fun writeSetDataFrame(timestampMs: Int, metadata: Metadata) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
         val dataFrameDataAmf = SetDataFrame(
-            settings.clock.nowInMs, messageStreamId, metadata
+            messageStreamId, timestampMs, metadata
         )
         writeAmfMessage(dataFrameDataAmf)
     }
@@ -490,9 +491,10 @@ internal class RtmpConnection internal constructor(
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
+     * @param timestampMs the timestamp of the metadata in milliseconds  (usually 0)
      * @param onMetadata the on metadata to send
      */
-    suspend fun writeSetDataFrame(onMetadata: ByteArray) {
+    suspend fun writeSetDataFrame(timestampMs: Int, onMetadata: ByteArray) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -500,7 +502,7 @@ internal class RtmpConnection internal constructor(
         val dataFrameDataAmf = SetDataFrame(
             settings.amfVersion,
             messageStreamId,
-            settings.clock.nowInMs,
+            timestampMs,
             ByteArrayBackedRawSource(onMetadata),
             onMetadata.size
         )
@@ -513,19 +515,23 @@ internal class RtmpConnection internal constructor(
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
+     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param onMetadata the on metadata to send
      * @param size the size of the metadata
      * @param amfVersion the AMF version to use
      */
     internal suspend fun writeSetDataFrame(
-        onMetadata: RawSource, size: Int, amfVersion: AmfVersion
+        timestampMs: Int,
+        onMetadata: RawSource,
+        size: Int,
+        amfVersion: AmfVersion
     ) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
         val dataFrameDataAmf = SetDataFrame(
-            amfVersion, messageStreamId, settings.clock.nowInMs, onMetadata, size
+            amfVersion, messageStreamId, timestampMs, onMetadata, size
         )
         return writeMessage(dataFrameDataAmf)
     }
@@ -536,26 +542,27 @@ internal class RtmpConnection internal constructor(
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
+     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param onMetadata the on metadata to send
      * @param size the size of the metadata
      */
-    suspend fun writeSetDataFrame(onMetadata: RawSource, size: Int) =
-        writeSetDataFrame(onMetadata, size, settings.amfVersion)
+    suspend fun writeSetDataFrame(timestampMs: Int, onMetadata: RawSource, size: Int) =
+        writeSetDataFrame(timestampMs, onMetadata, size, settings.amfVersion)
 
     /**
      * Writes an audio frame from a [RawSource] and its size.
      *
      * The frame must be wrapped in a FLV body.
      *
-     * @param timestamp the timestamp of the frame
+     * @param timestampMs the timestamp of the frame in milliseconds
      * @param source the audio frame to write
      */
-    suspend fun writeAudio(timestamp: Int, source: RawSource, sourceSize: Int) {
+    suspend fun writeAudio(timestampMs: Int, source: RawSource, sourceSize: Int) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
-        val audio = Audio(timestamp, messageStreamId, source, sourceSize)
+        val audio = Audio(timestampMs, messageStreamId, source, sourceSize)
         return withTimeoutWriteIfNeeded(audio)
     }
 
@@ -564,15 +571,15 @@ internal class RtmpConnection internal constructor(
      *
      * The frame must be wrapped in a FLV body.
      *
-     * @param timestamp the timestamp of the frame
+     * @param timestampMs the timestamp of the frame
      * @param source the video frame to write
      */
-    suspend fun writeVideo(timestamp: Int, source: RawSource, sourceSize: Int) {
+    suspend fun writeVideo(timestampMs: Int, source: RawSource, sourceSize: Int) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
-        val video = Video(timestamp, messageStreamId, source, sourceSize)
+        val video = Video(timestampMs, messageStreamId, source, sourceSize)
         return withTimeoutWriteIfNeeded(video)
     }
 
@@ -879,11 +886,11 @@ internal suspend fun RtmpConnection.write(source: Source) {
         FLVTag.Type.AUDIO -> writeAudio(tag.timestampMs, tag.body, tag.bodySize)
         FLVTag.Type.VIDEO -> writeVideo(tag.timestampMs, tag.body, tag.bodySize)
         FLVTag.Type.SCRIPT_AMF0 -> {
-            writeSetDataFrame(tag.body, tag.bodySize, AmfVersion.AMF0)
+            writeSetDataFrame(tag.timestampMs, tag.body, tag.bodySize, AmfVersion.AMF0)
         }
 
         FLVTag.Type.SCRIPT_AMF3 -> {
-            writeSetDataFrame(tag.body, tag.bodySize, AmfVersion.AMF3)
+            writeSetDataFrame(tag.timestampMs, tag.body, tag.bodySize, AmfVersion.AMF3)
         }
     }
 }
@@ -909,7 +916,7 @@ internal suspend fun RtmpConnection.write(timestampMs: Int, data: FLVData) {
 
         is ScriptDataObject -> {
             writeSetDataFrame(
-                rawSource, size
+                timestampMs, rawSource, size
             )
         }
 
@@ -940,11 +947,11 @@ internal suspend fun RtmpConnection.write(tag: FLVTagRawBody) {
         }
 
         FLVTag.Type.SCRIPT_AMF0 -> {
-            writeSetDataFrame(tag.body, tag.bodySize)
+            writeSetDataFrame(tag.timestampMs, tag.body, tag.bodySize)
         }
 
         FLVTag.Type.SCRIPT_AMF3 -> {
-            writeSetDataFrame(tag.body, tag.bodySize, AmfVersion.AMF3)
+            writeSetDataFrame(tag.timestampMs, tag.body, tag.bodySize, AmfVersion.AMF3)
         }
     }
 }

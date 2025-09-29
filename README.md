@@ -67,7 +67,7 @@ If you already have FLV data, write your video/audio data:
 try {
     // Write metadata
     val metadata = OnMetadata.Metadata(...)
-    client.writeSetDataFrame(metadata)
+    client.writeSetDataFrame(0, metadata)
 
     while (true) {
         // Write audio data. `audioData` are in `AudioTagHeader` format. See FLV specification for more details.

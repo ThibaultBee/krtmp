@@ -118,10 +118,11 @@ class RtmpClient internal constructor(
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
+     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param metadata the on metadata to send
      */
-    suspend fun writeSetDataFrame(metadata: Metadata) =
-        connection.writeSetDataFrame(metadata)
+    suspend fun writeSetDataFrame(timestampMs: Int, metadata: Metadata) =
+        connection.writeSetDataFrame(timestampMs, metadata)
 
     /**
      * Writes the SetDataFrame from a [Buffer].
@@ -129,11 +130,12 @@ class RtmpClient internal constructor(
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
+     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param onMetadata the on metadata to send
      * @param onMetadataSize the size of the on metadata
      */
-    suspend fun writeSetDataFrame(onMetadata: RawSource, onMetadataSize: Int) =
-        connection.writeSetDataFrame(onMetadata, onMetadataSize)
+    suspend fun writeSetDataFrame(timestampMs: Int, onMetadata: RawSource, onMetadataSize: Int) =
+        connection.writeSetDataFrame(timestampMs, onMetadata, onMetadataSize)
 
     /**
      * Writes an audio frame from a [RawSource] and its size.
@@ -209,11 +211,15 @@ class RtmpClient internal constructor(
  *
  * Expected AMF format is the one set in [RtmpSettings.amfVersion].
  *
+ * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
  * @param onMetadata the on metadata to send
  */
-suspend fun RtmpClient.writeSetDataFrame(onMetadata: ByteArray) = writeSetDataFrame(
-    onMetadata = ByteArrayBackedRawSource(onMetadata), onMetadataSize = onMetadata.size
-)
+suspend fun RtmpClient.writeSetDataFrame(timestampMs: Int, onMetadata: ByteArray) =
+    writeSetDataFrame(
+        timestampMs = timestampMs,
+        onMetadata = ByteArrayBackedRawSource(onMetadata),
+        onMetadataSize = onMetadata.size
+    )
 
 /**
  * Writes an audio frame from a [ByteArray].
