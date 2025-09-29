@@ -65,7 +65,7 @@ class LegacyAudioData internal constructor(
     }
 
     override fun toString(): String {
-        return "LegacyAudioData(soundFormat=$soundFormat, soundRate=$soundRate, soundSize=$soundSize, soundType=$soundType, body=$body)"
+        return "LegacyAudioData(soundFormat=$soundFormat, soundRate=$soundRate, soundSize=$soundSize, soundType=$soundType, ${aacPacketType?.let { "aacPacketType=$it, "}}body=$body)"
     }
 
     companion object {
