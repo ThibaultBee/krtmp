@@ -23,15 +23,14 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 /**
  * This class contains configuration for RTMP client.
  *
- * @param writeChunkSize RTMP chunk size in bytes
  * @param writeWindowAcknowledgementSize RTMP acknowledgement window size in bytes
  * @param amfVersion AMF version
  * @param clock Clock used to timestamp RTMP messages. You should use the same clock for your video and audio timestamps.
+ * @param connectInfo Lambda to configure the connect command object.
  */
 class RtmpClientSettings(
-    writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
     writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
     amfVersion: AmfVersion = AmfVersion.AMF0,
     clock: RtmpClock = RtmpClock.Default(),
     var connectInfo: ConnectObjectBuilder.() -> Unit = {}
-) : RtmpSettings(writeChunkSize, writeWindowAcknowledgementSize, amfVersion, clock, false, 0L)
+) : RtmpSettings(writeWindowAcknowledgementSize, amfVersion, clock, false, 0L)

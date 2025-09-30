@@ -122,7 +122,7 @@ internal class RtmpConnection internal constructor(
      * @return the write chunk size
      * @see [setWriteChunkSize]
      */
-    var writeChunkSize: Int = settings.writeChunkSize
+    var writeChunkSize: Int = RtmpSettings.DEFAULT_CHUNK_SIZE
         private set
     var readChunkSize = RtmpSettings.DEFAULT_CHUNK_SIZE
         private set
@@ -163,6 +163,7 @@ internal class RtmpConnection internal constructor(
         if (writeChunkSize != chunkSize) {
             val setChunkSize = SetChunkSize(0, chunkSize)
             writeMessage(setChunkSize)
+            writeChunkSize = chunkSize
         }
     }
 

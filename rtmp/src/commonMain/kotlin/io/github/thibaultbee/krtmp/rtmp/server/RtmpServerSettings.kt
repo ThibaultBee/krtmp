@@ -28,12 +28,11 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 class RtmpServerSettings(
     var peerBandwidth: Int = DEFAULT_PEER_BANDWIDTH,
     var peerBandwidthLimitType: PeerBandwidthLimitType = PeerBandwidthLimitType.DYNAMIC,
-    writeChunkSize: Int = DEFAULT_CHUNK_SIZE,
     writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
     amfVersion: AmfVersion = AmfVersion.AMF0,
     clock: RtmpClock = RtmpClock.Default(),
     var streamIdProvider: IStreamIdProvider = DefaultStreamIdProvider()
-) : RtmpSettings(writeChunkSize, writeWindowAcknowledgementSize, amfVersion, clock, false, 0L) {
+) : RtmpSettings(writeWindowAcknowledgementSize, amfVersion, clock, false, 0L) {
     /**
      * The default instance of [RtmpServerSettings]
      */
