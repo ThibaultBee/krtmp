@@ -25,22 +25,22 @@ import java.nio.ByteBuffer
  *
  * The frame must be wrapped in a FLV body.
  *
- * @param timestamp the timestamp of the frame
  * @param buffer the audio frame to write
+ * @param timestampMs the timestamp of the frame in milliseconds
  */
-suspend fun RtmpClient.writeAudio(timestamp: Int, buffer: ByteBuffer) =
-    writeAudio(timestamp, ByteBufferBackedRawSource(buffer), buffer.remaining())
+suspend fun RtmpClient.writeAudio(buffer: ByteBuffer, timestampMs: Int) =
+    writeAudio(ByteBufferBackedRawSource(buffer), buffer.remaining(), timestampMs)
 
 /**
  * Writes a video frame from a [ByteBuffer],
  *
  * The frame must be wrapped in a FLV body.
  *
- * @param timestamp the timestamp of the frame
  * @param buffer the video frame to write
+ * @param timestampMs the timestamp of the frame in milliseconds
  */
-suspend fun RtmpClient.writeVideo(timestamp: Int, buffer: ByteBuffer) =
-    writeVideo(timestamp, ByteBufferBackedRawSource(buffer), buffer.remaining())
+suspend fun RtmpClient.writeVideo(buffer: ByteBuffer, timestampMs: Int) =
+    writeVideo(ByteBufferBackedRawSource(buffer), buffer.remaining(), timestampMs)
 
 /**
  * Writes the SetDataFrame from a [ByteBuffer].
@@ -48,11 +48,12 @@ suspend fun RtmpClient.writeVideo(timestamp: Int, buffer: ByteBuffer) =
  *
  * Expected AMF format is the one set in [RtmpSettings.amfVersion].
  *
- * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
  * @param onMetadata the on metadata to send
+ * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
  */
-suspend fun RtmpClient.writeSetDataFrame(timestampMs: Int, onMetadata: ByteBuffer) =
+suspend fun RtmpClient.writeSetDataFrame(onMetadata: ByteBuffer, timestampMs: Int = 0) =
     writeSetDataFrame(
-        timestampMs = timestampMs,
-        onMetadata = ByteBufferBackedRawSource(onMetadata), onMetadataSize = onMetadata.remaining()
+        onMetadata = ByteBufferBackedRawSource(onMetadata),
+        onMetadataSize = onMetadata.remaining(),
+        timestampMs = timestampMs
     )

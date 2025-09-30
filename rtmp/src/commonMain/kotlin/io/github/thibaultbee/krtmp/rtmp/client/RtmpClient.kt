@@ -118,11 +118,11 @@ class RtmpClient internal constructor(
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
-     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param metadata the on metadata to send
+     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      */
-    suspend fun writeSetDataFrame(timestampMs: Int, metadata: Metadata) =
-        connection.writeSetDataFrame(timestampMs, metadata)
+    suspend fun writeSetDataFrame(metadata: Metadata, timestampMs: Int = 0) =
+        connection.writeSetDataFrame(metadata, timestampMs)
 
     /**
      * Writes the SetDataFrame from a [Buffer].
@@ -130,34 +130,40 @@ class RtmpClient internal constructor(
      *
      * Expected AMF format is the one set in [RtmpSettings.amfVersion].
      *
-     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param onMetadata the on metadata to send
      * @param onMetadataSize the size of the on metadata
+     * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      */
-    suspend fun writeSetDataFrame(timestampMs: Int, onMetadata: RawSource, onMetadataSize: Int) =
-        connection.writeSetDataFrame(timestampMs, onMetadata, onMetadataSize)
+    suspend fun writeSetDataFrame(
+        onMetadata: RawSource,
+        onMetadataSize: Int,
+        timestampMs: Int = 0
+    ) =
+        connection.writeSetDataFrame(onMetadata, onMetadataSize, timestampMs)
 
     /**
      * Writes an audio frame from a [RawSource] and its size.
      *
      * The frame must be wrapped in a FLV body.
      *
-     * @param timestamp the timestamp of the frame
      * @param source the audio frame to write
+     * @param sourceSize the size of the audio frame
+     * @param timestampMs the timestamp of the frame in milliseconds
      */
-    suspend fun writeAudio(timestamp: Int, source: RawSource, sourceSize: Int) =
-        connection.writeAudio(timestamp, source, sourceSize)
+    suspend fun writeAudio(source: RawSource, sourceSize: Int, timestampMs: Int) =
+        connection.writeAudio(source, sourceSize, timestampMs)
 
     /**
      * Writes a video frame from a [RawSource] and its size.
      *
      * The frame must be wrapped in a FLV body.
      *
-     * @param timestamp the timestamp of the frame
      * @param source the video frame to write
+     * @param sourceSize the size of the video frame
+     * @param timestampMs the timestamp of the frame in milliseconds
      */
-    suspend fun writeVideo(timestamp: Int, source: RawSource, sourceSize: Int) =
-        connection.writeVideo(timestamp, source, sourceSize)
+    suspend fun writeVideo(source: RawSource, sourceSize: Int, timestampMs: Int) =
+        connection.writeVideo(source, sourceSize, timestampMs)
 
     /**
      * Writes a raw audio, video or script frame from a [Source].
@@ -171,10 +177,10 @@ class RtmpClient internal constructor(
     /**
      * Writes a [FLVData].
      *
-     * @param timestampMs the timestamp of the frame in milliseconds
      * @param data the frame to write
+     * @param timestampMs the timestamp of the frame in milliseconds
      */
-    suspend fun write(timestampMs: Int, data: FLVData) = connection.write(timestampMs, data)
+    suspend fun write(data: FLVData, timestampMs: Int) = connection.write(data, timestampMs)
 
     /**
      * Writes a [FLVTag].
@@ -226,22 +232,22 @@ suspend fun RtmpClient.writeSetDataFrame(timestampMs: Int, onMetadata: ByteArray
  *
  * The frame must be wrapped in a FLV body.
  *
- * @param timestamp the timestamp of the frame
  * @param array the audio frame to write
+ * @param timestampMs the timestamp of the frame in milliseconds
  */
-suspend fun RtmpClient.writeAudio(timestamp: Int, array: ByteArray) =
-    writeAudio(timestamp, ByteArrayBackedRawSource(array), array.size)
+suspend fun RtmpClient.writeAudio(array: ByteArray, timestampMs: Int) =
+    writeAudio(ByteArrayBackedRawSource(array), array.size, timestampMs)
 
 /**
  * Writes a video frame from a [ByteArray].
  *
  * The frame must be wrapped in a FLV body.
  *
- * @param timestamp the timestamp of the frame
  * @param array the video frame to write
+ * @param timestampMs the timestamp of the frame in milliseconds
  */
-suspend fun RtmpClient.writeVideo(timestamp: Int, array: ByteArray) =
-    writeVideo(timestamp, ByteArrayBackedRawSource(array), array.size)
+suspend fun RtmpClient.writeVideo(array: ByteArray, timestampMs: Int) =
+    writeVideo(ByteArrayBackedRawSource(array), array.size, timestampMs)
 
 
 internal class RtmpClientConnectionCallback(
