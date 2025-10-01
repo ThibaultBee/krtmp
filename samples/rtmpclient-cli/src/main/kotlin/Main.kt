@@ -11,8 +11,10 @@ import io.github.thibaultbee.krtmp.flv.decodeAllTagOnly
 import io.github.thibaultbee.krtmp.logger.IKrtmpLogger
 import io.github.thibaultbee.krtmp.logger.KrtmpLogger
 import io.github.thibaultbee.krtmp.rtmp.RtmpConnectionBuilder
+import io.github.thibaultbee.krtmp.rtmp.client.RtmpClientSettings
 import io.github.thibaultbee.krtmp.rtmp.connect
 import io.ktor.network.selector.SelectorManager
+import io.ktor.network.sockets.awaitClosed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.io.files.Path
 
@@ -44,14 +46,15 @@ class RTMPClientCli : SuspendingCliktCommand() {
         val client =
             try {
                 // Connect the RTMP client
-                builder.connect(rtmpUrlPath, {
-                    connectInfo = {
-                        // Configure the connect object here if needed
-                        // videoCodecs = listOf(VideoMediaType.AVC)
-                    }
-                })
+                builder.connect(
+                    rtmpUrlPath, RtmpClientSettings(
+                        connectInfo = {
+                            // Configure the connect object here if needed
+                            // videoCodecs = listOf(VideoMediaType.AVC)
+                        }
+                    ))
             } catch (t: Throwable) {
-                echo("Error connecting to connect server: ${t.message}")
+                echo("Error connecting to the server: ${t.message}")
                 throw t
             }
 
@@ -61,7 +64,7 @@ class RTMPClientCli : SuspendingCliktCommand() {
             client.createStream()
             client.publish()
         } catch (t: Throwable) {
-            echo("Error connecting to publish server: ${t.message}")
+            echo("Error sending publish to the server: ${t.message}")
             client.close()
             throw t
         }
@@ -87,12 +90,13 @@ class RTMPClientCli : SuspendingCliktCommand() {
         try {
             echo("Closing connection to the server")
             client.deleteStream()
-            client.close()
         } catch (t: Throwable) {
-            echo("Error connecting to close connection to the server: ${t.message}")
-            client.close()
+            echo("Error sending delete stream to the server: ${t.message}")
             throw t
+        } finally {
+            client.close()
         }
+        client.awaitClosed()
     }
 
     private inner class EchoLogger : IKrtmpLogger {
