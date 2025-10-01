@@ -16,7 +16,6 @@
 package io.github.thibaultbee.krtmp.rtmp.connection
 
 import io.github.thibaultbee.krtmp.amf.AmfVersion
-import io.github.thibaultbee.krtmp.rtmp.RtmpConstants
 import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
 
 /**
@@ -25,26 +24,16 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
  * @param writeWindowAcknowledgementSize RTMP acknowledgement window size in bytes
  * @param amfVersion AMF version
  * @param clock Clock used to timestamp RTMP messages. You should use the same clock for your video and audio timestamps.
- * @param enableTooLateFrameDrop enable dropping too late frames. Default is false. It will drop frames if they are are too late if set to true. If enable, make sure frame timestamps are on on the same clock as [clock].
- * @param tooLateFrameDropTimeoutInMs the timeout after which a frame will be dropped (from frame timestamps). Default is 3000ms.
+ * @param tooLateFrameDropTimeoutInMs the timeout after which a frame will be dropped (from frame timestamps). Make sure frame timestamps are on on the same clock as [clock]. If null is provided, frames will never be dropped. Default is null
  */
 open class RtmpSettings(
-    var writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
-    var amfVersion: AmfVersion = AmfVersion.AMF0,
-    var clock: RtmpClock = RtmpClock.Default(),
-    var enableTooLateFrameDrop: Boolean = false,
-    var tooLateFrameDropTimeoutInMs: Long = DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS
+    val writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
+    val amfVersion: AmfVersion = AmfVersion.AMF0,
+    val clock: RtmpClock = RtmpClock.Default(),
+    val tooLateFrameDropTimeoutInMs: Long? = null
 ) {
     /**
      * The default instance of [RtmpSettings]
      */
-    companion object Default : RtmpSettings() {
-        /**
-         * The default chunk size used for RTMP connections.
-         * This value is used when the client does not specify a chunk size during the handshake.
-         * The default value is 128 bytes, which is the minimum chunk size allowed by the RTMP protocol.
-         */
-        const val DEFAULT_CHUNK_SIZE = RtmpConstants.MIN_CHUNK_SIZE // bytes
-        const val DEFAULT_TOO_LATE_FRAME_DROP_TIMEOUT_IN_MS = 2000L // ms
-    }
+    companion object Default : RtmpSettings()
 }

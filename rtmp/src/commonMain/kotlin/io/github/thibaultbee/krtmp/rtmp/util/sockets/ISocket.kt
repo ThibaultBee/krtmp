@@ -15,13 +15,19 @@
  */
 package io.github.thibaultbee.krtmp.rtmp.util.sockets
 
+import io.github.thibaultbee.krtmp.rtmp.extensions.write
+import io.github.thibaultbee.krtmp.rtmp.messages.Message
+import io.github.thibaultbee.krtmp.rtmp.messages.createChunks
 import io.ktor.http.URLBuilder
 import io.ktor.network.sockets.ASocket
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import kotlinx.coroutines.CoroutineScope
 
-internal interface ISocket : CoroutineScope, ASocket {
+/**
+ * Abstraction over a socket connection.
+ */
+internal interface ISocket : CoroutineScope, ASocket, WritableMessageSocket, ReadableMessageSocket {
     val urlBuilder: URLBuilder
 
     val isClosed: Boolean
@@ -29,11 +35,38 @@ internal interface ISocket : CoroutineScope, ASocket {
     val totalBytesWritten: Long
 
     suspend fun write(
-        length: Long,
-        block: suspend ByteWriteChannel.() -> Unit
+        length: Long, block: suspend ByteWriteChannel.() -> Unit
     )
+
+    override suspend fun write(message: Message, writeChunkSize: Int, previousMessage: Message?) {
+        val chunks = message.createChunks(writeChunkSize, previousMessage)
+        val length = chunks.sumOf { it.size.toLong() }
+        write(length) {
+            chunks.write(this)
+        }
+    }
 
     suspend fun <T> read(block: suspend ByteReadChannel.() -> T): T
 
-    override fun close()
+    override suspend fun read(readChunkSize: Int, getPreviousMessage: (Int) -> Message?): Message {
+        return read {
+            Message.read(this, readChunkSize) { chunkStreamId ->
+                getPreviousMessage(chunkStreamId)
+            }
+        }
+    }
+}
+
+/**
+ * Abstraction over a writable socket connection.
+ */
+internal interface WritableMessageSocket : ASocket, CoroutineScope {
+    suspend fun write(message: Message, writeChunkSize: Int, previousMessage: Message?)
+}
+
+/**
+ * Abstraction over a readable socket connection.
+ */
+internal interface ReadableMessageSocket : ASocket, CoroutineScope {
+    suspend fun read(readChunkSize: Int, getPreviousMessage: (Int) -> Message?): Message
 }

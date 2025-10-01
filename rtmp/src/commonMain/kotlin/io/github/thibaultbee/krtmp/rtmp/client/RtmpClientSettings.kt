@@ -26,11 +26,13 @@ import io.github.thibaultbee.krtmp.rtmp.util.RtmpClock
  * @param writeWindowAcknowledgementSize RTMP acknowledgement window size in bytes
  * @param amfVersion AMF version
  * @param clock Clock used to timestamp RTMP messages. You should use the same clock for your video and audio timestamps.
+ * @param tooLateFrameDropTimeoutInMs the timeout after which a frame will be dropped (from frame timestamps). Make sure frame timestamps are on on the same clock as [clock]. If null is provided, frames will never be dropped. Default is null
  * @param connectInfo Lambda to configure the connect command object.
  */
 class RtmpClientSettings(
     writeWindowAcknowledgementSize: Int = Int.MAX_VALUE,
     amfVersion: AmfVersion = AmfVersion.AMF0,
     clock: RtmpClock = RtmpClock.Default(),
-    var connectInfo: ConnectObjectBuilder.() -> Unit = {}
-) : RtmpSettings(writeWindowAcknowledgementSize, amfVersion, clock, false, 0L)
+    tooLateFrameDropTimeoutInMs: Long? = null,
+    val connectInfo: ConnectObjectBuilder.() -> Unit = {}
+) : RtmpSettings(writeWindowAcknowledgementSize, amfVersion, clock, tooLateFrameDropTimeoutInMs)

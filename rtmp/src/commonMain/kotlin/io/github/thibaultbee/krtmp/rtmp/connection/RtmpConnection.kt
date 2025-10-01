@@ -34,7 +34,6 @@ import io.github.thibaultbee.krtmp.rtmp.RtmpConstants
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpAppOrNull
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpStreamKey
 import io.github.thibaultbee.krtmp.rtmp.extensions.rtmpTcUrl
-import io.github.thibaultbee.krtmp.rtmp.extensions.write
 import io.github.thibaultbee.krtmp.rtmp.messages.Acknowledgement
 import io.github.thibaultbee.krtmp.rtmp.messages.AmfMessage
 import io.github.thibaultbee.krtmp.rtmp.messages.Audio
@@ -61,28 +60,28 @@ import io.github.thibaultbee.krtmp.rtmp.messages.SetPeerBandwidth
 import io.github.thibaultbee.krtmp.rtmp.messages.UserControl
 import io.github.thibaultbee.krtmp.rtmp.messages.Video
 import io.github.thibaultbee.krtmp.rtmp.messages.WindowAcknowledgementSize
-import io.github.thibaultbee.krtmp.rtmp.messages.chunk.Chunk
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ConnectObjectBuilder
 import io.github.thibaultbee.krtmp.rtmp.messages.command.NetConnectionConnectResultObject
 import io.github.thibaultbee.krtmp.rtmp.messages.command.NetConnectionReconnectRequestInformation
 import io.github.thibaultbee.krtmp.rtmp.messages.command.ObjectEncoding
 import io.github.thibaultbee.krtmp.rtmp.messages.command.StreamPublishType
-import io.github.thibaultbee.krtmp.rtmp.messages.createChunks
-import io.github.thibaultbee.krtmp.rtmp.util.MessagesManager
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusCodePublish
 import io.github.thibaultbee.krtmp.rtmp.util.NetStreamOnStatusLevelError
 import io.github.thibaultbee.krtmp.rtmp.util.TransactionCommandCompletion
+import io.github.thibaultbee.krtmp.rtmp.util.channels.MessageReadChannel
+import io.github.thibaultbee.krtmp.rtmp.util.channels.MessageWriteChannel
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.ISocket
 import io.ktor.http.Url
 import io.ktor.network.sockets.ASocket
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
 import kotlinx.io.RawSource
@@ -102,13 +101,22 @@ import kotlinx.io.readString
  * - Close the connection with [close]
  */
 internal class RtmpConnection internal constructor(
-    private val connection: ISocket,
+    private val socket: ISocket,
     val settings: RtmpSettings,
     callbackFactory: RtmpConnectionCallback.Factory,
     private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Default,
-) : CoroutineScope by connection, ASocket by connection {
+) : CoroutineScope by socket, ASocket by socket {
     private val callback by lazy { callbackFactory.create(this) }
-    private val messagesManager = MessagesManager()
+
+    private val messageWriteChannel = MessageWriteChannel(socket, { message ->
+        if (settings.tooLateFrameDropTimeoutInMs != null && ((message is Video) || (message is Audio))) {
+            settings.tooLateFrameDropTimeoutInMs - (settings.clock.nowInMs - message.timestamp)
+        } else {
+            null
+        }
+    })
+
+    private val messageReadChannel = MessageReadChannel(socket)
 
     private var _transactionId = 1L
     private val transactionId: Long
@@ -117,15 +125,26 @@ internal class RtmpConnection internal constructor(
     /**
      * The write chunk size.
      *
-     * The default value is [RtmpSettings.DEFAULT_CHUNK_SIZE].
+     * The default value is [RtmpConstants.DEFAULT_CHUNK_SIZE].
      *
      * @return the write chunk size
      * @see [setWriteChunkSize]
      */
-    var writeChunkSize: Int = RtmpSettings.DEFAULT_CHUNK_SIZE
-        private set
-    var readChunkSize = RtmpSettings.DEFAULT_CHUNK_SIZE
-        private set
+    val writeChunkSize: Int
+        get() = messageWriteChannel.chunkSize
+
+    /**
+     * The read chunk size.
+     *
+     * It is set by the peer with a [SetChunkSize] message.
+     *
+     * The default value is [RtmpConstants.DEFAULT_CHUNK_SIZE].
+     *
+     * @return the read chunk size
+     */
+    val readChunkSize: Int
+        get() = messageReadChannel.chunkSize
+
     var readWindowAcknowledgementSize = Int.MAX_VALUE
         private set
     private var lastReadWindowAcknowledgementSize = Int.MAX_VALUE
@@ -133,8 +152,6 @@ internal class RtmpConnection internal constructor(
     private val commandChannels = TransactionCommandCompletion()
 
     private var messageStreamId: Int? = null
-
-    override val coroutineContext = connection.coroutineContext
 
     init {
         // Launch coroutine to handle RTMP messages
@@ -147,12 +164,12 @@ internal class RtmpConnection internal constructor(
      * Whether the connection is closed.
      */
     val isClosed: Boolean
-        get() = connection.isClosed
+        get() = socket.isClosed
 
     /**
      * Sets the write chunk size.
      *
-     * The default value is [RtmpSettings.DEFAULT_CHUNK_SIZE].
+     * The default value is [RtmpConstants.DEFAULT_CHUNK_SIZE].
      *
      * @param chunkSize the write chunk size
      * @param timestampMs the timestamp of the SetChunkSize message in milliseconds
@@ -161,11 +178,8 @@ internal class RtmpConnection internal constructor(
         require(chunkSize in RtmpConstants.chunkSizeRange) {
             "Chunk size must be in range ${RtmpConstants.chunkSizeRange}, but was $chunkSize"
         }
-        if (writeChunkSize != chunkSize) {
-            val setChunkSize = SetChunkSize(timestampMs, chunkSize)
-            writeMessage(setChunkSize)
-            writeChunkSize = chunkSize
-        }
+        val setChunkSize = SetChunkSize(timestampMs, chunkSize)
+        return writeMessage(setChunkSize).await()
     }
 
     /**
@@ -178,7 +192,7 @@ internal class RtmpConnection internal constructor(
         val setWindowAcknowledgementSize = WindowAcknowledgementSize(
             timestampMs, size
         )
-        writeMessage(setWindowAcknowledgementSize)
+        writeMessage(setWindowAcknowledgementSize).await()
     }
 
     /**
@@ -192,7 +206,7 @@ internal class RtmpConnection internal constructor(
         val setPeerBandwidth = SetPeerBandwidth(
             timestampMs, size, type
         )
-        writeMessage(setPeerBandwidth)
+        writeMessage(setPeerBandwidth).await()
     }
 
     /**
@@ -208,7 +222,7 @@ internal class RtmpConnection internal constructor(
         val userControl = UserControl(
             timestampMs, eventType
         )
-        writeMessage(userControl)
+        writeMessage(userControl).await()
     }
 
 
@@ -227,7 +241,7 @@ internal class RtmpConnection internal constructor(
         val userControl = UserControl(
             timestampMs, eventType, data
         )
-        writeMessage(userControl)
+        writeMessage(userControl).await()
     }
 
     /**
@@ -273,7 +287,7 @@ internal class RtmpConnection internal constructor(
                 userControlStreamBegin,
                 result.createMessage(amfVersion = settings.amfVersion)
             )
-        )
+        ).awaitAll()
     }
 
     /**
@@ -290,8 +304,8 @@ internal class RtmpConnection internal constructor(
             ObjectEncoding.AMF3
         }
         val connectObjectBuilder = ConnectObjectBuilder(
-            app = connection.urlBuilder.rtmpAppOrNull ?: "",
-            tcUrl = connection.urlBuilder.rtmpTcUrl,
+            app = socket.urlBuilder.rtmpAppOrNull ?: "",
+            tcUrl = socket.urlBuilder.rtmpTcUrl,
             objectEncoding = objectEncoding
         )
         connectObjectBuilder.block()
@@ -322,11 +336,11 @@ internal class RtmpConnection internal constructor(
      */
     suspend fun createStream(timestampMs: Int = 0): Command.Result {
         val releaseStreamCommand = CommandReleaseStream(
-            transactionId, timestampMs, connection.urlBuilder.rtmpStreamKey
+            transactionId, timestampMs, socket.urlBuilder.rtmpStreamKey
         )
 
         val fcPublishCommand = CommandFCPublish(
-            transactionId, timestampMs, connection.urlBuilder.rtmpStreamKey
+            transactionId, timestampMs, socket.urlBuilder.rtmpStreamKey
         )
 
         val createStreamTransactionId = transactionId
@@ -366,7 +380,7 @@ internal class RtmpConnection internal constructor(
             messageStreamId,
             publishTransactionId,
             timestampMs,
-            connection.urlBuilder.rtmpStreamKey,
+            socket.urlBuilder.rtmpStreamKey,
             type
         )
 
@@ -391,7 +405,7 @@ internal class RtmpConnection internal constructor(
         )
 
         return try {
-            writeAmfMessage(playCommand)
+            writeAmfMessage(playCommand).await()
         } catch (t: Throwable) {
             throw IOException("Play command failed", t)
         }
@@ -407,7 +421,7 @@ internal class RtmpConnection internal constructor(
     suspend fun deleteStream(timestampMs: Int = settings.clock.nowInMs) {
         val messages = mutableListOf(
             CommandFCUnpublish(
-                transactionId, timestampMs, connection.urlBuilder.rtmpStreamKey
+                transactionId, timestampMs, socket.urlBuilder.rtmpStreamKey
             )
         )
         messageStreamId?.let {
@@ -416,9 +430,8 @@ internal class RtmpConnection internal constructor(
             )
         }
 
-        writeAmfMessages(messages)
+        writeAmfMessages(messages).awaitAll()
     }
-
 
     /**
      * Sends a reconnect request to the client.
@@ -463,24 +476,26 @@ internal class RtmpConnection internal constructor(
                 )
             )
         )
-        writeAmfMessage(onStatus)
+        writeAmfMessage(onStatus).await()
     }
 
     private fun close(timestampMs: Int) {
         try {
             val closeCommand = CommandCloseStream(transactionId, timestampMs)
             runBlocking {
-                writeAmfMessage(closeCommand)
+                writeAmfMessage(closeCommand).await()
             }
         } catch (t: Throwable) {
             KrtmpLogger.i(TAG, "Error sending close command: ${t.message}")
         }
 
+        KrtmpLogger.d(TAG, "Closing connection")
         try {
-            connection.close()
+            socket.close()
+            messageReadChannel.close()
+            messageWriteChannel.close()
         } finally {
             commandChannels.completeAllExceptionally(CancellationException(""))
-            messagesManager.clear()
         }
     }
 
@@ -499,8 +514,9 @@ internal class RtmpConnection internal constructor(
      *
      * @param metadata the on metadata to send
      * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
+     * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeSetDataFrame(metadata: Metadata, timestampMs: Int) {
+    suspend fun writeSetDataFrame(metadata: Metadata, timestampMs: Int): Deferred<Unit> {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -508,7 +524,7 @@ internal class RtmpConnection internal constructor(
         val dataFrameDataAmf = SetDataFrame(
             messageStreamId, timestampMs, metadata
         )
-        writeAmfMessage(dataFrameDataAmf)
+        return writeAmfMessage(dataFrameDataAmf)
     }
 
     /**
@@ -519,8 +535,9 @@ internal class RtmpConnection internal constructor(
      *
      * @param onMetadata the on metadata to send
      * @param timestampMs the timestamp of the metadata in milliseconds  (usually 0)
+     * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeSetDataFrame(onMetadata: ByteArray, timestampMs: Int) {
+    suspend fun writeSetDataFrame(onMetadata: ByteArray, timestampMs: Int): Deferred<Unit> {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -545,13 +562,14 @@ internal class RtmpConnection internal constructor(
      * @param onMetadataSize the size of the metadata
      * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @param amfVersion the AMF version to use
+     * @return the deferred that will be completed when the frame is sent
      */
     internal suspend fun writeSetDataFrame(
         onMetadata: RawSource,
         onMetadataSize: Int,
         timestampMs: Int,
         amfVersion: AmfVersion = settings.amfVersion
-    ) {
+    ): Deferred<Unit> {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -570,14 +588,15 @@ internal class RtmpConnection internal constructor(
      * @param source the audio frame to write
      * @param sourceSize the size of the audio frame
      * @param timestampMs the timestamp of the frame in milliseconds
+     * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeAudio(source: RawSource, sourceSize: Int, timestampMs: Int) {
+    suspend fun writeAudio(source: RawSource, sourceSize: Int, timestampMs: Int): Deferred<Unit> {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
         val audio = Audio(timestampMs, messageStreamId, source, sourceSize)
-        return withTimeoutWriteIfNeeded(audio)
+        return writeMessage(audio)
     }
 
     /**
@@ -588,14 +607,15 @@ internal class RtmpConnection internal constructor(
      * @param source the video frame to write
      * @param sourceSize the size of the video frame
      * @param timestampMs the timestamp of the frame in milliseconds
+     * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeVideo(source: RawSource, sourceSize: Int, timestampMs: Int) {
+    suspend fun writeVideo(source: RawSource, sourceSize: Int, timestampMs: Int): Deferred<Unit> {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
         val video = Video(timestampMs, messageStreamId, source, sourceSize)
-        return withTimeoutWriteIfNeeded(video)
+        return writeMessage(video)
     }
 
     private suspend fun writeAmfMessagesWithResponse(
@@ -605,9 +625,9 @@ internal class RtmpConnection internal constructor(
         return commandChannels.waitForResponse(id)
     }
 
-    private suspend fun writeAmfMessages(amfMessages: List<AmfMessage>) {
+    private suspend fun writeAmfMessages(amfMessages: List<AmfMessage>): List<Deferred<Unit>> {
         val messages = amfMessages.map { it.createMessage(settings.amfVersion) }
-        writeMessages(messages)
+        return writeMessages(messages)
     }
 
     private suspend fun writeAmfMessageWithResponse(
@@ -617,35 +637,15 @@ internal class RtmpConnection internal constructor(
         return writeMessageWithResponse(message, id)
     }
 
-    suspend fun writeAmfMessage(amfMessage: AmfMessage) {
+    suspend fun writeAmfMessage(amfMessage: AmfMessage): Deferred<Unit> {
         val message = amfMessage.createMessage(settings.amfVersion)
-        writeMessage(message)
+        return writeMessage(message)
     }
 
-    private suspend fun withTimeoutWriteIfNeeded(message: Message) {
-        if (settings.enableTooLateFrameDrop) {
-            val timeoutInMs: Long =
-                settings.tooLateFrameDropTimeoutInMs - (settings.clock.nowInMs - message.timestamp)
-            withTimeout(timeoutInMs) {
-                writeMessage(message)
-            }
-        } else {
-            writeMessage(message)
+    private suspend fun writeMessages(messages: List<Message>): List<Deferred<Unit>> =
+        messages.map {
+            messageWriteChannel.send(it)
         }
-    }
-
-    private suspend fun writeMessages(messages: List<Message>) {
-        val chunks = mutableListOf<Chunk>()
-        messages.forEach { message ->
-            messagesManager.getPreviousWrittenMessage(message) { previousMessage ->
-                chunks += message.createChunks(writeChunkSize, previousMessage)
-            }
-        }
-        val length = chunks.sumOf { it.size.toLong() }
-        connection.write(length) {
-            chunks.write(this)
-        }
-    }
 
     /**
      * Writes a message to the connection and waits for a response.
@@ -655,7 +655,7 @@ internal class RtmpConnection internal constructor(
      * @return the response command
      */
     suspend fun writeMessageWithResponse(message: Message, id: Any = transactionId): Command {
-        writeMessage(message)
+        writeMessage(message).await()
         return commandChannels.waitForResponse(id)
     }
 
@@ -664,29 +664,27 @@ internal class RtmpConnection internal constructor(
      *
      * @param message the message to write
      */
-    suspend fun writeMessage(message: Message) {
-        messagesManager.getPreviousWrittenMessage(message) { previousMessage ->
-            val chunks = message.createChunks(writeChunkSize, previousMessage)
-            val length = chunks.sumOf { it.size.toLong() }
-            connection.write(length) {
-                chunks.write(this)
-            }
-        }
-    }
+    suspend fun writeMessage(message: Message) =
+        messageWriteChannel.send(message)
 
     private suspend fun handleRtmpMessages() {
         try {
             while (isActive) {
                 handleMessages()
             }
+        } catch (e: CancellationException) {
+            commandChannels.completeAllExceptionally(e)
+            KrtmpLogger.d(TAG, "RTMP message handling cancelled")
         } catch (t: Throwable) {
             commandChannels.completeAllExceptionally(t)
             KrtmpLogger.i(TAG, "Failed to handle RTMP message: ${t.message}", t)
         } finally {
             try {
-                connection.close()
-            } finally {
-                messagesManager.clear()
+                socket.close()
+                messageReadChannel.close()
+                messageWriteChannel.close()
+            } catch (_: Throwable) {
+                // Ignore
             }
         }
     }
@@ -694,7 +692,7 @@ internal class RtmpConnection internal constructor(
     private suspend fun handleMessages() {
         val message = readMessage().apply {
             // Send Acknowledgement message if needed
-            val totalBytesRead = connection.totalBytesRead.toInt()
+            val totalBytesRead = socket.totalBytesRead.toInt()
             val readBytes = totalBytesRead - lastReadWindowAcknowledgementSize
             if (readBytes >= readWindowAcknowledgementSize) {
                 writeMessage(Acknowledgement(settings.clock.nowInMs, totalBytesRead))
@@ -722,11 +720,7 @@ internal class RtmpConnection internal constructor(
             }
 
             is SetChunkSize -> {
-                if (message.chunkSize in RtmpConstants.chunkSizeRange) {
-                    readChunkSize = message.chunkSize
-                } else {
-                    KrtmpLogger.e(TAG, "Invalid chunk size: ${message.chunkSize}")
-                }
+                // Already handled in MessageReadChannel
             }
 
             is SetPeerBandwidth -> {
@@ -799,13 +793,7 @@ internal class RtmpConnection internal constructor(
     }
 
     private suspend fun readMessage(): Message {
-        return connection.read {
-            messagesManager.getPreviousReadMessage { previousMessages ->
-                Message.read(this, readChunkSize) { chunkStreamId ->
-                    previousMessages[chunkStreamId]
-                }
-            }
-        }
+        return messageReadChannel.receive()
     }
 
     companion object {
@@ -863,10 +851,10 @@ internal interface RtmpConnectionCallback {
  * It is not the most efficient way to write frames but it is convenient.
  *
  * @param array the frame to write
+ * @return a [Deferred] that completes when the frame is sent
  */
-internal suspend fun RtmpConnection.write(array: ByteArray) {
+internal suspend fun RtmpConnection.write(array: ByteArray) =
     write(Buffer().apply { write(array) })
-}
 
 /**
  * Writes a raw audio, video or script frame from a [Source].
@@ -874,8 +862,9 @@ internal suspend fun RtmpConnection.write(array: ByteArray) {
  * The frame must be in the FLV format.
  *
  * @param source the frame to write
+ * @return a [Deferred] that completes when the frame is sent
  */
-internal suspend fun RtmpConnection.write(source: Source) {
+internal suspend fun RtmpConnection.write(source: Source): Deferred<Unit> {
     /**
      * Dropping FLV header that is not needed. It starts with 'F', 'L' and 'V'.
      * Just check the first byte to simplify.
@@ -894,7 +883,7 @@ internal suspend fun RtmpConnection.write(source: Source) {
     source.readInt() // skip previous tag size
 
     val tag = FLVTagRawBody.decode(source)
-    when (tag.type) {
+    return when (tag.type) {
         FLVTag.Type.AUDIO -> writeAudio(tag.body, tag.bodySize, tag.timestampMs)
         FLVTag.Type.VIDEO -> writeVideo(tag.body, tag.bodySize, tag.timestampMs)
         FLVTag.Type.SCRIPT_AMF0 -> {
@@ -912,12 +901,13 @@ internal suspend fun RtmpConnection.write(source: Source) {
  *
  * @param data the frame to write
  * @param timestampMs the timestamp of the frame in milliseconds
+ * @return a [Deferred] that completes when the frame is sent
  */
-internal suspend fun RtmpConnection.write(data: FLVData, timestampMs: Int) {
+internal suspend fun RtmpConnection.write(data: FLVData, timestampMs: Int): Deferred<Unit> {
     val rawSource = data.asRawSource(settings.amfVersion, false)
     val rawSourceSize = data.getSize(settings.amfVersion)
 
-    when (data) {
+    return when (data) {
         is AudioData -> writeAudio(
             rawSource, rawSourceSize, timestampMs,
         )
@@ -951,8 +941,8 @@ internal suspend fun RtmpConnection.write(tag: FLVTag) = write(tag.data, tag.tim
  *
  * @param tag the FLV tag to write
  */
-internal suspend fun RtmpConnection.write(tag: FLVTagRawBody) {
-    when (tag.type) {
+internal suspend fun RtmpConnection.write(tag: FLVTagRawBody): Deferred<Unit> {
+    return when (tag.type) {
         FLVTag.Type.AUDIO -> {
             writeAudio(tag.body, tag.bodySize, tag.timestampMs)
         }

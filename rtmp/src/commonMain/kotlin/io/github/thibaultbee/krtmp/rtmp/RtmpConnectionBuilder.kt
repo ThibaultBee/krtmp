@@ -46,12 +46,12 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
      * The [urlBuilder] must use the `rtmp`, `rtmps`, `rtmpt` or `rtmpts` protocol.
      *
      * @param urlBuilder the URL to connect to
-     * @param configure the settings for the RTMP client
+     * @param settings the settings for the RTMP client
      * @param message the callback to handle RTMP client events
      */
     suspend fun connect(
         urlBuilder: URLBuilder,
-        configure: RtmpClientSettings.() -> Unit = {},
+        settings: RtmpClientSettings = RtmpClientSettings(),
         message: RtmpClientCallbackBuilder.() -> Unit = {}
     ): RtmpClient {
         urlBuilder.validateRtmp()
@@ -66,7 +66,7 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
             TcpSocket(tcpSocket, urlBuilder)
         }
 
-        return connect(socket, configure, message)
+        return connect(socket, settings, message)
     }
 
     /**
@@ -74,10 +74,9 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
      */
     private suspend fun connect(
         socket: ISocket,
-        configure: RtmpClientSettings.() -> Unit,
+        settings: RtmpClientSettings,
         message: RtmpClientCallbackBuilder.() -> Unit
     ): RtmpClient {
-        val settings = RtmpClientSettings().apply { configure() }
         try {
             socket.clientHandshake(settings.clock)
         } catch (t: Throwable) {
@@ -103,18 +102,18 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
      * Binds a new [RtmpServer] to the given [localAddress].
      *
      * @param localAddress the local address to bind to. If null, binds to a random port on all interfaces.
-     * @param configure the settings for the RTMP server
+     * @param settings the settings for the RTMP server
      * @param message the callback to handle RTMP server events
      * @return a new [RtmpServer] instance
      */
     suspend fun bind(
         localAddress: SocketAddress? = null,
-        configure: RtmpServerSettings.() -> Unit = {},
+        settings: RtmpServerSettings = RtmpServerSettings(),
         message: RtmpServerCallbackBuilder.() -> Unit = {}
     ): RtmpServer {
         val serverSocket = tcpSocketBuilder.bind(localAddress)
 
-        return bind(serverSocket, configure, message)
+        return bind(serverSocket, settings, message)
     }
 
     /**
@@ -122,11 +121,11 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
      */
     private fun bind(
         serverSocket: ServerSocket,
-        settings: RtmpServerSettings.() -> Unit,
+        settings: RtmpServerSettings,
         messages: RtmpServerCallbackBuilder.() -> Unit
     ) = RtmpServer(
         serverSocket,
-        RtmpServerSettings().apply { settings() },
+        settings,
         RtmpServerCallbackBuilder().apply { messages() }
     )
 }
@@ -137,14 +136,14 @@ class RtmpConnectionBuilder(val selectorManager: SelectorManager) {
  * The [urlString] must use the `rtmp`, `rtmps`, `rtmpt` or `rtmpts` protocol.
  *
  * @param urlString the RTMP URL to connect to
- * @param configure the settings for the RTMP client
+ * @param settings the settings for the RTMP client
  * @param message the callback to handle RTMP client events
  */
 suspend fun RtmpConnectionBuilder.connect(
     urlString: String,
-    configure: RtmpClientSettings.() -> Unit = {},
+    settings: RtmpClientSettings = RtmpClientSettings(),
     message: RtmpClientCallbackBuilder.() -> Unit = {}
-) = connect(RtmpURLBuilder(urlString), configure, message)
+) = connect(RtmpURLBuilder(urlString), settings, message)
 
 /**
  * Binds a new [RtmpServer] to the given [urlString].
@@ -152,13 +151,13 @@ suspend fun RtmpConnectionBuilder.connect(
  * The [urlString] must be in the format `tcp://host:port` or `host:port`.
  *
  * @param urlString the URL string to bind to
- * @param configure the settings for the RTMP server
+ * @param settings the settings for the RTMP server
  * @param message the callback to handle RTMP server events
  * @return a new [RtmpServer] instance
  */
 suspend fun RtmpConnectionBuilder.bind(
     urlString: String,
-    configure: RtmpServerSettings.() -> Unit = {},
+    settings: RtmpServerSettings = RtmpServerSettings(),
     message: RtmpServerCallbackBuilder.() -> Unit = {}
 ): RtmpServer {
     val url = if (urlString.startWithScheme()) {
@@ -173,5 +172,5 @@ suspend fun RtmpConnectionBuilder.bind(
             url.port
         }
     )
-    return bind(localAddress, configure, message)
+    return bind(localAddress, settings, message)
 }

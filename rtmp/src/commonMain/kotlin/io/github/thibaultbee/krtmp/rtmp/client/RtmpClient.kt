@@ -120,6 +120,7 @@ class RtmpClient internal constructor(
      *
      * @param metadata the on metadata to send
      * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
+     * @return the deferred that will be completed when the frame is sent
      */
     suspend fun writeSetDataFrame(metadata: Metadata, timestampMs: Int = 0) =
         connection.writeSetDataFrame(metadata, timestampMs)
@@ -133,6 +134,7 @@ class RtmpClient internal constructor(
      * @param onMetadata the on metadata to send
      * @param onMetadataSize the size of the on metadata
      * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
+     * @return the deferred that will be completed when the frame is sent
      */
     suspend fun writeSetDataFrame(
         onMetadata: RawSource,
@@ -149,6 +151,7 @@ class RtmpClient internal constructor(
      * @param source the audio frame to write
      * @param sourceSize the size of the audio frame
      * @param timestampMs the timestamp of the frame in milliseconds
+     * @return the deferred that will be completed when the frame is sent
      */
     suspend fun writeAudio(source: RawSource, sourceSize: Int, timestampMs: Int) =
         connection.writeAudio(source, sourceSize, timestampMs)
@@ -161,6 +164,7 @@ class RtmpClient internal constructor(
      * @param source the video frame to write
      * @param sourceSize the size of the video frame
      * @param timestampMs the timestamp of the frame in milliseconds
+     * @return the deferred that will be completed when the frame is sent
      */
     suspend fun writeVideo(source: RawSource, sourceSize: Int, timestampMs: Int) =
         connection.writeVideo(source, sourceSize, timestampMs)
@@ -171,6 +175,7 @@ class RtmpClient internal constructor(
      * The frame must be in the FLV format.
      *
      * @param source the frame to write
+     * @return the deferred that will be completed when the frame is sent
      */
     suspend fun write(source: Source) = connection.write(source)
 
@@ -179,6 +184,7 @@ class RtmpClient internal constructor(
      *
      * @param data the frame to write
      * @param timestampMs the timestamp of the frame in milliseconds
+     * @return the deferred that will be completed when the frame is sent
      */
     suspend fun write(data: FLVData, timestampMs: Int) = connection.write(data, timestampMs)
 
@@ -186,6 +192,7 @@ class RtmpClient internal constructor(
      * Writes a [FLVTag].
      *
      * @param tag the FLV tag to write
+     * @return the deferred that will be completed when the tag is sent
      */
     suspend fun write(tag: FLVTag) = connection.write(tag)
 
@@ -193,6 +200,7 @@ class RtmpClient internal constructor(
      * Writes a [FLVTagRawBody].
      *
      * @param rawTag the FLV tag to write
+     * @return the deferred that will be completed when the tag is sent
      */
     suspend fun write(rawTag: FLVTagRawBody) = connection.write(rawTag)
 
