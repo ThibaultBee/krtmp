@@ -1,4 +1,4 @@
-# krtmp: A RTMP, FLV and AMF library for Kotlin Multiplatform and Android
+# krtmp: An enhanced RTMP, FLV and AMF library for Kotlin Multiplatform and Android
 
 krtmp is a Kotlin Multiplatform implementation of RTMP, FLV and AMF protocols from legacy RTMP to
 enhanced RTMP v2.
@@ -7,14 +7,6 @@ enhanced RTMP v2.
 
 krtmp is still in development and is not ready for production use. There is no guarantee that the
 API will not change in the future.
-
-To finalize the release, I need to add more tests, fixes and feedbacks. If you want to help, feel
-free to give feedbacks, report issues or contribute to the project.
-
-TODO:
-
-- Fixes:
-    - See https://youtrack.jetbrains.com/issue/KTOR-8642#focus=Comments-27-12303807.0-0
 
 # RTMP
 
