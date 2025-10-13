@@ -78,10 +78,10 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.io.Buffer
 import kotlinx.io.IOException
 import kotlinx.io.RawSource
@@ -108,14 +108,7 @@ internal class RtmpConnection internal constructor(
 ) : CoroutineScope by socket, ASocket by socket {
     private val callback by lazy { callbackFactory.create(this) }
 
-    private val messageWriteChannel = MessageWriteChannel(socket, { message ->
-        if (settings.tooLateFrameDropTimeoutInMs != null && ((message is Video) || (message is Audio))) {
-            settings.tooLateFrameDropTimeoutInMs - (settings.clock.nowInMs - message.timestamp)
-        } else {
-            null
-        }
-    })
-
+    private val messageWriteChannel = MessageWriteChannel(socket)
     private val messageReadChannel = MessageReadChannel(socket)
 
     private var _transactionId = 1L
@@ -179,7 +172,7 @@ internal class RtmpConnection internal constructor(
             "Chunk size must be in range ${RtmpConstants.chunkSizeRange}, but was $chunkSize"
         }
         val setChunkSize = SetChunkSize(timestampMs, chunkSize)
-        return writeMessage(setChunkSize).await()
+        return writeMessage(setChunkSize)
     }
 
     /**
@@ -192,7 +185,7 @@ internal class RtmpConnection internal constructor(
         val setWindowAcknowledgementSize = WindowAcknowledgementSize(
             timestampMs, size
         )
-        writeMessage(setWindowAcknowledgementSize).await()
+        writeMessage(setWindowAcknowledgementSize)
     }
 
     /**
@@ -206,7 +199,7 @@ internal class RtmpConnection internal constructor(
         val setPeerBandwidth = SetPeerBandwidth(
             timestampMs, size, type
         )
-        writeMessage(setPeerBandwidth).await()
+        writeMessage(setPeerBandwidth)
     }
 
     /**
@@ -222,7 +215,7 @@ internal class RtmpConnection internal constructor(
         val userControl = UserControl(
             timestampMs, eventType
         )
-        writeMessage(userControl).await()
+        writeMessage(userControl)
     }
 
 
@@ -241,7 +234,7 @@ internal class RtmpConnection internal constructor(
         val userControl = UserControl(
             timestampMs, eventType, data
         )
-        writeMessage(userControl).await()
+        writeMessage(userControl)
     }
 
     /**
@@ -287,7 +280,7 @@ internal class RtmpConnection internal constructor(
                 userControlStreamBegin,
                 result.createMessage(amfVersion = settings.amfVersion)
             )
-        ).awaitAll()
+        )
     }
 
     /**
@@ -405,7 +398,7 @@ internal class RtmpConnection internal constructor(
         )
 
         return try {
-            writeAmfMessage(playCommand).await()
+            writeAmfMessage(playCommand)
         } catch (t: Throwable) {
             throw IOException("Play command failed", t)
         }
@@ -430,7 +423,7 @@ internal class RtmpConnection internal constructor(
             )
         }
 
-        writeAmfMessages(messages).awaitAll()
+        writeAmfMessages(messages)
     }
 
     /**
@@ -476,14 +469,14 @@ internal class RtmpConnection internal constructor(
                 )
             )
         )
-        writeAmfMessage(onStatus).await()
+        writeAmfMessage(onStatus)
     }
 
     private fun close(timestampMs: Int) {
         try {
             val closeCommand = CommandCloseStream(transactionId, timestampMs)
             runBlocking {
-                writeAmfMessage(closeCommand).await()
+                writeAmfMessage(closeCommand)
             }
         } catch (t: Throwable) {
             KrtmpLogger.i(TAG, "Error sending close command: ${t.message}")
@@ -516,7 +509,7 @@ internal class RtmpConnection internal constructor(
      * @param timestampMs the timestamp of the metadata in milliseconds (usually 0)
      * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeSetDataFrame(metadata: Metadata, timestampMs: Int): Deferred<Unit> {
+    suspend fun writeSetDataFrame(metadata: Metadata, timestampMs: Int) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -537,7 +530,7 @@ internal class RtmpConnection internal constructor(
      * @param timestampMs the timestamp of the metadata in milliseconds  (usually 0)
      * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeSetDataFrame(onMetadata: ByteArray, timestampMs: Int): Deferred<Unit> {
+    suspend fun writeSetDataFrame(onMetadata: ByteArray, timestampMs: Int) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -569,7 +562,7 @@ internal class RtmpConnection internal constructor(
         onMetadataSize: Int,
         timestampMs: Int,
         amfVersion: AmfVersion = settings.amfVersion
-    ): Deferred<Unit> {
+    ) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
@@ -590,13 +583,13 @@ internal class RtmpConnection internal constructor(
      * @param timestampMs the timestamp of the frame in milliseconds
      * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeAudio(source: RawSource, sourceSize: Int, timestampMs: Int): Deferred<Unit> {
+    suspend fun writeAudio(source: RawSource, sourceSize: Int, timestampMs: Int) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
         val audio = Audio(timestampMs, messageStreamId, source, sourceSize)
-        return writeMessage(audio)
+        return withTimeoutWriteIfNeeded(audio)
     }
 
     /**
@@ -609,13 +602,13 @@ internal class RtmpConnection internal constructor(
      * @param timestampMs the timestamp of the frame in milliseconds
      * @return the deferred that will be completed when the frame is sent
      */
-    suspend fun writeVideo(source: RawSource, sourceSize: Int, timestampMs: Int): Deferred<Unit> {
+    suspend fun writeVideo(source: RawSource, sourceSize: Int, timestampMs: Int) {
         val messageStreamId = requireNotNull(messageStreamId) {
             "You must call createStream() before publish()"
         }
 
         val video = Video(timestampMs, messageStreamId, source, sourceSize)
-        return writeMessage(video)
+        return withTimeoutWriteIfNeeded(video)
     }
 
     private suspend fun writeAmfMessagesWithResponse(
@@ -625,7 +618,7 @@ internal class RtmpConnection internal constructor(
         return commandChannels.waitForResponse(id)
     }
 
-    private suspend fun writeAmfMessages(amfMessages: List<AmfMessage>): List<Deferred<Unit>> {
+    private suspend fun writeAmfMessages(amfMessages: List<AmfMessage>) {
         val messages = amfMessages.map { it.createMessage(settings.amfVersion) }
         return writeMessages(messages)
     }
@@ -637,14 +630,30 @@ internal class RtmpConnection internal constructor(
         return writeMessageWithResponse(message, id)
     }
 
-    suspend fun writeAmfMessage(amfMessage: AmfMessage): Deferred<Unit> {
+    suspend fun writeAmfMessage(amfMessage: AmfMessage) {
         val message = amfMessage.createMessage(settings.amfVersion)
         return writeMessage(message)
     }
 
-    private suspend fun writeMessages(messages: List<Message>): List<Deferred<Unit>> =
-        messages.map {
-            messageWriteChannel.send(it)
+    private suspend fun withTimeoutWriteIfNeeded(message: Message) {
+        val timeoutInMs = if (settings.tooLateFrameDropTimeoutInMs != null) {
+            settings.tooLateFrameDropTimeoutInMs - (settings.clock.nowInMs - message.timestamp)
+        } else {
+            null
+        }
+        if (timeoutInMs != null) {
+            withTimeout(timeoutInMs) {
+                writeMessage(message)
+            }
+        } else {
+            writeMessage(message)
+        }
+    }
+
+
+    private suspend fun writeMessages(messages: List<Message>) =
+        messages.forEach {
+            messageWriteChannel.write(it)
         }
 
     /**
@@ -655,7 +664,7 @@ internal class RtmpConnection internal constructor(
      * @return the response command
      */
     suspend fun writeMessageWithResponse(message: Message, id: Any = transactionId): Command {
-        writeMessage(message).await()
+        writeMessage(message)
         return commandChannels.waitForResponse(id)
     }
 
@@ -665,7 +674,7 @@ internal class RtmpConnection internal constructor(
      * @param message the message to write
      */
     suspend fun writeMessage(message: Message) =
-        messageWriteChannel.send(message)
+        messageWriteChannel.write(message)
 
     private suspend fun handleRtmpMessages() {
         try {
@@ -793,7 +802,7 @@ internal class RtmpConnection internal constructor(
     }
 
     private suspend fun readMessage(): Message {
-        return messageReadChannel.receive()
+        return messageReadChannel.read()
     }
 
     companion object {
@@ -864,20 +873,18 @@ internal suspend fun RtmpConnection.write(array: ByteArray) =
  * @param source the frame to write
  * @return a [Deferred] that completes when the frame is sent
  */
-internal suspend fun RtmpConnection.write(source: Source): Deferred<Unit> {
+internal suspend fun RtmpConnection.write(source: Source) {
     /**
      * Dropping FLV header that is not needed. It starts with 'F', 'L' and 'V'.
      * Just check the first byte to simplify.
      */
     val peek = source.peek()
-    val isHeader = try {
+    try {
         peek.readString(3) == "FLV"
-    } catch (_: Throwable) {
-        false
-    }
-    if (isHeader) {
         // Skip header
         FLVHeader.decode(source)
+    } catch (_: Throwable) {
+        // Not a FLV header, continue
     }
 
     source.readInt() // skip previous tag size
@@ -903,7 +910,7 @@ internal suspend fun RtmpConnection.write(source: Source): Deferred<Unit> {
  * @param timestampMs the timestamp of the frame in milliseconds
  * @return a [Deferred] that completes when the frame is sent
  */
-internal suspend fun RtmpConnection.write(data: FLVData, timestampMs: Int): Deferred<Unit> {
+internal suspend fun RtmpConnection.write(data: FLVData, timestampMs: Int) {
     val rawSource = data.asRawSource(settings.amfVersion, false)
     val rawSourceSize = data.getSize(settings.amfVersion)
 
@@ -941,7 +948,7 @@ internal suspend fun RtmpConnection.write(tag: FLVTag) = write(tag.data, tag.tim
  *
  * @param tag the FLV tag to write
  */
-internal suspend fun RtmpConnection.write(tag: FLVTagRawBody): Deferred<Unit> {
+internal suspend fun RtmpConnection.write(tag: FLVTagRawBody) {
     return when (tag.type) {
         FLVTag.Type.AUDIO -> {
             writeAudio(tag.body, tag.bodySize, tag.timestampMs)

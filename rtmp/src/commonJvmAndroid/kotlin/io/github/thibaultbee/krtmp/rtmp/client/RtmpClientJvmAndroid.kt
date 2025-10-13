@@ -44,7 +44,7 @@ suspend fun RtmpClient.writeVideo(buffer: ByteBuffer, timestampMs: Int) =
 
 /**
  * Writes the SetDataFrame from a [ByteBuffer].
- * It must be called after [publish] and before sending audio or video frames.
+ * It must be called after [RtmpClient.publish] and before sending audio or video frames.
  *
  * Expected AMF format is the one set in [RtmpSettings.amfVersion].
  *

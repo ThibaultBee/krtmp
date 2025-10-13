@@ -20,45 +20,26 @@ import io.github.thibaultbee.krtmp.rtmp.messages.Message
 import io.github.thibaultbee.krtmp.rtmp.messages.SetChunkSize
 import io.github.thibaultbee.krtmp.rtmp.util.MessageHistory
 import io.github.thibaultbee.krtmp.rtmp.util.sockets.ReadableMessageSocket
-import io.ktor.network.sockets.isClosed
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
-import kotlinx.io.EOFException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Received RTMP messages through a [ReadableMessageSocket].
  *
- * It uses a [Channel] to queue messages and a coroutine to send them sequentially.
- *
  * It also manages the chunk size and message history for proper chunking.
  *
- * @param sendChannel The channel to queue messages.
  * @param socket The socket to send messages through.
  */
 internal class MessageReadChannel(
-    private val socket: ReadableMessageSocket,
-    private val sendChannel: Channel<Message> = Channel(Channel.UNLIMITED),
+    private val socket: ReadableMessageSocket
 ) {
     private val messageHistory = MessageHistory()
+    private val messageMutex = Mutex()
 
     var chunkSize: Int = RtmpConstants.DEFAULT_CHUNK_SIZE
         private set
 
-    init {
-        socket.launch {
-            socket.socketContext
-            while (!socket.isClosed) {
-                val message = try {
-                    readMessage()
-                } catch (_: EOFException) {
-                    break
-                }
-                sendChannel.send(message)
-            }
-        }
-    }
-
-    private suspend fun readMessage(): Message {
+    suspend fun read(): Message = messageMutex.withLock {
         val message = socket.read(chunkSize) { chunkStreamId ->
             messageHistory.get(chunkStreamId)
         }
@@ -69,11 +50,7 @@ internal class MessageReadChannel(
         return message
     }
 
-    suspend fun receive() =
-        sendChannel.receive()
-
     fun close() {
-        sendChannel.cancel()
         messageHistory.clear()
     }
 }
