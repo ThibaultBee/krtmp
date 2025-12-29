@@ -3,10 +3,10 @@
 krtmp is a Kotlin Multiplatform implementation of RTMP, FLV and AMF protocols from legacy RTMP to
 enhanced RTMP v2.
 
-# Notice
 
-krtmp is still in development and is not ready for production use. There is no guarantee that the
-API will not change in the future.
+> [!NOTE]
+> krtmp code have been moved to komedia/komuxer. See this [discussion](https://github.com/ThibaultBee/krtmp/discussions/48).
+
 
 # RTMP
 
